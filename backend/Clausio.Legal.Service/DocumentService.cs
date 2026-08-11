@@ -1,3 +1,4 @@
+using Clausio.Legal.Infrastructure.Queue;
 using Clausio.Legal.Core.Entities;
 using Clausio.Legal.Infrastructure;
 using Clausio.Legal.Infrastructure.Extraction;
@@ -13,7 +14,7 @@ public interface IDocumentService
     Task<bool> DeleteAsync(Guid caseId, Guid id, CancellationToken cancellationToken = default);
 }
 
-public class DocumentService(ClausioDbContext db, IDocumentStorage storage, IDocumentTextExtractor textExtractor) : IDocumentService
+public class DocumentService(ClausioDbContext db, IDocumentStorage storage, IDocumentTextExtractor textExtractor, IAiJobQueueService jobQueue) : IDocumentService
 {
     public Task<List<Document>> ListAsync(Guid caseId, CancellationToken cancellationToken = default) =>
         db.Documents.AsNoTracking().Where(d => d.CaseId == caseId).OrderByDescending(d => d.CreatedAt).ToListAsync(cancellationToken);
@@ -39,6 +40,15 @@ public class DocumentService(ClausioDbContext db, IDocumentStorage storage, IDoc
 
         db.Documents.Add(entity);
         await db.SaveChangesAsync(cancellationToken);
+
+        await jobQueue.EnqueueJobAsync("ocr_extraction", new
+        {
+            DocumentId = documentId,
+            CaseId = caseId,
+            StoragePath = storagePath,
+            ContentType = contentType
+        }, cancellationToken);
+
         return entity;
     }
 

@@ -1,4 +1,6 @@
 using Amazon.S3;
+using Amazon.SQS;
+using Clausio.Legal.Infrastructure.Queue;
 using Clausio.Legal.API.Middleware;
 using Clausio.Legal.Cache;
 using Clausio.Legal.Core.Settings;
@@ -54,6 +56,10 @@ builder.Services.AddSingleton<IDocumentStorage>(sp =>
         ?? throw new InvalidOperationException("AWS:S3BucketName not configured");
     return new S3DocumentStorage(s3, bucketName);
 });
+
+// Queue
+builder.Services.AddAWSService<IAmazonSQS>();
+builder.Services.AddSingleton<IAiJobQueueService, SqsAiJobQueueService>();
 
 // OCR & Document text extraction
 builder.Services.AddScoped<Clausio.Legal.Core.Interfaces.OCR.IOCRProvider, Clausio.Legal.Infrastructure.OCR.PaddleOCRProvider>();
