@@ -1,0 +1,52 @@
+name: Build, Push, and Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push backend
+        run: |
+          docker build -t ${{ secrets.ECR_REGISTRY }}/clausio-backend:latest -f backend/Dockerfile backend
+          docker push ${{ secrets.ECR_REGISTRY }}/clausio-backend:latest
+
+      - name: Build and push frontend
+        run: |
+          docker build -t ${{ secrets.ECR_REGISTRY }}/clausio-frontend:latest -f frontend/Dockerfile frontend
+          docker push ${{ secrets.ECR_REGISTRY }}/clausio-frontend:latest
+
+      - name: Build and push voice-backend
+        run: |
+          docker build -t ${{ secrets.ECR_REGISTRY }}/clausio-voice-backend:latest backend/voice-backend
+          docker push ${{ secrets.ECR_REGISTRY }}/clausio-voice-backend:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
+            cd /opt/clausio
+            docker compose pull
+            docker compose up -d
