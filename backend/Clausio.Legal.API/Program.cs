@@ -1,3 +1,4 @@
+using Amazon.S3;
 using Clausio.Legal.API.Middleware;
 using Clausio.Legal.Cache;
 using Clausio.Legal.Core.Settings;
@@ -44,9 +45,15 @@ builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<ICacheService, MemoryCacheService>();
 
 // Storage
-var storageRootPath = builder.Configuration["Storage:RootPath"]
-    ?? Path.Combine(builder.Environment.ContentRootPath, "App_Data", "documents");
-builder.Services.AddSingleton<IDocumentStorage>(new LocalDiskDocumentStorage(storageRootPath));
+builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
+builder.Services.AddAWSService<IAmazonS3>();
+builder.Services.AddSingleton<IDocumentStorage>(sp =>
+{
+    var s3 = sp.GetRequiredService<IAmazonS3>();
+    var bucketName = builder.Configuration["AWS:S3BucketName"]
+        ?? throw new InvalidOperationException("AWS:S3BucketName not configured");
+    return new S3DocumentStorage(s3, bucketName);
+});
 
 // OCR & Document text extraction
 builder.Services.AddScoped<Clausio.Legal.Core.Interfaces.OCR.IOCRProvider, Clausio.Legal.Infrastructure.OCR.PaddleOCRProvider>();

@@ -22,8 +22,10 @@ public class S3DocumentStorage(IAmazonS3 s3, string bucketName) : IDocumentStora
     }
 
     public void Delete(string storagePath)
-    {
-        // Fire-and-forget delete to match the existing sync interface signature
-        s3.DeleteObjectAsync(bucketName, storagePath).GetAwaiter().GetResult();
-    }
+   {
+    if (string.IsNullOrWhiteSpace(storagePath))
+        return; // nothing to delete, avoid crashing on bad/legacy data
+
+    s3.DeleteObjectAsync(bucketName, storagePath).GetAwaiter().GetResult();
+   }
 }
