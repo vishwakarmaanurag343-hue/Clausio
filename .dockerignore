@@ -1,0 +1,12 @@
+.git
+.gitignore
+node_modules
+.next
+bin
+obj
+venv
+__pycache__
+temp_uploads
+*.pem
+*.sql
+*.md

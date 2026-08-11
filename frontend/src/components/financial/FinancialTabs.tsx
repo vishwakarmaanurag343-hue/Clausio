@@ -1,0 +1,70 @@
+'use client'
+
+interface Props {
+  activeTab: string
+  onChange: (tab: string) => void
+}
+
+const tabs = [
+  'Financial Intelligence',
+  'Maintenance Calculator',
+  'Settlement Calculator',
+]
+
+export default function FinancialTabs({
+  activeTab,
+  onChange,
+}: Props) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 28,
+        borderBottom: '1px solid #e2e8f0',
+        marginBottom: 22,
+        overflowX: 'auto',
+      }}
+    >
+      {tabs.map((tab) => {
+        const active = activeTab === tab
+
+        return (
+          <button
+            key={tab}
+            onClick={() => onChange(tab)}
+            style={{
+              position: 'relative',
+              padding: '12px 0',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              fontSize: 13,
+              fontWeight: active ? 600 : 500,
+              color: active ? '#2563eb' : '#64748b',
+              transition: '.2s',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {tab}
+
+            {active && (
+              <span
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  bottom: -1,
+                  height: 2,
+                  background: '#2563eb',
+                  borderRadius: 10,
+                }}
+              />
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
