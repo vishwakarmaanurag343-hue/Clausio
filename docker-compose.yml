@@ -5,9 +5,7 @@ services:
 
   # 2. ASP.NET Core 8 Web API
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: 449513325212.dkr.ecr.ap-south-1.amazonaws.com/clausio-backend:latest
     container_name: clausio-backend-api
     restart: always
     ports:
@@ -23,11 +21,7 @@ services:
 
   # 3. Next.js 14 Web Frontend
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: /api
+    image: 449513325212.dkr.ecr.ap-south-1.amazonaws.com/clausio-frontend:latest
     container_name: clausio-frontend-web
     restart: always
     ports:
@@ -40,9 +34,7 @@ services:
 
   # 4. Python Speech-to-Text Microservice
   voice-backend:
-    build:
-      context: ./backend/voice-backend
-      dockerfile: Dockerfile
+    image: 449513325212.dkr.ecr.ap-south-1.amazonaws.com/clausio-voice-backend:latest
     container_name: clausio-voice-microservice
     restart: always
     ports:
