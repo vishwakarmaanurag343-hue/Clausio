@@ -18,6 +18,8 @@ services:
       AWS__S3BucketName: clausio-files-prod
       AWS__SQSQueueUrl: https://sqs.ap-south-1.amazonaws.com/449513325212/clausio-ai-jobs
       Jwt__Secret: ${JWT_SECRET}
+      Jwt__Issuer: Clausio
+      Jwt__Audience: ClausioClients
 
   # 3. Next.js 14 Web Frontend
   frontend:
