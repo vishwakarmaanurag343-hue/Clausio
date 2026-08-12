@@ -218,11 +218,25 @@ public class ContextEngine : IContextEngine
             sb.AppendLine($"Key Facts: {caseMemory.KeyFacts}");
             sb.AppendLine("</case_context>");
         }
+        else
+        {
+            var basicCaseInfo = _db.Cases.FirstOrDefault(c => c.Id == caseId);
+            if (basicCaseInfo != null)
+            {
+                sb.AppendLine("<case_context>");
+                sb.AppendLine($"Title: {basicCaseInfo.Name}");
+                sb.AppendLine($"Type: {basicCaseInfo.CaseType}");
+                sb.AppendLine($"Status: {basicCaseInfo.Status}");
+                sb.AppendLine($"Stage: {basicCaseInfo.Stage}");
+                sb.AppendLine($"Court: {basicCaseInfo.Court}");
+                sb.AppendLine("</case_context>");
+            }
+        }
 
         // Broad retrieval for analysis
         var query = $"All critical facts and evidence for {analysisType}";
         var relevantChunks = await _retrievalEngine.GetContextAsync(query, caseId, cancellationToken);
-        if (relevantChunks.Any())
+        if (relevantChunks != null && relevantChunks.Any())
         {
             sb.AppendLine("<retrieved_evidence>");
             foreach (var chunk in relevantChunks)
@@ -230,6 +244,26 @@ public class ContextEngine : IContextEngine
                 sb.AppendLine($"[Source: {chunk.DocumentType ?? "Unknown"}] {chunk.TextContent}");
             }
             sb.AppendLine("</retrieved_evidence>");
+        }
+        else
+        {
+            var recentDocs = _db.Documents
+                .Where(d => d.CaseId == caseId && !string.IsNullOrWhiteSpace(d.ExtractedText) && !d.ExtractedText.StartsWith("Error") && !d.ExtractedText.StartsWith("--- MOCK"))
+                .OrderByDescending(d => d.CreatedAt)
+                .ToList()
+                .DistinctBy(d => d.ExtractedText.Trim())
+                .Take(10)
+                .ToList();
+
+            if (recentDocs.Any())
+            {
+                sb.AppendLine("<retrieved_evidence>");
+                foreach (var doc in recentDocs)
+                {
+                    sb.AppendLine($"[Document: {doc.FileName}] {doc.ExtractedText}");
+                }
+                sb.AppendLine("</retrieved_evidence>");
+            }
         }
 
         return await _contextRanker.ScoreRankAndCompressAsync(sb.ToString(), 2000);

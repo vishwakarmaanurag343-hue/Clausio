@@ -46,20 +46,31 @@ builder.Services.AddDbContext<ClausioDbContext>(options =>
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<ICacheService, MemoryCacheService>();
 
-// Storage
-builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
-builder.Services.AddAWSService<IAmazonS3>();
-builder.Services.AddSingleton<IDocumentStorage>(sp =>
-{
-    var s3 = sp.GetRequiredService<IAmazonS3>();
-    var bucketName = builder.Configuration["AWS:S3BucketName"]
-        ?? throw new InvalidOperationException("AWS:S3BucketName not configured");
-    return new S3DocumentStorage(s3, bucketName);
-});
+// Storage & AWS Queue setup
+var useS3 = !string.IsNullOrEmpty(builder.Configuration["AWS:S3BucketName"]) 
+            && !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID"));
 
-// Queue
-builder.Services.AddAWSService<IAmazonSQS>();
-builder.Services.AddSingleton<IAiJobQueueService, SqsAiJobQueueService>();
+if (useS3)
+{
+    builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
+    builder.Services.AddAWSService<IAmazonS3>();
+    builder.Services.AddSingleton<IDocumentStorage>(sp =>
+    {
+        var s3 = sp.GetRequiredService<IAmazonS3>();
+        var bucketName = builder.Configuration["AWS:S3BucketName"]!;
+        return new S3DocumentStorage(s3, bucketName);
+    });
+
+    builder.Services.AddAWSService<IAmazonSQS>();
+    builder.Services.AddSingleton<IAiJobQueueService, SqsAiJobQueueService>();
+}
+else
+{
+    var uploadPath = Path.Combine(builder.Environment.ContentRootPath, "uploads");
+    Directory.CreateDirectory(uploadPath);
+    builder.Services.AddSingleton<IDocumentStorage>(new LocalDiskDocumentStorage(uploadPath));
+    builder.Services.AddSingleton<IAiJobQueueService, NullAiJobQueueService>();
+}
 
 // OCR & Document text extraction
 builder.Services.AddScoped<Clausio.Legal.Core.Interfaces.OCR.IOCRProvider, Clausio.Legal.Infrastructure.OCR.PaddleOCRProvider>();
