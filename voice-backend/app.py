@@ -7,7 +7,6 @@ import traceback
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from faster_whisper import WhisperModel
-import torch
 
 try:
     from paddleocr import PaddleOCR
@@ -36,13 +35,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configuration
-MODEL_SIZE = "base.en"
+# Configuration: Use 'small.en' (GGML/CTranslate2 int8) for optimal speed & legal accuracy
+MODEL_SIZE = os.environ.get("WHISPER_MODEL", "small.en")
 SAMPLE_RATE = 16000
 
-# Device configuration
-device = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"Using device: {device}")
+# Device configuration (faster-whisper uses CTranslate2 engine - int8 quantization on CPU)
+device = "cpu"
 
 # Lazy loading models
 whisper_model = None
@@ -52,11 +50,9 @@ def load_models():
     global whisper_model, paddle_ocr
     try:
         if whisper_model is None:
-            print(f"Loading faster-whisper model ({MODEL_SIZE})...")
-            # compute_type="float16" optimizes memory and speed on GPU
-            compute_type = "float16" if device == "cuda" else "int8"
-            whisper_model = WhisperModel(MODEL_SIZE, device=device, compute_type=compute_type)
-            print("faster-whisper loaded successfully.")
+            print(f"Loading faster-whisper model ({MODEL_SIZE}) on CPU with int8 quantization...")
+            whisper_model = WhisperModel(MODEL_SIZE, device="cpu", compute_type="int8")
+            print("faster-whisper (CTranslate2 int8) loaded successfully.")
     except Exception as e:
         print(f"Error loading whisper model: {e}")
         
