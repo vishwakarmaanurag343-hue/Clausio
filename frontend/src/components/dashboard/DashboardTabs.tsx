@@ -103,7 +103,7 @@ export function DocumentsTab({ caseId }: { caseId: string }) {
             <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
               {doc.fileName ?? doc.name}
               <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, background: '#dcfce7', color: '#15803d', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                ✓ OCR Scanned
+                ✓ Scanned
               </span>
             </div>
             <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 1 }}>{doc.documentType || 'General'} · {doc.exhibitLabel ? `Exhibit ${doc.exhibitLabel}` : 'No exhibit label'}</div>
