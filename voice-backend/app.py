@@ -7,7 +7,6 @@ import traceback
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from faster_whisper import WhisperModel
-import torch
 
 try:
     from rapidocr_onnxruntime import RapidOCR
@@ -15,16 +14,6 @@ try:
 except ImportError:
     RapidOCR = None
     pdfium = None
-
-# Workaround for Python 3.13 Windows DLL loading (WinError 126)
-user_site = site.getusersitepackages()
-torch_lib_path = os.path.join(user_site, "torch", "lib")
-if os.path.exists(torch_lib_path):
-    os.environ["PATH"] = torch_lib_path + os.pathsep + os.environ.get("PATH", "")
-    try:
-        os.add_dll_directory(torch_lib_path)
-    except AttributeError:
-        pass
 
 app = FastAPI()
 
@@ -37,12 +26,11 @@ app.add_middleware(
 )
 
 # Configuration
-MODEL_SIZE = "base.en"
+MODEL_SIZE = os.environ.get("WHISPER_MODEL", "small.en")
 SAMPLE_RATE = 16000
 
-# Device configuration
-device = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"Using device: {device}")
+# Device configuration (CPU with CTranslate2 int8 quantization)
+device = "cpu"
 
 # Lazy loading models
 whisper_model = None
@@ -52,17 +40,15 @@ def load_models():
     global whisper_model, rapid_ocr
     try:
         if whisper_model is None:
-            print(f"Loading faster-whisper model ({MODEL_SIZE})...")
-            # compute_type="float16" optimizes memory and speed on GPU
-            compute_type = "float16" if device == "cuda" else "int8"
-            whisper_model = WhisperModel(MODEL_SIZE, device=device, compute_type=compute_type)
-            print("faster-whisper loaded successfully.")
+            print(f"Loading faster-whisper model ({MODEL_SIZE}) on CPU with int8 quantization...")
+            whisper_model = WhisperModel(MODEL_SIZE, device="cpu", compute_type="int8")
+            print("faster-whisper (CTranslate2 int8) loaded successfully.")
     except Exception as e:
         print(f"Error loading whisper model: {e}")
         
     try:
         if rapid_ocr is None and RapidOCR is not None:
-            print("Loading RapidOCR (ONNX) model...")
+            print("Loading RapidOCR (ONNX Runtime C++) model...")
             rapid_ocr = RapidOCR()
             print("RapidOCR loaded successfully.")
     except Exception as e:
