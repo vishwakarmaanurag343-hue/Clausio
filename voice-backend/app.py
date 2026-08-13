@@ -10,10 +10,10 @@ from faster_whisper import WhisperModel
 import torch
 
 try:
-    from paddleocr import PaddleOCR
+    from rapidocr_onnxruntime import RapidOCR
     import pypdfium2 as pdfium
 except ImportError:
-    PaddleOCR = None
+    RapidOCR = None
     pdfium = None
 
 # Workaround for Python 3.13 Windows DLL loading (WinError 126)
@@ -46,10 +46,10 @@ print(f"Using device: {device}")
 
 # Lazy loading models
 whisper_model = None
-paddle_ocr = None
+rapid_ocr = None
 
 def load_models():
-    global whisper_model, paddle_ocr
+    global whisper_model, rapid_ocr
     try:
         if whisper_model is None:
             print(f"Loading faster-whisper model ({MODEL_SIZE})...")
@@ -61,12 +61,12 @@ def load_models():
         print(f"Error loading whisper model: {e}")
         
     try:
-        if paddle_ocr is None and PaddleOCR is not None:
-            print("Loading PaddleOCR model...")
-            paddle_ocr = PaddleOCR(lang='en')
-            print("PaddleOCR loaded successfully.")
+        if rapid_ocr is None and RapidOCR is not None:
+            print("Loading RapidOCR (ONNX) model...")
+            rapid_ocr = RapidOCR()
+            print("RapidOCR loaded successfully.")
     except Exception as e:
-        print(f"Error loading PaddleOCR model: {e}")
+        print(f"Error loading RapidOCR model: {e}")
 
 @app.on_event("startup")
 async def startup_event():
@@ -200,7 +200,6 @@ async def transcribe_voice(file: UploadFile = File(...)):
         for p in [tmp_path, wav_path]:
             if os.path.exists(p):
                 os.remove(p)
-
 @app.post("/api/ocr")
 async def process_ocr(file: UploadFile = File(...)):
     # Save the file temporarily
@@ -212,37 +211,53 @@ async def process_ocr(file: UploadFile = File(...)):
         f.write(await file.read())
         
     try:
-        # Fallback if PaddleOCR failed to load (e.g. on Python 3.13)
-        if paddle_ocr is None:
-            print(f"Fallback mode: Mocking OCR for {file.filename} because PaddleOCR is missing.")
+        # Tier-1: try fast direct text extraction for digital PDFs
+        if file.filename.lower().endswith(".pdf"):
+            try:
+                pdf = pdfium.PdfDocument(temp_path)
+                extracted_pages = []
+                for page in pdf:
+                    textpage = page.get_textpage()
+                    page_text = textpage.get_text_range()
+                    extracted_pages.append(page_text)
+                    textpage.close()
+                    page.close()
+                pdf.close()
+
+                combined_text = "\n".join(extracted_pages).strip()
+                # If the PDF has a real text layer, this will be substantial.
+                # A near-empty result means it's a scanned/image-only PDF.
+                if len(combined_text) > 20:
+                    print(f"Tier-1 fast path: extracted {len(combined_text)} chars directly from {file.filename}")
+                    return {"text": combined_text, "filename": file.filename, "method": "pypdfium2"}
+                else:
+                    print(f"Tier-1 fast path found no text layer in {file.filename}, falling back to OCR")
+            except Exception as e:
+                print(f"Tier-1 fast path failed for {file.filename}, falling back to OCR: {e}")
+
+        # Tier-2: OCR fallback (existing logic below, unchanged)
+        # Fallback if RapidOCR failed to load
+        if rapid_ocr is None:
+            print(f"Fallback mode: Mocking OCR for {file.filename} because RapidOCR is missing.")
             await asyncio.sleep(2) # Simulate processing time
             return {
-                "text": f"--- MOCK OCR RESULT ---\n\nExtracted text from {file.filename}.\n\n(Note: PaddleOCR is not installed due to Python version compatibility, so this is simulated text.)", 
+                "text": f"--- MOCK OCR RESULT ---\n\nExtracted text from {file.filename}.\n\n(Note: RapidOCR is not installed, so this is simulated text.)",
                 "filename": file.filename
             }
             
-        # Process Image or PDF
-        results = list(paddle_ocr.predict(temp_path))
+       # Process Image or PDF via RapidOCR (ONNX runtime)
+        ocr_result, _ = rapid_ocr(temp_path)
         full_text = []
-        if results:
-            for page_result in results:
-                if isinstance(page_result, dict) and "rec_texts" in page_result:
-                    full_text.extend(page_result["rec_texts"])
-                elif isinstance(page_result, list):
-                    # Fallback for old PaddleOCR format just in case
-                    for line in page_result:
-                        if len(line) > 1 and len(line[1]) > 0:
-                            full_text.append(line[1][0])
+        if ocr_result:
+            for line in ocr_result:
+                # RapidOCR result format: [box, text, confidence]
+                if len(line) > 1:
+                    full_text.append(line[1])
         extracted_text = "\n".join(full_text)
         
-        return {"text": extracted_text, "filename": file.filename}
+        return {"text": extracted_text, "filename": file.filename, "method": "rapidocr"}
     except Exception as e:
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        # Cleanup
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
 
 @app.websocket("/ws/transcribe")
 async def websocket_endpoint(websocket: WebSocket):

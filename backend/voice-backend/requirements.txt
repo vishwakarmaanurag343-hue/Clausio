@@ -7,6 +7,6 @@ numpy
 python-multipart
 onnxruntime
 faster-whisper
-paddleocr
+rapidocr_onnxruntime
 pypdfium2
-paddlepaddle
+
