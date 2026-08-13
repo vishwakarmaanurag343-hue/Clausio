@@ -100,8 +100,13 @@ export function DocumentsTab({ caseId }: { caseId: string }) {
         <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#f8fafc', borderRadius: 8, marginBottom: 8, border: '1px solid #e2e8f0' }}>
           <span style={{ fontSize: 20 }}>{getIcon(doc.mimeType)}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.fileName ?? doc.name}</div>
-            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 1 }}>{doc.documentType} · {formatSize(doc.fileSize)} · {doc.exhibitLabel ? `Exhibit ${doc.exhibitLabel}` : 'No exhibit label'}</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
+              {doc.fileName ?? doc.name}
+              <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, background: '#dcfce7', color: '#15803d', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                ✓ OCR Scanned
+              </span>
+            </div>
+            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 1 }}>{doc.documentType || 'General'} · {doc.exhibitLabel ? `Exhibit ${doc.exhibitLabel}` : 'No exhibit label'}</div>
           </div>
           <button
             onClick={() => handleDelete(doc.id)}
