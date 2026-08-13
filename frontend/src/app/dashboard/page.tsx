@@ -123,11 +123,8 @@ export default function DashboardPage() {
               <span>{caseData.court}</span>
               <span>·</span>
               <span>{caseData.caseNumber}</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>{caseData.caseName}</h2>
-              <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 6, background: '#dcfce7', color: '#166534', fontWeight: 600 }}>{caseData.status}</span>
-              <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 6, background: '#eff6ff', color: '#1e40af', fontWeight: 600 }}>{caseData.priority} Priority</span>
-              <span style={{ fontSize: 11, color: '#64748b' }}>{caseData.court} · {caseData.caseNumber} · {caseData.caseType}</span>
+              <span>·</span>
+              <span>{caseData.caseType}</span>
               {daysToHearing !== null && (
                 <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 6, background: daysToHearing <= 2 ? '#fef2f2' : '#fff7ed', color: daysToHearing <= 2 ? '#dc2626' : '#c2410c', fontWeight: 600 }}>
                   Next: {nextHearingDate ? nextHearingDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : ''} ({daysToHearing === 0 ? 'Today' : `${daysToHearing}d`})
