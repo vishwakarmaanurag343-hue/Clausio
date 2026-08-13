@@ -123,72 +123,54 @@ export default function DashboardPage() {
               <span>{caseData.court}</span>
               <span>·</span>
               <span>{caseData.caseNumber}</span>
-              <span>·</span>
-              <span>{caseData.caseType}</span>
-              {nextHearingDate && (
-                <>
-                  <span>·</span>
-                  <span style={{ fontWeight: 600, color: daysToHearing !== null && daysToHearing <= 7 ? '#dc2626' : '#0f172a' }}>
-                    Next: {nextHearingDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    {daysToHearing !== null && daysToHearing >= 0 && ` (${daysToHearing}d)`}
-                  </span>
-                </>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>{caseData.caseName}</h2>
+              <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 6, background: '#dcfce7', color: '#166534', fontWeight: 600 }}>{caseData.status}</span>
+              <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 6, background: '#eff6ff', color: '#1e40af', fontWeight: 600 }}>{caseData.priority} Priority</span>
+              <span style={{ fontSize: 11, color: '#64748b' }}>{caseData.court} · {caseData.caseNumber} · {caseData.caseType}</span>
+              {daysToHearing !== null && (
+                <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 6, background: daysToHearing <= 2 ? '#fef2f2' : '#fff7ed', color: daysToHearing <= 2 ? '#dc2626' : '#c2410c', fontWeight: 600 }}>
+                  Next: {nextHearingDate ? nextHearingDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : ''} ({daysToHearing === 0 ? 'Today' : `${daysToHearing}d`})
+                </span>
               )}
             </div>
           )}
         </div>
 
-        {/* Readiness bar */}
-        {caseData && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <span style={{ fontSize: 11, color: '#64748b', whiteSpace: 'nowrap' }}>Readiness</span>
-            <div style={{ width: 80, height: 6, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
-              <div style={{ width: `${readiness}%`, height: '100%', background: readiness >= 70 ? '#10b981' : readiness >= 40 ? '#f59e0b' : '#ef4444', borderRadius: 3, transition: 'width 0.5s' }} />
+        {/* Action pills */}
+        <div className="dashboard-topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#64748b' }}>
+            <span>Readiness</span>
+            <div style={{ width: 60, height: 6, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
+              <div style={{ width: `${readiness}%`, height: '100%', background: readiness > 70 ? '#10b981' : readiness > 40 ? '#f59e0b' : '#ef4444', borderRadius: 3 }} />
             </div>
-            <span style={{ fontSize: 11, fontWeight: 700, color: readiness >= 70 ? '#10b981' : readiness >= 40 ? '#f59e0b' : '#ef4444' }}>{readiness}%</span>
+            <span style={{ fontWeight: 600, color: '#0f172a' }}>{readiness}%</span>
           </div>
-        )}
-
-        {/* Action buttons */}
-        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-          <button onClick={() => router.push('/readiness')} style={{ padding: '6px 12px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 11, fontWeight: 700, color: '#dc2626', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <i className="ti ti-alert-triangle" style={{ fontSize: 12 }} /> Emergency
+          {overdueOrders.length > 0 && (
+            <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, background: '#fef2f2', color: '#dc2626', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <i className="ti ti-alert-triangle" /> {overdueOrders.length} Emergency
+            </span>
+          )}
+          <button onClick={() => router.push('/drafting')} style={{ padding: '4px 10px', fontSize: 11, background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', fontWeight: 500, fontFamily: 'inherit' }}>
+            📝 Draft
           </button>
-          <button onClick={() => router.push('/drafting')} style={{ padding: '6px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, fontSize: 11, fontWeight: 600, color: '#1e40af', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <i className="ti ti-file-text" style={{ fontSize: 12 }} /> Draft
-          </button>
-          <button onClick={toggleAIPanel} style={{ padding: '6px 12px', background: aiPanelVisible ? '#f5f3ff' : '#f8fafc', border: `1px solid ${aiPanelVisible ? '#c4b5fd' : '#e2e8f0'}`, borderRadius: 8, fontSize: 11, fontWeight: 600, color: aiPanelVisible ? '#7c3aed' : '#64748b', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <i className="ti ti-brain" style={{ fontSize: 12 }} /> AI
+          <button onClick={toggleAIPanel} style={{ padding: '4px 10px', fontSize: 11, background: aiPanelVisible ? '#eff6ff' : '#f1f5f9', color: aiPanelVisible ? '#1d4ed8' : '#475569', border: `1px solid ${aiPanelVisible ? '#bfdbfe' : '#cbd5e1'}`, borderRadius: 6, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}>
+            <i className="ti ti-sparkles" /> AI
           </button>
         </div>
       </div>
 
-      {/* ── MAIN LAYOUT ── */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      {/* ── MAIN CONTENT AREA ── */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-        {/* Case list panel */}
-        <div style={{ flexShrink: 0, overflow: 'hidden', transition: 'width 0.22s', width: caseListVisible ? 260 : 0 }}>
-          <CaseList />
-        </div>
+        {/* Case list left drawer */}
+        {caseListVisible && <CaseList />}
 
-        {/* Main content */}
+        {/* Main tabs + content */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
 
-          {/* Overdue alert */}
-          {overdueOrders.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fef2f2', borderBottom: '1px solid #fca5a5', borderLeft: '4px solid #dc2626', padding: '8px 16px', flexShrink: 0 }}>
-              <i className="ti ti-alert-triangle" style={{ color: '#dc2626', fontSize: 14 }} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: '#7f1d1d', flex: 1 }}>
-                {overdueOrders.length} court order{overdueOrders.length > 1 ? 's' : ''} overdue — immediate action required
-              </span>
-              <button onClick={() => setActiveTab('Hearings')} style={{ fontSize: 11, padding: '4px 10px', border: 'none', background: '#dc2626', color: '#fff', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>
-                View Orders
-              </button>
-            </div>
-          )}
-
           {/* Tabs */}
-          <div style={{ display: 'flex', background: '#fff', borderBottom: '1px solid #e2e8f0', flexShrink: 0, padding: '0 4px' }}>
+          <div className="responsive-tabs" style={{ display: 'flex', background: '#fff', borderBottom: '1px solid #e2e8f0', flexShrink: 0, padding: '0 4px' }}>
             {TABS.map(t => (
               <button
                 key={t.id}
@@ -225,7 +207,7 @@ export default function DashboardPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
                 {/* Metrics row */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+                <div className="dashboard-overview-metrics" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
                   {[
                     { icon: 'ti-gavel',      label: 'Hearings',       value: hearings.length,       sub: hearings.length > 0 ? `Last: ${new Date(lastHearing?.hearingDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : 'None recorded', color: '#3b82f6' },
                     { icon: 'ti-files',      label: 'Documents',      value: documents.length,      sub: `${documents.length} filed`,                                                                                                                                                   color: '#8b5cf6' },
@@ -246,7 +228,7 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Main grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div className="dashboard-overview-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
 
                   {/* Hearing Diary */}
                   <div style={{ background: '#fff', borderRadius: 12, padding: 20, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>

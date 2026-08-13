@@ -418,3 +418,88 @@ button:active, .glass-button:active, .glass-pill:active {
   0% { background-position: 100% 0; }
   100% { background-position: -100% 0; }
 }
+
+/* ============================================================
+   RESPONSIVE DESIGN SYSTEM (MOBILE & TABLET OPTIMIZATIONS)
+   ============================================================ */
+
+/* Tablet & Smaller Screens (< 1024px) */
+@media (max-width: 1024px) {
+  .dashboard-overview-metrics {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .dashboard-overview-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .ai-panel-container {
+    width: 100% !important;
+    position: fixed !important;
+    right: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    z-index: 9999 !important;
+  }
+}
+
+/* Mobile Screens (< 768px) */
+@media (max-width: 768px) {
+  /* Layout adjustments */
+  .glass-panel {
+    margin: 8px !important;
+    border-radius: 16px !important;
+  }
+  
+  /* Sidebar toggle overlay on mobile */
+  .app-sidebar {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    z-index: 9998 !important;
+    box-shadow: 8px 0 24px rgba(0,0,0,0.15) !important;
+  }
+
+  /* Responsive Topbar */
+  .dashboard-topbar {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+    padding: 12px 14px !important;
+  }
+
+  .dashboard-topbar-actions {
+    width: 100% !important;
+    justify-content: space-between !important;
+    flex-wrap: wrap !important;
+  }
+
+  /* Grid responsive single column */
+  .dashboard-overview-metrics {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .responsive-grid-4 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .responsive-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Tabs horizontal scroll on mobile */
+  .responsive-tabs {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scroll-snap-type: x mandatory !important;
+  }
+
+  /* Document list items */
+  .doc-list-item {
+    flex-wrap: wrap !important;
+  }
+
+  .doc-badge-scanned {
+    margin-top: 4px !important;
+  }
+}
