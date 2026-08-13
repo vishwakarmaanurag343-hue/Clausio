@@ -36,6 +36,7 @@ public class DocumentService(ClausioDbContext db, IDocumentStorage storage, IDoc
             ContentType = contentType,
             SizeBytes = sizeBytes,
             ExtractedText = extractedText,
+            OcrStatus = !string.IsNullOrWhiteSpace(extractedText) ? "Completed" : "Pending"
         };
 
         db.Documents.Add(entity);

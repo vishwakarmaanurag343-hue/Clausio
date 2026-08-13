@@ -63,6 +63,7 @@ if (useS3)
 
     builder.Services.AddAWSService<IAmazonSQS>();
     builder.Services.AddSingleton<IAiJobQueueService, SqsAiJobQueueService>();
+    builder.Services.AddHostedService<OcrJobWorker>();
 }
 else
 {
@@ -76,7 +77,6 @@ builder.Services.AddHttpClient("VoiceService", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["VoiceService:BaseUrl"] ?? "http://voice-backend:8000");
 });
-builder.Services.AddHostedService<OcrJobWorker>();
 
 // OCR & Document text extraction
 builder.Services.AddScoped<Clausio.Legal.Core.Interfaces.OCR.IOCRProvider, Clausio.Legal.Infrastructure.OCR.PaddleOCRProvider>();

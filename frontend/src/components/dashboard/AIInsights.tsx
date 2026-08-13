@@ -375,7 +375,7 @@ export default function AIInsights() {
           try {
             const fd = new FormData()
             fd.append('file', fullBlob, 'audio.webm')
-            const res = await fetch('http://127.0.0.1:8000/api/voice', { method: 'POST', body: fd })
+            const res = await fetch('http://localhost:8000/api/voice', { method: 'POST', body: fd })
             if (res.ok) {
               const data = await res.json()
               if (data.text?.trim()) {

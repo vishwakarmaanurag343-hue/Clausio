@@ -517,6 +517,9 @@ export default function AnalysisPage() {
                           <i className="ti ti-file-text" style={{ fontSize: 12, color: '#94a3b8' }} />
                           <span style={{ fontSize: 11, fontWeight: 600, color: '#0f172a' }}>{doc.fileName}</span>
                           <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#f1f5f9', color: '#64748b', marginLeft: 4 }}>{doc.documentType}</span>
+                          <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, background: '#dcfce7', color: '#15803d', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 'auto' }}>
+                            <i className="ti ti-scan" style={{ fontSize: 10 }} /> OCR Scanned
+                          </span>
                         </div>
                         <div style={{ padding: '8px 10px' }}>
                           {evidenceLoading[doc.id] && (
