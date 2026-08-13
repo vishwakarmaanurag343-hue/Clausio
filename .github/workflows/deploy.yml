@@ -32,7 +32,7 @@ jobs:
 
       - name: Build and push voice-backend
         run: |
-          docker build -t ${{ secrets.ECR_REGISTRY }}/clausio-voice-backend:latest backend/voice-backend
+          docker build -t ${{ secrets.ECR_REGISTRY }}/clausio-voice-backend:latest voice-backend
           docker push ${{ secrets.ECR_REGISTRY }}/clausio-voice-backend:latest
 
   deploy:
