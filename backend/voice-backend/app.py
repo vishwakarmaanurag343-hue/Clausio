@@ -243,14 +243,29 @@ async def process_ocr(file: UploadFile = File(...)):
                 "filename": file.filename
             }
             
-        # Process Image or PDF via RapidOCR (ONNX runtime)
-        ocr_result, _ = rapid_ocr(temp_path)
+        # Process via RapidOCR — PDFs must be rasterized to images first, RapidOCR only reads image bytes
         full_text = []
-        if ocr_result:
-            for line in ocr_result:
-                # RapidOCR result format: [box, text, confidence]
-                if len(line) > 1:
-                    full_text.append(line[1])
+        if file.filename.lower().endswith(".pdf"):
+            pdf = pdfium.PdfDocument(temp_path)
+            for page in pdf:
+                bitmap = page.render(scale=2.0)  # 2x scale improves OCR accuracy on small text
+                pil_image = bitmap.to_pil()
+                img_array = np.array(pil_image)
+                page.close()
+
+                ocr_result, _ = rapid_ocr(img_array)
+                if ocr_result:
+                    for line in ocr_result:
+                        if len(line) > 1:
+                            full_text.append(line[1])
+            pdf.close()
+        else:
+            ocr_result, _ = rapid_ocr(temp_path)
+            if ocr_result:
+                for line in ocr_result:
+                    if len(line) > 1:
+                        full_text.append(line[1])
+
         extracted_text = "\n".join(full_text)
         
         return {"text": extracted_text, "filename": file.filename, "method": "rapidocr"}
