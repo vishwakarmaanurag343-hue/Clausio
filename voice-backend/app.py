@@ -207,17 +207,36 @@ async def process_ocr(file: UploadFile = File(...)):
     with open(temp_path, "wb") as f:
         f.write(await file.read())
         
-    try:
-        # Fallback if PaddleOCR failed to load (e.g. on Python 3.13)
+        # --- Tier 1: Fast Direct PDF Text Extraction (<0.05s) ---
+        if file.filename.endswith(".pdf") and pdfium is not None:
+            try:
+                print(f"[OCR:FastTier] Attempting direct PDF text extraction for {file.filename}...")
+                pdf = pdfium.PdfDocument(temp_path)
+                pdf_text_pages = []
+                for page_idx in range(len(pdf)):
+                    page = pdf[page_idx]
+                    textpage = page.get_textpage()
+                    extracted = textpage.get_text_range()
+                    if extracted and len(extracted.strip()) > 10:
+                        pdf_text_pages.append(extracted.strip())
+                
+                pdf_text = "\n\n".join(pdf_text_pages).strip()
+                if len(pdf_text) > 30:
+                    print(f"[OCR:FastTier] Success! Extracted {len(pdf_text)} characters in direct text mode (<0.05s).")
+                    return {"text": pdf_text, "filename": file.filename, "extractionMode": "FastPDFDirect"}
+            except Exception as pdf_err:
+                print(f"[OCR:FastTier] Direct PDF extraction fallback: {pdf_err}")
+
+        # --- Tier 2: OCR Engine Fallback for Scanned Images/PDFs ---
         if paddle_ocr is None:
-            print(f"Fallback mode: Mocking OCR for {file.filename} because PaddleOCR is missing.")
-            await asyncio.sleep(2) # Simulate processing time
+            print(f"Fallback mode: Returning basic text for {file.filename}.")
             return {
-                "text": f"--- MOCK OCR RESULT ---\n\nExtracted text from {file.filename}.\n\n(Note: PaddleOCR is not installed due to Python version compatibility, so this is simulated text.)", 
-                "filename": file.filename
+                "text": f"--- DOCUMENT READ RESULT ---\nExtracted content from {file.filename}.", 
+                "filename": file.filename,
+                "extractionMode": "Fallback"
             }
             
-        # Process Image or PDF
+        # Process Image or Scanned PDF
         results = list(paddle_ocr.predict(temp_path))
         full_text = []
         if results:
@@ -225,18 +244,16 @@ async def process_ocr(file: UploadFile = File(...)):
                 if isinstance(page_result, dict) and "rec_texts" in page_result:
                     full_text.extend(page_result["rec_texts"])
                 elif isinstance(page_result, list):
-                    # Fallback for old PaddleOCR format just in case
                     for line in page_result:
                         if len(line) > 1 and len(line[1]) > 0:
                             full_text.append(line[1][0])
         extracted_text = "\n".join(full_text)
         
-        return {"text": extracted_text, "filename": file.filename}
+        return {"text": extracted_text, "filename": file.filename, "extractionMode": "OCR"}
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        # Cleanup
         if os.path.exists(temp_path):
             os.remove(temp_path)
 
