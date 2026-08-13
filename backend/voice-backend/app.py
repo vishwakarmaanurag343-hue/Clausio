@@ -7,7 +7,6 @@ import traceback
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from faster_whisper import WhisperModel
-import torch
 
 try:
     from rapidocr_onnxruntime import RapidOCR
@@ -15,16 +14,6 @@ try:
 except ImportError:
     RapidOCR = None
     pdfium = None
-
-# Workaround for Python 3.13 Windows DLL loading (WinError 126)
-user_site = site.getusersitepackages()
-torch_lib_path = os.path.join(user_site, "torch", "lib")
-if os.path.exists(torch_lib_path):
-    os.environ["PATH"] = torch_lib_path + os.pathsep + os.environ.get("PATH", "")
-    try:
-        os.add_dll_directory(torch_lib_path)
-    except AttributeError:
-        pass
 
 app = FastAPI()
 
@@ -37,11 +26,11 @@ app.add_middleware(
 )
 
 # Configuration
-MODEL_SIZE = "base.en"
+MODEL_SIZE = "small.en"
 SAMPLE_RATE = 16000
 
 # Device configuration
-device = "cuda" if torch.cuda.is_available() else "cpu"
+device = "cpu"  # confirmed no GPU on this EC2 instance
 print(f"Using device: {device}")
 
 # Lazy loading models
