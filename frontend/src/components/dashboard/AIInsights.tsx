@@ -30,6 +30,11 @@ export default function AIInsights() {
   const [citationTitle, setCitationTitle] = useState('')
   const [citationContent, setCitationContent] = useState('')
 
+  // Searchable Case Dropdown State
+  const [caseSearchQuery, setCaseSearchQuery] = useState('')
+  const [caseDropdownOpen, setCaseDropdownOpen] = useState(false)
+  const caseSearchRef = useRef<HTMLDivElement>(null)
+
   const chatEndRef = useRef<HTMLDivElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -45,6 +50,27 @@ export default function AIInsights() {
       .then(d => setAllUserCases(Array.isArray(d) ? d : []))
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (caseSearchRef.current && !caseSearchRef.current.contains(event.target as Node)) {
+        setCaseDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const filteredUserCases = allUserCases.filter(c => {
+    if (!caseSearchQuery.trim()) return true
+    const q = caseSearchQuery.toLowerCase()
+    return (
+      (c.name && c.name.toLowerCase().includes(q)) ||
+      (c.caseNumber && c.caseNumber.toLowerCase().includes(q)) ||
+      (c.court && c.court.toLowerCase().includes(q)) ||
+      (c.clientName && c.clientName.toLowerCase().includes(q))
+    )
+  })
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -738,39 +764,112 @@ export default function AIInsights() {
                 </button>
               </div>
 
-              {/* Centered Case Selector Pill */}
+              {/* Centered Interactive Search Case Pill */}
               <div style={{ display: 'flex', justifyContent: 'center', marginTop: 14 }}>
-                <div style={{ position: 'relative', display: 'inline-block' }}>
-                  <select
-                    value={selectedCaseId}
-                    onChange={e => {
-                      const found = allUserCases.find(c => c.id === e.target.value)
-                      if (found) setSelectedCase(found.id, found.name)
-                    }}
+                <div ref={caseSearchRef} style={{ position: 'relative', width: '100%', maxWidth: 300 }}>
+                  <div
                     style={{
-                      appearance: 'none',
-                      WebkitAppearance: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
                       background: '#e2e8f0',
-                      border: '1px solid rgba(0,0,0,0.06)',
-                      borderRadius: 20,
-                      padding: '8px 36px 8px 18px',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: '#475569',
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                      outline: 'none',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                      border: '1px solid rgba(0,0,0,0.08)',
+                      borderRadius: 24,
+                      padding: '4px 14px',
+                      boxShadow: caseDropdownOpen ? '0 0 0 2px rgba(56,189,248,0.3)' : '0 1px 3px rgba(0,0,0,0.04)',
+                      transition: 'all 0.2s',
                     }}
                   >
-                    <option value="" disabled>Search Your Case ▾</option>
-                    {allUserCases.map(c => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({c.caseNumber || 'No #'})
-                      </option>
-                    ))}
-                  </select>
-                  <i className="ti ti-chevron-down" style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: '#64748b', pointerEvents: 'none' }} />
+                    <i className="ti ti-search" style={{ fontSize: 14, color: '#64748b', marginRight: 8, flexShrink: 0 }} />
+                    <input
+                      type="text"
+                      value={caseSearchQuery}
+                      onChange={e => {
+                        setCaseSearchQuery(e.target.value)
+                        setCaseDropdownOpen(true)
+                      }}
+                      onFocus={() => setCaseDropdownOpen(true)}
+                      placeholder={selectedCaseId ? (allUserCases.find(c => c.id === selectedCaseId)?.name || 'Search Your Case...') : 'Search Your Case...'}
+                      style={{
+                        flex: 1,
+                        border: 'none',
+                        outline: 'none',
+                        background: 'transparent',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: '#334155',
+                        fontFamily: 'inherit',
+                        padding: '4px 0',
+                      }}
+                    />
+                    <button
+                      onClick={() => setCaseDropdownOpen(!caseDropdownOpen)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', padding: 0, marginLeft: 4 }}
+                    >
+                      <i className={`ti ${caseDropdownOpen ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ fontSize: 14 }} />
+                    </button>
+                  </div>
+
+                  {/* Real-time Case Search Dropdown */}
+                  {caseDropdownOpen && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 6px)',
+                        left: 0,
+                        right: 0,
+                        maxHeight: 220,
+                        overflowY: 'auto',
+                        background: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 16,
+                        boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
+                        zIndex: 1000,
+                        padding: '6px',
+                      }}
+                    >
+                      {filteredUserCases.length === 0 ? (
+                        <div style={{ padding: '12px', fontSize: 12, color: '#94a3b8', textAlign: 'center' }}>
+                          No cases found matching "{caseSearchQuery}"
+                        </div>
+                      ) : (
+                        filteredUserCases.map(c => {
+                          const isSelected = c.id === selectedCaseId
+                          return (
+                            <div
+                              key={c.id}
+                              onClick={() => {
+                                setSelectedCase(c.id, c.name)
+                                setCaseSearchQuery(c.name)
+                                setCaseDropdownOpen(false)
+                              }}
+                              style={{
+                                padding: '8px 12px',
+                                borderRadius: 10,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                background: isSelected ? '#f1f5f9' : 'transparent',
+                                transition: 'background 0.15s',
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                              onMouseLeave={e => e.currentTarget.style.background = isSelected ? '#f1f5f9' : 'transparent'}
+                            >
+                              <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{c.name}</div>
+                                {c.caseNumber && (
+                                  <div style={{ fontSize: 11, color: '#64748b' }}>#{c.caseNumber} • {c.court || 'Court'}</div>
+                                )}
+                              </div>
+                              {isSelected && (
+                                <i className="ti ti-check" style={{ color: '#0284c7', fontSize: 14, flexShrink: 0, marginLeft: 8 }} />
+                              )}
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
