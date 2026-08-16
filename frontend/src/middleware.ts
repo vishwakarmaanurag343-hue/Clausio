@@ -6,8 +6,18 @@ const PUBLIC_PATHS = ['/auth/login', '/login']
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const token = request.cookies.get('clausio_token')?.value
 
+  // Ignore static assets, images, and next internals
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/static') ||
+    pathname.includes('.')
+  ) {
+    return NextResponse.next()
+  }
+
+  const token = request.cookies.get('clausio_token')?.value
   const isPublicPath = PUBLIC_PATHS.some(path => pathname === path || pathname.startsWith(`${path}/`))
 
   // 1. If user is NOT logged in and tries to access protected pages -> redirect to /auth/login immediately on server
