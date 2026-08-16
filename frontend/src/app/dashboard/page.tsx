@@ -28,12 +28,14 @@ export default function DashboardPage() {
   const { caseListVisible, aiPanelVisible, aiPanelExpanded, aiPanelWidth, toggleAIPanel } = useUIStore()
   const { selectedCaseId, setSelectedCase } = useCaseStore()
 
-  const [activeTab,  setActiveTab]  = useState('Overview')
-  const [caseData,   setCaseData]   = useState<any>(null)
-  const [hearings,   setHearings]   = useState<any[]>([])
-  const [documents,  setDocuments]  = useState<any[]>([])
-  const [tasks,      setTasks]      = useState<any[]>([])
-  const [markingId,  setMarkingId]  = useState<string | null>(null)
+  const [activeTab,    setActiveTab]    = useState('Overview')
+  const [caseData,     setCaseData]     = useState<any>(null)
+  const [allCases,     setAllCases]     = useState<any[]>([])
+  const [searchQuery,  setSearchQuery]  = useState('')
+  const [hearings,     setHearings]     = useState<any[]>([])
+  const [documents,    setDocuments]    = useState<any[]>([])
+  const [tasks,        setTasks]        = useState<any[]>([])
+  const [markingId,    setMarkingId]    = useState<string | null>(null)
 
   // Auto-select first case of current user
   useEffect(() => {
@@ -47,6 +49,7 @@ export default function DashboardPage() {
       .then(r => r.json())
       .then(cases => {
         if (Array.isArray(cases)) {
+          setAllCases(cases)
           // If no cases exist for this user, reset selection
           if (cases.length === 0) {
             setSelectedCase('', '')
@@ -103,10 +106,10 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="glass-panel" style={{ height: 'calc(100% - 32px)', margin: '16px 16px 16px 16px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="glass-panel mobile-dashboard-container" style={{ height: 'calc(100% - 32px)', margin: '16px 16px 16px 16px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-      {/* ── TOP BAR ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 20px', background: 'rgba(255,255,255,0.4)', borderBottom: '1px solid rgba(0,0,0,0.06)', flexShrink: 0 }}>
+      {/* ── DESKTOP TOP BAR ── */}
+      <div className="desktop-dashboard-topbar" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 20px', background: 'rgba(255,255,255,0.4)', borderBottom: '1px solid rgba(0,0,0,0.06)', flexShrink: 0 }}>
         {/* Case name + badges */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -168,17 +171,140 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* ── MOBILE HEADER HERO CONTAINER (Matching Prototype 3) ── */}
+      <div className="mobile-dashboard-hero-card" style={{ display: 'none', background: '#d1d5db', borderRadius: 28, padding: '16px 14px 14px 14px', margin: '0 0 12px 0', flexDirection: 'column', gap: 12 }}>
+        {/* Case Info White Card */}
+        <div style={{ background: '#ffffff', borderRadius: 22, padding: '14px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.3px' }}>
+              {caseData?.name ?? 'Select a Case'}
+            </h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {caseData && (
+                <>
+                  <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 12, fontWeight: 700, background: '#e2e8f0', color: '#475569' }}>
+                    {caseData.status || 'Active'}
+                  </span>
+                  <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 12, fontWeight: 600, background: '#e2e8f0', color: '#475569' }}>
+                    {caseData.priority || 'Normal'} Priority
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {caseData && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 10, background: '#e2e8f0', padding: '3px 8px', borderRadius: 12, color: '#475569', fontWeight: 500 }}>
+                  {caseData.court || 'Court'}
+                </span>
+                <span style={{ fontSize: 10, background: '#e2e8f0', padding: '3px 8px', borderRadius: 12, color: '#475569', fontWeight: 500 }}>
+                  {caseData.caseNumber || 'No #'}
+                </span>
+                <span style={{ fontSize: 10, background: '#e2e8f0', padding: '3px 8px', borderRadius: 12, color: '#475569', fontWeight: 500 }}>
+                  {caseData.caseType || 'General'}
+                </span>
+              </div>
+              {nextHearingDate && (
+                <div style={{ fontSize: 11, background: '#cbd5e1', padding: '4px 10px', borderRadius: 14, color: '#1e293b', fontWeight: 600 }}>
+                  Next : {nextHearingDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} ({daysToHearing === 0 ? 'Today' : `${daysToHearing}d`})
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Search Case / Client Input Pill */}
+        <div style={{ position: 'relative', width: '100%' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              background: '#ffffff',
+              borderRadius: 24,
+              padding: '10px 16px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            }}
+          >
+            <i className="ti ti-search" style={{ fontSize: 16, color: '#475569', marginRight: 10, flexShrink: 0 }} />
+            <input
+              type="text"
+              placeholder="Search Case, Client"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{
+                flex: 1,
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+                fontSize: 13,
+                color: '#0f172a',
+                fontWeight: 500,
+                fontFamily: 'inherit',
+              }}
+            />
+          </div>
+
+          {/* Quick Real-Time Search Results in Mobile Dashboard */}
+          {searchQuery && (
+            <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, background: '#ffffff', borderRadius: 16, boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 1000, padding: 6, maxHeight: 200, overflowY: 'auto' }}>
+              {allCases.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || (c.caseNumber && c.caseNumber.toLowerCase().includes(searchQuery.toLowerCase()))).map(c => (
+                <div
+                  key={c.id}
+                  onClick={() => { setSelectedCase(c.id, c.name); setSearchQuery('') }}
+                  style={{ padding: '8px 12px', borderRadius: 10, cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#0f172a', display: 'flex', justifyContent: 'space-between' }}
+                >
+                  <span>{c.name}</span>
+                  <span style={{ fontSize: 10, color: '#64748b' }}>#{c.caseNumber}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── MOBILE PILL TABS BAR (Matching Prototype 3) ── */}
+      <div className="mobile-pill-tabs-bar" style={{ display: 'none', background: '#cbd5e1', borderRadius: 20, padding: '4px 6px', margin: '0 0 16px 0', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 'max-content' }}>
+          {TABS.map(t => {
+            const isActive = activeTab === t.id
+            return (
+              <button
+                key={t.id}
+                onClick={() => setActiveTab(t.id)}
+                style={{
+                  background: isActive ? '#ffffff' : 'transparent',
+                  color: isActive ? '#0f172a' : '#475569',
+                  border: 'none',
+                  borderRadius: 16,
+                  padding: '6px 14px',
+                  fontSize: 12,
+                  fontWeight: isActive ? 600 : 500,
+                  cursor: 'pointer',
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                  boxShadow: isActive ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {t.id}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
       {/* ── MAIN CONTENT AREA ── */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-        {/* Case list left drawer */}
+        {/* Case list left drawer (Desktop) */}
         {caseListVisible && <CaseList />}
 
         {/* Main tabs + content */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
 
-          {/* Tabs */}
-          <div className="responsive-tabs" style={{ display: 'flex', background: '#fff', borderBottom: '1px solid #e2e8f0', flexShrink: 0, padding: '0 4px' }}>
+          {/* Desktop Tabs */}
+          <div className="desktop-tabs-bar responsive-tabs" style={{ display: 'flex', background: '#fff', borderBottom: '1px solid #e2e8f0', flexShrink: 0, padding: '0 4px' }}>
             {TABS.map(t => (
               <button
                 key={t.id}
@@ -192,7 +318,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Tab content */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '0 4px 20px 4px' }}>
 
             {/* No case */}
             {!selectedCaseId && (
@@ -214,7 +340,7 @@ export default function DashboardPage() {
             {activeTab === 'Overview' && caseData && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-                {/* Metrics row */}
+                {/* Metrics row (Desktop 4 cards, Mobile 2x2 grid matching prototype 3) */}
                 <div className="dashboard-overview-metrics" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
                   {[
                     { icon: 'ti-gavel',      label: 'Hearings',       value: hearings.length,       sub: hearings.length > 0 ? `Last: ${new Date(lastHearing?.hearingDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : 'None recorded', color: '#3b82f6' },
@@ -222,10 +348,10 @@ export default function DashboardPage() {
                     { icon: 'ti-checklist',  label: 'Pending Tasks',  value: pendingTasks.length,   sub: pendingTasks.length > 0 ? `${pendingTasks.filter(t => t.priority === 'High' || t.priority === 'Critical').length} high priority` : 'All clear',                             color: pendingTasks.length > 0 ? '#f59e0b' : '#10b981' },
                     { icon: 'ti-alert-circle', label: 'Overdue Orders', value: overdueOrders.length, sub: overdueOrders.length > 0 ? 'Immediate action needed' : 'No overdue orders',                                                                                                color: overdueOrders.length > 0 ? '#ef4444' : '#10b981' },
                   ].map((m, i) => (
-                    <div key={i} style={{ background: '#fff', borderRadius: 12, padding: '16px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                    <div key={i} className="dashboard-metric-card" style={{ background: '#ffffff', borderRadius: 20, padding: '18px 16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 120 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                         <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>{m.label}</span>
-                        <div style={{ width: 32, height: 32, borderRadius: 8, background: `${m.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 10, background: `${m.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <i className={`ti ${m.icon}`} style={{ fontSize: 16, color: m.color }} />
                         </div>
                       </div>

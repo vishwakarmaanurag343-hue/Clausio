@@ -548,30 +548,37 @@ button:active, .glass-button:active, .glass-pill:active {
     display: flex !important;
   }
 
-  /* Dashboard container on mobile */
-  .glass-panel {
-    margin: 8px !important;
-    border-radius: 20px !important;
+  /* Seamless Mobile Dashboard Container matching Prototype 3 */
+  .mobile-dashboard-container {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 16px !important;
   }
 
-  /* Responsive Topbar */
-  .dashboard-topbar {
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 8px !important;
-    padding: 12px 14px !important;
+  .desktop-dashboard-topbar,
+  .desktop-tabs-bar {
+    display: none !important;
   }
 
-  .dashboard-topbar-actions {
-    width: 100% !important;
-    justify-content: space-between !important;
-    flex-wrap: wrap !important;
+  .mobile-dashboard-hero-card {
+    display: flex !important;
   }
 
-  /* Grid responsive single column */
+  .mobile-pill-tabs-bar {
+    display: flex !important;
+  }
+
+  /* Grid 2-column metrics on mobile matching prototype 3 */
   .dashboard-overview-metrics {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .dashboard-overview-grid {
     grid-template-columns: 1fr !important;
-    gap: 8px !important;
+    gap: 12px !important;
   }
 
   .responsive-grid-4 {
