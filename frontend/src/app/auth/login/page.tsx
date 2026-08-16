@@ -199,6 +199,25 @@ export default function LoginPage() {
           border-color: #3b82f6; color: #1e40af;
           transform: translateY(-1px);
         }
+
+        /* ── RESPONSIVE AUTH MOBILE OPTIMIZATIONS ── */
+        @media (max-width: 900px) {
+          .auth-left-panel {
+            display: none !important;
+          }
+          .auth-right-panel {
+            padding: 24px 16px !important;
+            width: 100% !important;
+          }
+          .auth-form-card {
+            padding: 24px 20px !important;
+            border-radius: 24px !important;
+            box-shadow: 0 12px 36px rgba(0,0,0,0.06) !important;
+          }
+          .auth-mobile-header {
+            display: flex !important;
+          }
+        }
       `}</style>
 
       {/* Full page background — matches dashboard */}
@@ -219,7 +238,7 @@ export default function LoginPage() {
         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.04) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
         {/* ── LEFT PANEL ── */}
-        <div style={{ width: '45%', display: 'flex', flexDirection: 'column', padding: '52px 56px', position: 'relative', zIndex: 1 }}>
+        <div className="auth-left-panel" style={{ width: '45%', display: 'flex', flexDirection: 'column', padding: '52px 56px', position: 'relative', zIndex: 1 }}>
 
           {/* Logo */}
           <div style={{ animation: mounted ? 'fadeIn 0.5s ease both' : 'none' }}>
@@ -314,11 +333,24 @@ export default function LoginPage() {
         </div>
 
         {/* ── RIGHT PANEL ── */}
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 64px', position: 'relative', zIndex: 1 }}>
+        <div className="auth-right-panel" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 64px', position: 'relative', zIndex: 1 }}>
           <div style={{ width: '100%', maxWidth: 420, animation: mounted ? 'fadeIn 0.7s ease 0.15s both' : 'none' }}>
 
+            {/* Mobile Header (Hidden on Desktop) */}
+            <div className="auth-mobile-header" style={{ display: 'none', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 20 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 12,
+                background: 'rgba(255,255,255,0.9)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 4px 12px rgba(59,130,246,0.15)',
+              }}>
+                <i className="ti ti-gavel" style={{ fontSize: 18, color: '#1e3a8a' }} />
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.5px' }}>Clausio</div>
+            </div>
+
             {/* Form card */}
-            <div className="glass-panel" style={{ padding: 36, borderRadius: 28 }}>
+            <div className="glass-panel auth-form-card" style={{ padding: 36, borderRadius: 28 }}>
 
               {/* Tab switcher */}
               <div style={{ display: 'flex', background: 'rgba(241,245,249,0.8)', borderRadius: 14, padding: 4, marginBottom: 28 }}>
