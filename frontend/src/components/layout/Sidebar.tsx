@@ -131,8 +131,8 @@ export default function Sidebar() {
         }}
       >
         {/* Toggle & Mobile Header */}
-        <div style={{ padding: '16px 16px 8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span className="mobile-sidebar-title" style={{ display: 'none', fontSize: 20, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px' }}>Clausio</span>
+        <div className="mobile-sidebar-title" style={{ display: 'none', padding: '16px 16px 8px 16px', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px' }}>Clausio</span>
           <button
             onClick={toggleSidebar}
             className="glass-button"
@@ -147,7 +147,7 @@ export default function Sidebar() {
               alignItems: 'center',
             }}
           >
-            <i className="ti ti-menu-2" style={{ fontSize: 18 }} />
+            <i className="ti ti-x" style={{ fontSize: 18 }} />
           </button>
         </div>
 
@@ -165,7 +165,7 @@ export default function Sidebar() {
           flex: 1,
           overflowY: 'auto',
           overflowX: 'hidden',
-          padding: '0 12px'
+          padding: '12px 12px 0 12px'
         }}
       >
         {NAV.map((section) => (

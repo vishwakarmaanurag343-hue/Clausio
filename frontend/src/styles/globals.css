@@ -522,7 +522,7 @@ button:active, .glass-button:active, .glass-pill:active {
   }
 
   .mobile-sidebar-title {
-    display: block !important;
+    display: flex !important;
   }
 
   .mobile-only-nav-item {
