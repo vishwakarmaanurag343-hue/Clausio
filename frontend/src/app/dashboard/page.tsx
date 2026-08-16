@@ -162,7 +162,7 @@ export default function DashboardPage() {
           <button onClick={() => router.push('/drafting')} style={{ padding: '4px 10px', fontSize: 11, background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', fontWeight: 500, fontFamily: 'inherit' }}>
             📝 Draft
           </button>
-          <button onClick={toggleAIPanel} style={{ padding: '4px 10px', fontSize: 11, background: aiPanelVisible ? '#eff6ff' : '#f1f5f9', color: aiPanelVisible ? '#1d4ed8' : '#475569', border: `1px solid ${aiPanelVisible ? '#bfdbfe' : '#cbd5e1'}`, borderRadius: 6, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}>
+          <button onClick={toggleAIPanel} className="desktop-header-item" style={{ padding: '4px 10px', fontSize: 11, background: aiPanelVisible ? '#eff6ff' : '#f1f5f9', color: aiPanelVisible ? '#1d4ed8' : '#475569', border: `1px solid ${aiPanelVisible ? '#bfdbfe' : '#cbd5e1'}`, borderRadius: 6, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}>
             <i className="ti ti-sparkles" /> AI
           </button>
         </div>
@@ -425,8 +425,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* AI Insights panel - Inline layout, instant toggle (No animation) */}
-        <div style={{ flexShrink: 0, overflow: 'hidden', width: aiPanelVisible ? aiPanelWidth : 0 }}>
+        {/* AI Insights panel - Inline layout on desktop, hidden on mobile dashboard */}
+        <div className="desktop-ai-panel-wrapper" style={{ flexShrink: 0, overflow: 'hidden', width: aiPanelVisible ? aiPanelWidth : 0 }}>
           <AIInsights />
         </div>
 

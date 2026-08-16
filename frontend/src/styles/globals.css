@@ -425,6 +425,12 @@ button:active, .glass-button:active, .glass-pill:active {
   display: none !important;
 }
 
+@media (max-width: 768px) {
+  .desktop-ai-panel-wrapper {
+    display: none !important;
+  }
+}
+
 /* ============================================================
    RESPONSIVE DESIGN SYSTEM (MOBILE & TABLET OPTIMIZATIONS)
    ============================================================ */
