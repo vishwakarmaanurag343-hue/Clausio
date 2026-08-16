@@ -166,7 +166,7 @@ export const authApi = {
   logout: () => {
     localStorage.removeItem('clausio_token')
     localStorage.removeItem('clausio_user')
-    // ✅ Also clear cookie on logout
+    localStorage.removeItem('clausio-case')
     if (typeof window !== 'undefined') {
       document.cookie = 'clausio_token=; path=/; max-age=0'
     }

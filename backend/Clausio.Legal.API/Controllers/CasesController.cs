@@ -23,18 +23,18 @@ public class CasesController(ICaseService caseService) : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Get(Guid id, CancellationToken cancellationToken)
     {
-        var caseEntity = await caseService.GetAsync(id, cancellationToken);
+        var caseEntity = await caseService.GetAsync(id, User.GetUserId(), cancellationToken);
         return caseEntity is null ? NotFound() : Ok(caseEntity);
     }
 
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, UpdateCaseDto dto, CancellationToken cancellationToken)
     {
-        var caseEntity = await caseService.UpdateAsync(id, dto, cancellationToken);
+        var caseEntity = await caseService.UpdateAsync(id, User.GetUserId(), dto, cancellationToken);
         return caseEntity is null ? NotFound() : Ok(caseEntity);
     }
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken) =>
-        await caseService.DeleteAsync(id, cancellationToken) ? Ok() : NotFound();
+        await caseService.DeleteAsync(id, User.GetUserId(), cancellationToken) ? Ok() : NotFound();
 }

@@ -9,10 +9,10 @@ namespace Clausio.Legal.Service;
 public interface ICaseService
 {
     Task<List<Case>> ListAsync(Guid userId, CancellationToken cancellationToken = default);
-    Task<Case?> GetAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<Case?> GetAsync(Guid id, Guid userId, CancellationToken cancellationToken = default);
     Task<Case> CreateAsync(CreateCaseDto dto, Guid createdByUserId, CancellationToken cancellationToken = default);
-    Task<Case?> UpdateAsync(Guid id, UpdateCaseDto dto, CancellationToken cancellationToken = default);
-    Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<Case?> UpdateAsync(Guid id, Guid userId, UpdateCaseDto dto, CancellationToken cancellationToken = default);
+    Task<bool> DeleteAsync(Guid id, Guid userId, CancellationToken cancellationToken = default);
 }
 
 public class CaseService(ClausioDbContext db) : ICaseService
@@ -23,8 +23,8 @@ public class CaseService(ClausioDbContext db) : ICaseService
             .OrderByDescending(c => c.CreatedAt)
             .ToListAsync(cancellationToken);
 
-    public Task<Case?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
-        db.Cases.Include(c => c.Client).FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+    public Task<Case?> GetAsync(Guid id, Guid userId, CancellationToken cancellationToken = default) =>
+        db.Cases.Include(c => c.Client).FirstOrDefaultAsync(c => c.Id == id && c.CreatedByUserId == userId, cancellationToken);
 
     public async Task<Case> CreateAsync(CreateCaseDto dto, Guid createdByUserId, CancellationToken cancellationToken = default)
     {
@@ -74,9 +74,9 @@ public class CaseService(ClausioDbContext db) : ICaseService
         return entity;
     }
 
-    public async Task<Case?> UpdateAsync(Guid id, UpdateCaseDto dto, CancellationToken cancellationToken = default)
+    public async Task<Case?> UpdateAsync(Guid id, Guid userId, UpdateCaseDto dto, CancellationToken cancellationToken = default)
     {
-        var entity = await db.Cases.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+        var entity = await db.Cases.FirstOrDefaultAsync(c => c.Id == id && c.CreatedByUserId == userId, cancellationToken);
         if (entity is null) return null;
         if (dto.Name           is not null) entity.Name           = dto.Name;
         if (dto.Stage          is not null) entity.Stage          = dto.Stage;
@@ -89,9 +89,9 @@ public class CaseService(ClausioDbContext db) : ICaseService
         return entity;
     }
 
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteAsync(Guid id, Guid userId, CancellationToken cancellationToken = default)
     {
-        var entity = await db.Cases.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+        var entity = await db.Cases.FirstOrDefaultAsync(c => c.Id == id && c.CreatedByUserId == userId, cancellationToken);
         if (entity is null) return false;
         db.Cases.Remove(entity);
         await db.SaveChangesAsync(cancellationToken);

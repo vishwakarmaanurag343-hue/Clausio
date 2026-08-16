@@ -35,10 +35,10 @@ export default function DashboardPage() {
   const [tasks,      setTasks]      = useState<any[]>([])
   const [markingId,  setMarkingId]  = useState<string | null>(null)
 
-  // Auto-select first case
+  // Auto-select first case of current user
   useEffect(() => {
-    if (selectedCaseId) return
     const token = localStorage.getItem('clausio_token')
+    if (!token) return
     const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5123/api').replace(/\/+$/, '')
     const url = apiBase.endsWith('/api') ? `${apiBase}/cases` : `${apiBase}/api/cases`
     fetch(url, {
@@ -46,8 +46,19 @@ export default function DashboardPage() {
     })
       .then(r => r.json())
       .then(cases => {
-        if (Array.isArray(cases) && cases.length > 0)
-          setSelectedCase(cases[0].id, cases[0].name)
+        if (Array.isArray(cases)) {
+          // If no cases exist for this user, reset selection
+          if (cases.length === 0) {
+            setSelectedCase('', '')
+            setCaseData(null)
+          } else {
+            // If current selectedCaseId is not in this user's cases, switch to their first case
+            const exists = cases.some(c => c.id === selectedCaseId)
+            if (!exists) {
+              setSelectedCase(cases[0].id, cases[0].name)
+            }
+          }
+        }
       })
       .catch(() => {})
   }, [selectedCaseId, setSelectedCase])
