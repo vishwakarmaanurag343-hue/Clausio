@@ -437,8 +437,9 @@ export default function AIInsights() {
         </div>
       )}
 
-      {/* ── DRAGGABLE LEFT RESIZE HANDLE ── */}
+      {/* ── DRAGGABLE LEFT RESIZE HANDLE (Desktop only) ── */}
       <div
+        className="desktop-panel-toggles"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -471,8 +472,8 @@ export default function AIInsights() {
         />
       </div>
 
-      {/* Header */}
-      <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, background: 'rgba(255,255,255,0.4)' }}>
+      {/* Header (Desktop only) */}
+      <div className="desktop-header-item" style={{ padding: '12px 16px', borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, background: 'rgba(255,255,255,0.4)' }}>
         <div style={{ width: 26, height: 26, borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid rgba(0,0,0,0.1)' }}>
           <video 
             src="/aivideo.mp4" 
@@ -502,9 +503,9 @@ export default function AIInsights() {
       {/* Body */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column' }}>
 
-        {/* No case selected */}
+        {/* No case selected message (desktop only) */}
         {!selectedCaseId && (
-          <div style={{ textAlign: 'center', padding: 20, color: '#94a3b8', fontSize: 12 }}>
+          <div className="desktop-header-item" style={{ textAlign: 'center', padding: 20, color: '#94a3b8', fontSize: 12 }}>
             Select a case to see AI insights
           </div>
         )}

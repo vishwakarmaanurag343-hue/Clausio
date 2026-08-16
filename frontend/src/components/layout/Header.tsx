@@ -116,7 +116,7 @@ export default function Header() {
       </div>
 
       {/* ✅ Search bar — now fully functional */}
-      <div ref={searchRef} style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'relative' }}>
+      <div ref={searchRef} className="desktop-search-container" style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'relative' }}>
         <div
           style={{ width: '100%', maxWidth: 420, display: 'flex', alignItems: 'center', gap: 8, background: searchOpen ? '#fff' : 'rgba(255,255,255,0.5)', border: `1px solid ${searchOpen ? '#3b82f6' : 'rgba(255,255,255,0.8)'}`, borderRadius: 16, padding: '8px 16px', boxShadow: searchOpen ? '0 0 0 3px rgba(59,130,246,0.1)' : 'inset 0 2px 4px rgba(0,0,0,0.02)', cursor: 'text', transition: 'all 0.15s' }}
           onClick={() => { setSearchOpen(true); setTimeout(() => inputRef.current?.focus(), 50) }}
