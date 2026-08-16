@@ -270,7 +270,8 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div style={{ padding: '12px', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+      {/* ── DESKTOP BOTTOM ACTIONS ── */}
+      <div className="desktop-sidebar-bottom" style={{ padding: '12px', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
         <Link
           href="/settings"
           style={{
@@ -286,23 +287,8 @@ export default function Sidebar() {
             transition: 'background 0.2s ease',
           }}
         >
-          <i
-            className="ti ti-settings"
-            style={{
-              fontSize: 20,
-            }}
-          />
-
-          {expanded && (
-            <span
-              style={{
-                fontSize: 14,
-                fontWeight: 500,
-              }}
-            >
-              Settings
-            </span>
-          )}
+          <i className="ti ti-settings" style={{ fontSize: 20 }} />
+          {expanded && <span style={{ fontSize: 14, fontWeight: 500 }}>Settings</span>}
         </Link>
         <button
           onClick={() => {
@@ -317,6 +303,64 @@ export default function Sidebar() {
           <i className="ti ti-logout" style={{ fontSize: 20, flexShrink: 0 }} />
           {expanded && <span style={{ fontSize: 14, fontWeight: 500 }}>Logout</span>}
         </button>
+      </div>
+
+      {/* ── MOBILE DRAWER BOTTOM ACTIONS (Matching Prototype: White "Log Out" Pill + Circular Gear) ── */}
+      <div className="mobile-sidebar-bottom" style={{ display: 'none', padding: '16px', alignItems: 'center', gap: 12, marginTop: 'auto' }}>
+        <button
+          onClick={() => {
+            document.cookie = 'clausio_token=; path=/; max-age=0'
+            localStorage.removeItem('clausio_token')
+            localStorage.removeItem('clausio_user')
+            localStorage.removeItem('clausio-auth')
+            window.location.href = '/auth/login'
+          }}
+          style={{
+            flex: 1,
+            height: 44,
+            borderRadius: 22,
+            background: '#ffffff',
+            border: '1px solid rgba(0,0,0,0.06)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            color: '#0f172a',
+            fontSize: 15,
+            fontWeight: 500,
+            cursor: 'pointer',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'transform 0.1s',
+          }}
+          onPointerDown={e => e.currentTarget.style.transform = 'scale(0.97)'}
+          onPointerUp={e => e.currentTarget.style.transform = 'scale(1)'}
+        >
+          Log Out
+        </button>
+
+        <Link
+          href="/settings"
+          onClick={() => toggleSidebar()}
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: '50%',
+            background: '#ffffff',
+            border: '1px solid rgba(0,0,0,0.06)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            color: '#0f172a',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textDecoration: 'none',
+            flexShrink: 0,
+            transition: 'transform 0.1s',
+          }}
+          onPointerDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+          onPointerUp={e => e.currentTarget.style.transform = 'scale(1)'}
+        >
+          <i className="ti ti-settings" style={{ fontSize: 20, color: '#0f172a' }} />
+        </Link>
       </div>
     </aside>
     </>

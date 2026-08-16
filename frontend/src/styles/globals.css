@@ -534,6 +534,14 @@ button:active, .glass-button:active, .glass-pill:active {
     display: flex !important;
   }
 
+  .desktop-sidebar-bottom {
+    display: none !important;
+  }
+
+  .mobile-sidebar-bottom {
+    display: flex !important;
+  }
+
   /* Dashboard container on mobile */
   .glass-panel {
     margin: 8px !important;
