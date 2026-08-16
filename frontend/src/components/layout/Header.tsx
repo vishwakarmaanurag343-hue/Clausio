@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useUIStore, useCaseStore } from '@/lib/store'
 import { authApi, casesApi } from '@/lib/api'
 
@@ -11,6 +11,7 @@ const LANGUAGES: Record<string, string> = {
 
 export default function Header() {
   const router = useRouter()
+  const pathname = usePathname()
   const { sidebarExpanded, caseListVisible, aiPanelVisible, language, toggleSidebar, toggleCaseList, toggleAIPanel, setLanguage } = useUIStore()
   const { setSelectedCase } = useCaseStore()
 
@@ -92,9 +93,11 @@ export default function Header() {
   const fullName = user ? `${user.firstName ?? ''} ${(user.lastName ?? '').charAt(0)}${user.lastName ? '.' : ''}`.trim() : 'Guest'
   const initials = user ? `${(user.firstName ?? '')[0] ?? ''}${(user.lastName ?? '')[0] ?? ''}`.toUpperCase() : '—'
   const role     = user?.role ?? 'Guest'
+  const isChat = pathname === '/chat'
+  const isDashboard = pathname === '/dashboard'
 
   return (
-    <header className="glass-panel app-header-panel" style={{ height: 60, display: 'flex', alignItems: 'center', padding: '0 24px', gap: 16, flexShrink: 0, margin: '16px 16px 0 16px', position: 'relative', zIndex: 100 }}>
+    <header className={`glass-panel app-header-panel ${isChat ? 'header-theme-chat' : ''} ${isDashboard ? 'header-theme-dashboard' : ''}`} style={{ height: 60, display: 'flex', alignItems: 'center', padding: '0 24px', gap: 16, flexShrink: 0, margin: '16px 16px 0 16px', position: 'relative', zIndex: 100 }}>
 
       {/* Mobile Hamburger Button (< 768px) */}
       <button

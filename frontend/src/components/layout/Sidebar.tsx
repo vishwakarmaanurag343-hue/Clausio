@@ -151,14 +151,7 @@ export default function Sidebar() {
           </button>
         </div>
 
-      {expanded && selectedCaseName && (
-        <div style={{ padding: '0 16px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#3b82f6', flexShrink: 0 }} />
-          <span style={{ fontSize: 11, fontWeight: 600, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {selectedCaseName}
-          </span>
-        </div>
-      )}
+
 
       <nav
         style={{

@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUIStore, useCaseStore } from '@/lib/store'
-import { casesApi, hearingsApi, documentsApi, actionPlansApi } from '@/lib/api'
-import CaseList  from '@/components/cases/CaseList'
+import { authApi, casesApi, hearingsApi, documentsApi, actionPlansApi } from '@/lib/api'
+import CaseList from '@/components/cases/CaseList'
 import AIInsights from '@/components/dashboard/AIInsights'
 import {
   DocumentsTab,
@@ -15,27 +15,27 @@ import {
 } from '@/components/dashboard/DashboardTabs'
 
 const TABS = [
-  { id: 'Overview',   icon: 'ti-layout-dashboard' },
-  { id: 'Documents',  icon: 'ti-files'             },
-  { id: 'Hearings',   icon: 'ti-gavel'             },
-  { id: 'Tasks',      icon: 'ti-checklist'         },
-  { id: 'Research',   icon: 'ti-books'             },
-  { id: 'Timeline',   icon: 'ti-timeline'          },
+  { id: 'Overview', icon: 'ti-layout-dashboard' },
+  { id: 'Documents', icon: 'ti-files' },
+  { id: 'Hearings', icon: 'ti-gavel' },
+  { id: 'Tasks', icon: 'ti-checklist' },
+  { id: 'Research', icon: 'ti-books' },
+  { id: 'Timeline', icon: 'ti-timeline' },
 ]
 
 export default function DashboardPage() {
-  const router  = useRouter()
-  const { caseListVisible, aiPanelVisible, aiPanelExpanded, aiPanelWidth, toggleAIPanel } = useUIStore()
+  const router = useRouter()
+  const { caseListVisible, aiPanelVisible, aiPanelExpanded, aiPanelWidth, toggleAIPanel, toggleSidebar } = useUIStore()
   const { selectedCaseId, setSelectedCase } = useCaseStore()
 
-  const [activeTab,    setActiveTab]    = useState('Overview')
-  const [caseData,     setCaseData]     = useState<any>(null)
-  const [allCases,     setAllCases]     = useState<any[]>([])
-  const [searchQuery,  setSearchQuery]  = useState('')
-  const [hearings,     setHearings]     = useState<any[]>([])
-  const [documents,    setDocuments]    = useState<any[]>([])
-  const [tasks,        setTasks]        = useState<any[]>([])
-  const [markingId,    setMarkingId]    = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState('Overview')
+  const [caseData, setCaseData] = useState<any>(null)
+  const [allCases, setAllCases] = useState<any[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [hearings, setHearings] = useState<any[]>([])
+  const [documents, setDocuments] = useState<any[]>([])
+  const [tasks, setTasks] = useState<any[]>([])
+  const [markingId, setMarkingId] = useState<string | null>(null)
 
   // Auto-select first case of current user
   useEffect(() => {
@@ -63,14 +63,14 @@ export default function DashboardPage() {
           }
         }
       })
-      .catch(() => {})
+      .catch(() => { })
   }, [selectedCaseId, setSelectedCase])
 
   const loadHearings = useCallback(() => {
     if (!selectedCaseId) return
     hearingsApi.getByCaseId(selectedCaseId)
       .then(d => setHearings(Array.isArray(d) ? d : []))
-      .catch(() => {})
+      .catch(() => { })
   }, [selectedCaseId])
 
   useEffect(() => {
@@ -80,21 +80,21 @@ export default function DashboardPage() {
     setDocuments([])
     setTasks([])
 
-    casesApi.getById(selectedCaseId).then(setCaseData).catch(() => {})
+    casesApi.getById(selectedCaseId).then(setCaseData).catch(() => { })
     loadHearings()
     documentsApi.getByCaseId(selectedCaseId)
-      .then(d => setDocuments(Array.isArray(d) ? d : [])).catch(() => {})
+      .then(d => setDocuments(Array.isArray(d) ? d : [])).catch(() => { })
     actionPlansApi.getByCaseId(selectedCaseId)
-      .then(d => setTasks(Array.isArray(d) ? d : [])).catch(() => {})
+      .then(d => setTasks(Array.isArray(d) ? d : [])).catch(() => { })
   }, [selectedCaseId, loadHearings])
 
-  const allOrders    = hearings.flatMap(h => (h.orders ?? []).map((o: any) => ({ ...o, hearingId: h.id })))
+  const allOrders = hearings.flatMap(h => (h.orders ?? []).map((o: any) => ({ ...o, hearingId: h.id })))
   const overdueOrders = allOrders.filter(o => !o.done && o.deadline && new Date(o.deadline) < new Date())
-  const pendingTasks  = tasks.filter(t => !t.done)
-  const readiness     = caseData?.readinessScore ?? 0
-  const lastHearing   = hearings.sort((a, b) => new Date(b.hearingDate).getTime() - new Date(a.hearingDate).getTime())[0]
+  const pendingTasks = tasks.filter(t => !t.done)
+  const readiness = caseData?.readinessScore ?? 0
+  const lastHearing = hearings.sort((a, b) => new Date(b.hearingDate).getTime() - new Date(a.hearingDate).getTime())[0]
   const nextHearingDate = caseData?.nextHearing ? new Date(caseData.nextHearing) : null
-  const daysToHearing  = nextHearingDate ? Math.ceil((nextHearingDate.getTime() - Date.now()) / 86400000) : null
+  const daysToHearing = nextHearingDate ? Math.ceil((nextHearingDate.getTime() - Date.now()) / 86400000) : null
 
   async function markOrderDone(hearingId: string, orderId: string) {
     if (!selectedCaseId) return
@@ -171,8 +171,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── MOBILE HEADER HERO CONTAINER (Matching Prototype 3) ── */}
-      <div className="mobile-dashboard-hero-card" style={{ display: 'none', background: '#d1d5db', borderRadius: 28, padding: '16px 14px 14px 14px', margin: '0 0 12px 0', flexDirection: 'column', gap: 12 }}>
+      {/* ── MOBILE HEADER HERO CONTAINER (Matching Prototype 3: Flat top, rounded bottom) ── */}
+      <div className="mobile-dashboard-hero-card" style={{ display: 'none', padding: '16px 14px 22px 14px', margin: '0 0 16px 0', flexDirection: 'column', gap: 12 }}>
+
         {/* Case Info White Card */}
         <div style={{ background: '#ffffff', borderRadius: 22, padding: '14px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
@@ -343,10 +344,10 @@ export default function DashboardPage() {
                 {/* Metrics row (Desktop 4 cards, Mobile 2x2 grid matching prototype 3) */}
                 <div className="dashboard-overview-metrics" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
                   {[
-                    { icon: 'ti-gavel',      label: 'Hearings',       value: hearings.length,       sub: hearings.length > 0 ? `Last: ${new Date(lastHearing?.hearingDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : 'None recorded', color: '#3b82f6' },
-                    { icon: 'ti-files',      label: 'Documents',      value: documents.length,      sub: `${documents.length} filed`,                                                                                                                                                   color: '#8b5cf6' },
-                    { icon: 'ti-checklist',  label: 'Pending Tasks',  value: pendingTasks.length,   sub: pendingTasks.length > 0 ? `${pendingTasks.filter(t => t.priority === 'High' || t.priority === 'Critical').length} high priority` : 'All clear',                             color: pendingTasks.length > 0 ? '#f59e0b' : '#10b981' },
-                    { icon: 'ti-alert-circle', label: 'Overdue Orders', value: overdueOrders.length, sub: overdueOrders.length > 0 ? 'Immediate action needed' : 'No overdue orders',                                                                                                color: overdueOrders.length > 0 ? '#ef4444' : '#10b981' },
+                    { icon: 'ti-gavel', label: 'Hearings', value: hearings.length, sub: hearings.length > 0 ? `Last: ${new Date(lastHearing?.hearingDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : 'None recorded', color: '#3b82f6' },
+                    { icon: 'ti-files', label: 'Documents', value: documents.length, sub: `${documents.length} filed`, color: '#8b5cf6' },
+                    { icon: 'ti-checklist', label: 'Pending Tasks', value: pendingTasks.length, sub: pendingTasks.length > 0 ? `${pendingTasks.filter(t => t.priority === 'High' || t.priority === 'Critical').length} high priority` : 'All clear', color: pendingTasks.length > 0 ? '#f59e0b' : '#10b981' },
+                    { icon: 'ti-alert-circle', label: 'Overdue Orders', value: overdueOrders.length, sub: overdueOrders.length > 0 ? 'Immediate action needed' : 'No overdue orders', color: overdueOrders.length > 0 ? '#ef4444' : '#10b981' },
                   ].map((m, i) => (
                     <div key={i} className="dashboard-metric-card" style={{ background: '#ffffff', borderRadius: 20, padding: '18px 16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 120 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -455,10 +456,10 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Bottom grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
+                <div className="mobile-overview-bottom-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
 
                   {/* Recent hearings */}
-                  <div style={{ background: '#fff', borderRadius: 12, padding: 20, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                  <div style={{ background: '#fff', borderRadius: 20, padding: 20, border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
                       <i className="ti ti-history" style={{ fontSize: 16, color: '#8b5cf6' }} />
                       <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Recent Hearings</span>
@@ -499,11 +500,11 @@ export default function DashboardPage() {
                       <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Case Details</span>
                     </div>
                     {[
-                      { label: 'Filed On',     value: caseData?.filedOn ? new Date(caseData.filedOn).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—' },
-                      { label: 'Stage',        value: caseData?.stage ?? '—' },
+                      { label: 'Filed On', value: caseData?.filedOn ? new Date(caseData.filedOn).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—' },
+                      { label: 'Stage', value: caseData?.stage ?? '—' },
                       { label: 'Opposing Adv', value: caseData?.opposingAdv || 'Not recorded' },
-                      { label: 'Client',       value: caseData?.client ? `${caseData.client.firstName} ${caseData.client.lastName}` : '—' },
-                      { label: 'Readiness',    value: `${readiness}%` },
+                      { label: 'Client', value: caseData?.client ? `${caseData.client.firstName} ${caseData.client.lastName}` : '—' },
+                      { label: 'Readiness', value: `${readiness}%` },
                     ].map((item, i) => (
                       <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: i < 4 ? '1px solid #f1f5f9' : 'none' }}>
                         <span style={{ fontSize: 11, color: '#64748b' }}>{item.label}</span>
@@ -519,14 +520,14 @@ export default function DashboardPage() {
                 {/* Quick actions */}
                 <div style={{ background: '#fff', borderRadius: 12, padding: 16, border: '1px solid #e2e8f0' }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Quick Actions</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10 }}>
+                  <div className="dashboard-quick-actions-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10 }}>
                     {[
-                      { icon: 'ti-alert-triangle', label: 'Emergency',       route: '/readiness',  color: '#dc2626', bg: '#fef2f2' },
-                      { icon: 'ti-clipboard-list', label: 'Hearing Brief',   route: '/hearings',   color: '#1e40af', bg: '#eff6ff' },
-                      { icon: 'ti-message',        label: 'Client Update',   route: '/client',     color: '#15803d', bg: '#f0fdf4' },
-                      { icon: 'ti-sparkles',       label: 'AI Strategy',     route: '/strategy',   color: '#7c3aed', bg: '#f5f3ff' },
-                      { icon: 'ti-file-text',      label: 'Draft Document',  route: '/drafting',   color: '#0369a1', bg: '#f0f9ff' },
-                      { icon: 'ti-chart-bar',      label: 'Financial',       route: '/financial',  color: '#c2410c', bg: '#fff7ed' },
+                      { icon: 'ti-alert-triangle', label: 'Emergency', route: '/readiness', color: '#dc2626', bg: '#fef2f2' },
+                      { icon: 'ti-clipboard-list', label: 'Hearing Brief', route: '/hearings', color: '#1e40af', bg: '#eff6ff' },
+                      { icon: 'ti-message', label: 'Client Update', route: '/client', color: '#15803d', bg: '#f0fdf4' },
+                      { icon: 'ti-sparkles', label: 'AI Strategy', route: '/strategy', color: '#7c3aed', bg: '#f5f3ff' },
+                      { icon: 'ti-file-text', label: 'Draft Document', route: '/drafting', color: '#0369a1', bg: '#f0f9ff' },
+                      { icon: 'ti-chart-bar', label: 'Financial', route: '/financial', color: '#c2410c', bg: '#fff7ed' },
                     ].map((a, i) => (
                       <button key={i} onClick={() => router.push(a.route)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 8px', background: a.bg, border: `1px solid ${a.color}22`, borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}
                         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)' }}
@@ -543,10 +544,10 @@ export default function DashboardPage() {
 
             {/* Other tabs */}
             {activeTab === 'Documents' && selectedCaseId && <DocumentsTab caseId={selectedCaseId} />}
-            {activeTab === 'Hearings'  && selectedCaseId && <HearingsTab  caseId={selectedCaseId} />}
-            {activeTab === 'Tasks'     && selectedCaseId && <TasksTab     caseId={selectedCaseId} />}
-            {activeTab === 'Research'  && selectedCaseId && <ResearchTab  caseId={selectedCaseId} />}
-            {activeTab === 'Timeline'  && selectedCaseId && <TimelineTab  caseId={selectedCaseId} />}
+            {activeTab === 'Hearings' && selectedCaseId && <HearingsTab caseId={selectedCaseId} />}
+            {activeTab === 'Tasks' && selectedCaseId && <TasksTab caseId={selectedCaseId} />}
+            {activeTab === 'Research' && selectedCaseId && <ResearchTab caseId={selectedCaseId} />}
+            {activeTab === 'Timeline' && selectedCaseId && <TimelineTab caseId={selectedCaseId} />}
 
           </div>
         </div>

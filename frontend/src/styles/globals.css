@@ -4,20 +4,35 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
 
 /* The new Apple Vision Pro / iOS 26 global background */
-body { 
+body {
   background: radial-gradient(circle at 15% 50%, rgba(226, 232, 240, 0.4), transparent 40%),
-              radial-gradient(circle at 85% 30%, rgba(203, 213, 225, 0.5), transparent 40%),
-              #f1f5f9;
+    radial-gradient(circle at 85% 30%, rgba(203, 213, 225, 0.5), transparent 40%),
+    #f1f5f9;
   min-height: 100vh;
   background-attachment: fixed;
 }
 
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-thumb { background: rgba(226, 232, 240, 0.8); border-radius: 2px; }
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(226, 232, 240, 0.8);
+  border-radius: 2px;
+}
 
 /* --- GLASSMORPHISM SYSTEM --- */
 
@@ -84,9 +99,17 @@ body {
 }
 
 @keyframes gradient-xy {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 .ai-glow-wrapper {
@@ -106,12 +129,12 @@ body {
   background-size: 300% 300%;
   animation: gradient-xy 6s ease infinite;
   color: white;
-  border: 1px solid rgba(255,255,255,0.3);
-  box-shadow: 
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow:
     0 10px 30px rgba(59, 130, 246, 0.3),
     inset 0 2px 2px rgba(255, 255, 255, 0.5),
     inset 0 -2px 5px rgba(0, 0, 0, 0.2);
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   overflow: hidden;
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -120,7 +143,7 @@ body {
   transform: scale(1.02);
   background: linear-gradient(110deg, #1e3a8a, #3b82f6, #ec4899, #10b981, #1e3a8a) !important;
   color: white !important;
-  box-shadow: 
+  box-shadow:
     0 15px 35px rgba(236, 72, 153, 0.4),
     inset 0 2px 2px rgba(255, 255, 255, 0.6),
     inset 0 -2px 5px rgba(0, 0, 0, 0.2);
@@ -132,10 +155,10 @@ body {
 
 .frosty-glow-input {
   border-radius: 9999px;
-  background: 
+  background:
     radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.5) 0%, transparent 70%),
     rgba(255, 255, 255, 0.4);
-  box-shadow: 
+  box-shadow:
     inset 0 -6px 14px rgba(255, 255, 255, 1),
     inset 0 4px 10px rgba(255, 255, 255, 0.7),
     0 4px 12px rgba(0, 0, 0, 0.05);
@@ -151,10 +174,10 @@ body {
 }
 
 .frosty-glow-input:focus {
-  background: 
+  background:
     radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.7) 0%, transparent 80%),
     rgba(255, 255, 255, 0.5);
-  box-shadow: 
+  box-shadow:
     inset 0 -6px 14px rgba(255, 255, 255, 1),
     inset 0 4px 10px rgba(255, 255, 255, 0.8),
     0 8px 20px rgba(59, 130, 246, 0.2);
@@ -183,7 +206,9 @@ body {
 }
 
 @keyframes rotate-glow {
-  100% { transform: rotate(360deg); }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .ai-wave-input {
@@ -211,36 +236,45 @@ body {
   display: flex;
   align-items: center;
   border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.3); /* Light frosted glass */
+  background: rgba(255, 255, 255, 0.3);
+  /* Light frosted glass */
   backdrop-filter: blur(32px) saturate(200%);
   -webkit-backdrop-filter: blur(32px) saturate(200%);
-  padding: 6px 8px 6px 20px; 
-  box-shadow: 
+  padding: 6px 8px 6px 20px;
+  box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.05),
     inset 0 1px 1px rgba(255, 255, 255, 0.9),
-    0 0 25px rgba(56, 189, 248, 0.1); 
-  border: 1px solid rgba(255, 255, 255, 0.6); 
+    0 0 25px rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .apple-intelligence-chat-pill::before {
   content: "";
   position: absolute;
-  inset: -2px; /* Pull out slightly for a thicker border glow */
+  inset: -2px;
+  /* Pull out slightly for a thicker border glow */
   border-radius: 9999px;
-  padding: 2px; /* Thicker glow border */
+  padding: 2px;
+  /* Thicker glow border */
   background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc, #e879f9, #38bdf8);
   background-size: 200% 100%;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
-  opacity: 0.9; /* More opaque for brighter glow */
+  opacity: 0.9;
+  /* More opaque for brighter glow */
 }
 
 @keyframes apple-glow-flow {
-  0% { background-position: 100% 0%; }
-  100% { background-position: -100% 0%; }
+  0% {
+    background-position: 100% 0%;
+  }
+
+  100% {
+    background-position: -100% 0%;
+  }
 }
 
 .apple-intelligence-chat-pill:focus-within {
@@ -271,23 +305,34 @@ body {
 }
 
 @keyframes aurora-flow {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 .apple-intelligence-send-btn {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #ffffff; /* Bright white center like Siri */
+  background: #ffffff;
+  /* Bright white center like Siri */
   border: none;
-  color: #0f172a; /* Dark icon */
+  color: #0f172a;
+  /* Dark icon */
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 2px 10px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(56, 189, 248, 0.5); /* Inner glowing ring */
+  box-shadow: 0 2px 10px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(56, 189, 248, 0.5);
+  /* Inner glowing ring */
   transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s ease;
   flex-shrink: 0;
 }
@@ -303,7 +348,9 @@ body {
 
 /* --- APPLE FLUID UI TACTILE INTERACTION --- */
 
-button:active, .glass-button:active, .glass-pill:active {
+button:active,
+.glass-button:active,
+.glass-pill:active {
   transform: scale(0.97) !important;
   transition: transform 100ms ease-out !important;
 }
@@ -315,23 +362,43 @@ button:active, .glass-button:active, .glass-pill:active {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, ::before, ::after {
+
+  *,
+  ::before,
+  ::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
 }
+
 /* --- APPLE INTELLIGENCE GLOW ANIMATIONS --- */
 
 @keyframes ai-glow-pulse {
-  0%, 100% { opacity: 0.5; transform: scale(1); filter: hue-rotate(0deg); }
-  50% { opacity: 1; transform: scale(1.02); filter: hue-rotate(90deg); }
+
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+    filter: hue-rotate(0deg);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+    filter: hue-rotate(90deg);
+  }
 }
 
 @keyframes ai-gradient-spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .ai-glow-border {
@@ -364,7 +431,7 @@ button:active, .glass-button:active, .glass-pill:active {
   -webkit-backdrop-filter: blur(40px);
   border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 32px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.1), 0 0 0 1px rgba(255,255,255,0.2) inset;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.2) inset;
   opacity: 0;
   pointer-events: none;
   transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
@@ -409,14 +476,19 @@ button:active, .glass-button:active, .glass-pill:active {
 .ai-siri-wave {
   width: 100%;
   height: 40px;
-  background: linear-gradient(90deg, transparent, rgba(124,58,237,0.3), rgba(236,72,153,0.3), transparent);
+  background: linear-gradient(90deg, transparent, rgba(124, 58, 237, 0.3), rgba(236, 72, 153, 0.3), transparent);
   animation: ai-wave-flow 2s infinite linear;
   background-size: 200% 100%;
 }
 
 @keyframes ai-wave-flow {
-  0% { background-position: 100% 0; }
-  100% { background-position: -100% 0; }
+  0% {
+    background-position: 100% 0;
+  }
+
+  100% {
+    background-position: -100% 0;
+  }
 }
 
 /* Mobile-only elements (Hidden on Desktop) */
@@ -440,9 +512,11 @@ button:active, .glass-button:active, .glass-pill:active {
   .dashboard-overview-metrics {
     grid-template-columns: repeat(2, 1fr) !important;
   }
+
   .dashboard-overview-grid {
     grid-template-columns: 1fr !important;
   }
+
   .ai-panel-container {
     width: 100% !important;
     position: fixed !important;
@@ -455,31 +529,50 @@ button:active, .glass-button:active, .glass-pill:active {
 
 /* Mobile Screens (< 768px) */
 @media (max-width: 768px) {
+
   /* Layout adjustments */
   .glass-panel {
     margin: 8px !important;
     border-radius: 16px !important;
   }
-  
-  /* Mobile Top Header (Transparent, Floating Controls matching Prototype) */
+
+  /* Mobile Top Header */
   .app-header-panel {
+    display: flex !important;
     margin: 0 !important;
-    padding: 16px 20px 0 20px !important;
+    padding: 16px 16px 8px 16px !important;
     height: auto !important;
     background: transparent !important;
     border: none !important;
+    border-radius: 0 0 0 0 !important;
     box-shadow: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     justify-content: space-between !important;
+    position: relative !important;
+    z-index: 10 !important;
+    width: 100% !important;
+  }
+
+  /* Chat Page: Matches page background seamlessly */
+  .app-header-panel.header-theme-chat {
+    background: transparent !important;
+  }
+
+  /* Dashboard Page: Keeps the matching grey top bar */
+  .app-header-panel.header-theme-dashboard {
+    background: #cbd5e1 !important;
   }
 
   .mobile-hamburger-btn {
     display: flex !important;
-    background: rgba(255, 255, 255, 0.8) !important;
-    border: 1px solid rgba(0, 0, 0, 0.06) !important;
-    border-radius: 14px !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    color: #0f172a !important;
   }
 
   .desktop-logo,
@@ -514,7 +607,7 @@ button:active, .glass-button:active, .glass-pill:active {
     backdrop-filter: blur(24px) saturate(180%) !important;
     -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
     z-index: 9998 !important;
-    box-shadow: 12px 0 32px rgba(0,0,0,0.2) !important;
+    box-shadow: 12px 0 32px rgba(0, 0, 0, 0.2) !important;
     width: 260px !important;
     transform: translateX(-100%);
     transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1) !important;
@@ -553,8 +646,11 @@ button:active, .glass-button:active, .glass-pill:active {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
+    border-radius: 0 !important;
     margin: 0 !important;
-    padding: 0 16px !important;
+    padding: 0 16px 20px 16px !important;
+    height: 100% !important;
+    overflow-y: auto !important;
   }
 
   .desktop-dashboard-topbar,
@@ -564,6 +660,12 @@ button:active, .glass-button:active, .glass-pill:active {
 
   .mobile-dashboard-hero-card {
     display: flex !important;
+    background: #cbd5e1 !important;
+    border-radius: 0 0 38px 38px !important;
+    padding: 16px 16px 24px 16px !important;
+    margin: 0 -16px 20px -16px !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03) !important;
+    border: none !important;
   }
 
   .mobile-pill-tabs-bar {
@@ -579,6 +681,16 @@ button:active, .glass-button:active, .glass-pill:active {
   .dashboard-overview-grid {
     grid-template-columns: 1fr !important;
     gap: 12px !important;
+  }
+
+  .mobile-overview-bottom-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .dashboard-quick-actions-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
   }
 
   .responsive-grid-4 {
