@@ -61,7 +61,8 @@ export default function LoginPage() {
     try {
       const data = await authApi.login(email, password)
       document.cookie = `clausio_token=${data.token}; path=/; max-age=${7 * 24 * 60 * 60}`
-      router.push('/dashboard')
+      const isMobile = window.innerWidth <= 768
+      router.push(isMobile ? '/chat' : '/dashboard')
     } catch (err: any) {
       setError(err.message || 'Invalid email or password.')
     } finally { setLoading(false) }

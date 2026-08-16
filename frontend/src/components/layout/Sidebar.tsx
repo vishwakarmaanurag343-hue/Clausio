@@ -9,6 +9,12 @@ const NAV = [
     group: 'Workspace',
     items: [
       {
+        href: '/chat',
+        icon: 'ti-messages',
+        label: 'Chat',
+        mobileOnly: true,
+      },
+      {
         href: '/dashboard',
         icon: 'ti-layout-dashboard',
         label: 'Dashboard',
@@ -186,6 +192,7 @@ export default function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  className={(item as any).mobileOnly ? 'mobile-only-nav-item' : ''}
                   title={!expanded ? item.label : undefined}
                   style={{
                     display: 'flex',

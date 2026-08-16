@@ -419,6 +419,11 @@ button:active, .glass-button:active, .glass-pill:active {
   100% { background-position: -100% 0; }
 }
 
+/* Mobile-only navigation items */
+.mobile-only-nav-item {
+  display: none !important;
+}
+
 /* ============================================================
    RESPONSIVE DESIGN SYSTEM (MOBILE & TABLET OPTIMIZATIONS)
    ============================================================ */
@@ -510,6 +515,10 @@ button:active, .glass-button:active, .glass-pill:active {
 
   .mobile-sidebar-title {
     display: block !important;
+  }
+
+  .mobile-only-nav-item {
+    display: flex !important;
   }
 
   /* Dashboard container on mobile */
