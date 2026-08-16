@@ -634,9 +634,140 @@ export default function AIInsights() {
             <h2 className="mobile-ai-hero-title" style={{ fontSize: 24, fontWeight: 500, color: '#1e293b', margin: '0 0 28px', letterSpacing: '-0.02em', textAlign: 'center', fontFamily: 'Inter, -apple-system, sans-serif' }}>
               Where Should We Begin ?
             </h2>
+
+            {/* Input Bar inside Centered Container on Mobile */}
+            <div className="mobile-centered-input-wrapper" style={{ width: '100%', maxWidth: 440, padding: '0 8px' }}>
+              <div className="apple-intelligence-chat-pill" style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  accept=".pdf,.png,.jpg,.jpeg"
+                  style={{ display: 'none' }}
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Upload Document"
+                  style={{ 
+                    background: '#e2e8f0', 
+                    border: 'none', 
+                    borderRadius: '50%',
+                    width: 32,
+                    height: 32,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: '#64748b',
+                    marginLeft: 6,
+                    marginRight: 4,
+                    flexShrink: 0,
+                    transition: 'transform 0.2s',
+                  }}
+                  onPointerDown={e => e.currentTarget.style.transform = 'scale(0.85)'}
+                  onPointerUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                  <i className="ti ti-plus" style={{ fontSize: 16 }} />
+                </button>
+                <textarea
+                  rows={1}
+                  className="apple-intelligence-input-text"
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      handleAskClausio()
+                    }
+                  }}
+                  placeholder={isListening ? "Listening..." : "Ask Clausio about this case..."}
+                  style={{ resize: 'none', maxHeight: 120, paddingTop: 6, paddingBottom: 6, fontSize: 14 }}
+                />
+                <button
+                  onClick={handleVoiceInput}
+                  title="Voice Typing"
+                  style={{ 
+                    background: '#f1f5f9', 
+                    border: 'none', 
+                    borderRadius: '50%',
+                    width: 32,
+                    height: 32,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: isListening ? '#ef4444' : '#64748b',
+                    marginRight: 6,
+                    flexShrink: 0,
+                    transition: 'transform 0.2s',
+                    transform: isListening ? 'scale(1.15)' : 'scale(1)'
+                  }}
+                >
+                  <i className="ti ti-microphone" style={{ fontSize: 16 }} />
+                </button>
+                <button
+                  onClick={handleAskClausio}
+                  disabled={chatLoading || (!chatInput.trim() && !attachedFile) || !selectedCaseId}
+                  className="apple-intelligence-send-btn"
+                  title="Send message"
+                  style={{ 
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    background: '#cbd5e1',
+                    color: '#475569',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: 'none',
+                    flexShrink: 0,
+                    marginRight: 6,
+                    opacity: chatLoading || (!chatInput.trim() && !attachedFile) ? 0.6 : 1 
+                  }}
+                >
+                  {chatLoading ? <i className="ti ti-loader animate-spin" /> : <i className="ti ti-send" style={{ fontSize: 15 }} />}
+                </button>
+              </div>
+
+              {/* Centered Case Selector Pill */}
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 14 }}>
+                <div style={{ position: 'relative', display: 'inline-block' }}>
+                  <select
+                    value={selectedCaseId}
+                    onChange={e => {
+                      const found = allUserCases.find(c => c.id === e.target.value)
+                      if (found) setSelectedCase(found.id, found.name)
+                    }}
+                    style={{
+                      appearance: 'none',
+                      WebkitAppearance: 'none',
+                      background: '#e2e8f0',
+                      border: '1px solid rgba(0,0,0,0.06)',
+                      borderRadius: 20,
+                      padding: '8px 36px 8px 18px',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: '#475569',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      outline: 'none',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    }}
+                  >
+                    <option value="" disabled>Search Your Case ▾</option>
+                    {allUserCases.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.caseNumber || 'No #'})
+                      </option>
+                    ))}
+                  </select>
+                  <i className="ti ti-chevron-down" style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: '#64748b', pointerEvents: 'none' }} />
+                </div>
+              </div>
+            </div>
             
             {/* Suggestion Chips (Desktop only or optional) */}
-            <div className="desktop-header-item" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', width: '100%', paddingBottom: 8, padding: '0 4px' }}>
+            <div className="desktop-header-item" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', width: '100%', paddingBottom: 8, padding: '0 4px', marginTop: 20 }}>
               {[
                 { text: "Summarize this case", icon: "ti-sparkles" },
                 { text: "What are the key risks?", icon: "ti-alert-triangle" },
@@ -729,8 +860,9 @@ export default function AIInsights() {
         )}
       </div>
 
-      {/* Ask Clausio input */}
-      <div style={{ padding: '12px 14px', background: 'transparent', flexShrink: 0 }}>
+      {/* Ask Clausio bottom input (Rendered when active chat history exists or desktop) */}
+      {(chatHistory.length > 0 || chatLoading) && (
+        <div style={{ padding: '12px 14px', background: 'transparent', flexShrink: 0 }}>
         {attachedFile && (
           <div style={{ 
             marginBottom: 8, 
@@ -856,6 +988,7 @@ export default function AIInsights() {
           </div>
         </div>
       </div>
+      )}
 
       <CitationPanel 
         isOpen={citationOpen}

@@ -595,8 +595,9 @@ button:active, .glass-button:active, .glass-pill:active {
   }
 
   .mobile-chat-hero-container {
-    padding-top: 15vh !important;
-    margin-bottom: 24px !important;
+    margin: auto 0 !important;
+    padding-top: 0 !important;
+    width: 100% !important;
   }
 
   .chat-aurora-bg {
