@@ -628,17 +628,15 @@ export default function AIInsights() {
           </>
         )}
 
-        {/* Empty Chat State (Suggestions & Case Selection) */}
+        {/* Empty Chat State (Clean Centered Layout Matching Mobile Prototype) */}
         {chatHistory.length === 0 && !chatLoading && (
-          <div style={{ marginTop: 'auto', marginBottom: 40, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div style={{ width: 48, height: 48, borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 32px rgba(56, 189, 248, 0.4)', border: '1px solid rgba(255,255,255,0.8)' }}>
-              <video src="/aivideo.mp4" autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scale(1.8)' }} />
-            </div>
-            <h2 className="mobile-ai-hero-title" style={{ fontSize: 22, fontWeight: 600, color: '#0f172a', margin: '16px 0 20px', letterSpacing: '-0.02em', textAlign: 'center' }}>
+          <div className="mobile-chat-hero-container" style={{ margin: 'auto 0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+            <h2 className="mobile-ai-hero-title" style={{ fontSize: 24, fontWeight: 500, color: '#1e293b', margin: '0 0 28px', letterSpacing: '-0.02em', textAlign: 'center', fontFamily: 'Inter, -apple-system, sans-serif' }}>
               Where Should We Begin ?
             </h2>
             
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', width: '100%', paddingBottom: 8, padding: '0 4px' }}>
+            {/* Suggestion Chips (Desktop only or optional) */}
+            <div className="desktop-header-item" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', width: '100%', paddingBottom: 8, padding: '0 4px' }}>
               {[
                 { text: "Summarize this case", icon: "ti-sparkles" },
                 { text: "What are the key risks?", icon: "ti-alert-triangle" },

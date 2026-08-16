@@ -567,17 +567,32 @@ button:active, .glass-button:active, .glass-pill:active {
     flex-wrap: wrap !important;
   }
 
-  .doc-badge-scanned {
-    margin-top: 4px !important;
-  }
-
   /* Mobile AI chat hero banner layout */
   .mobile-ai-hero-title {
-    font-size: 24px !important;
-    font-weight: 600 !important;
+    font-size: 28px !important;
+    font-weight: 500 !important;
     color: #1e293b !important;
     letter-spacing: -0.02em !important;
     text-align: center !important;
-    margin-bottom: 20px !important;
+    margin-bottom: 24px !important;
+  }
+
+  /* Seamless Mobile /chat view */
+  .mobile-chat-page-panel {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 16px !important;
+  }
+
+  .mobile-chat-hero-container {
+    padding-top: 15vh !important;
+    margin-bottom: 24px !important;
+  }
+
+  .chat-aurora-bg {
+    background: transparent !important;
+    border: none !important;
   }
 }

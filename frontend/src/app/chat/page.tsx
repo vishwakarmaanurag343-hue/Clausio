@@ -5,7 +5,7 @@ import AIInsights from '@/components/dashboard/AIInsights'
 export default function ChatPage() {
   return (
     <div
-      className="glass-panel"
+      className="glass-panel mobile-chat-page-panel"
       style={{
         flex: 1,
         display: 'flex',
