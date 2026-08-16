@@ -637,7 +637,7 @@ export default function AIInsights() {
 
             {/* Input Bar inside Centered Container on Mobile */}
             <div className="mobile-centered-input-wrapper" style={{ width: '100%', maxWidth: 440, padding: '0 8px' }}>
-              <div className="apple-intelligence-chat-pill" style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+              <div className="apple-intelligence-chat-pill" style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', height: 52, padding: '0 8px 0 8px' }}>
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -652,36 +652,46 @@ export default function AIInsights() {
                     background: '#e2e8f0', 
                     border: 'none', 
                     borderRadius: '50%',
-                    width: 32,
-                    height: 32,
+                    width: 36,
+                    height: 36,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     cursor: 'pointer',
                     color: '#64748b',
-                    marginLeft: 6,
-                    marginRight: 4,
                     flexShrink: 0,
                     transition: 'transform 0.2s',
                   }}
                   onPointerDown={e => e.currentTarget.style.transform = 'scale(0.85)'}
                   onPointerUp={e => e.currentTarget.style.transform = 'scale(1)'}
                 >
-                  <i className="ti ti-plus" style={{ fontSize: 16 }} />
+                  <i className="ti ti-plus" style={{ fontSize: 18, color: '#64748b' }} />
                 </button>
-                <textarea
-                  rows={1}
+                <input
+                  type="text"
                   className="apple-intelligence-input-text"
                   value={chatInput}
                   onChange={e => setChatInput(e.target.value)}
                   onKeyDown={e => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
+                    if (e.key === 'Enter') {
                       e.preventDefault()
                       handleAskClausio()
                     }
                   }}
                   placeholder={isListening ? "Listening..." : "Ask Clausio about this case..."}
-                  style={{ resize: 'none', maxHeight: 120, paddingTop: 6, paddingBottom: 6, fontSize: 14 }}
+                  style={{ 
+                    flex: 1, 
+                    border: 'none', 
+                    outline: 'none', 
+                    background: 'transparent',
+                    padding: '0 12px', 
+                    fontSize: 14, 
+                    color: '#0f172a',
+                    fontWeight: 500,
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
                 />
                 <button
                   onClick={handleVoiceInput}
@@ -690,8 +700,8 @@ export default function AIInsights() {
                     background: '#f1f5f9', 
                     border: 'none', 
                     borderRadius: '50%',
-                    width: 32,
-                    height: 32,
+                    width: 36,
+                    height: 36,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -703,7 +713,7 @@ export default function AIInsights() {
                     transform: isListening ? 'scale(1.15)' : 'scale(1)'
                   }}
                 >
-                  <i className="ti ti-microphone" style={{ fontSize: 16 }} />
+                  <i className="ti ti-microphone" style={{ fontSize: 18 }} />
                 </button>
                 <button
                   onClick={handleAskClausio}
@@ -711,8 +721,8 @@ export default function AIInsights() {
                   className="apple-intelligence-send-btn"
                   title="Send message"
                   style={{ 
-                    width: 32,
-                    height: 32,
+                    width: 36,
+                    height: 36,
                     borderRadius: '50%',
                     background: '#cbd5e1',
                     color: '#475569',
@@ -721,11 +731,10 @@ export default function AIInsights() {
                     justifyContent: 'center',
                     border: 'none',
                     flexShrink: 0,
-                    marginRight: 6,
                     opacity: chatLoading || (!chatInput.trim() && !attachedFile) ? 0.6 : 1 
                   }}
                 >
-                  {chatLoading ? <i className="ti ti-loader animate-spin" /> : <i className="ti ti-send" style={{ fontSize: 15 }} />}
+                  {chatLoading ? <i className="ti ti-loader animate-spin" /> : <i className="ti ti-send" style={{ fontSize: 16 }} />}
                 </button>
               </div>
 
