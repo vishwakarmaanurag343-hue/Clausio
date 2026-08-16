@@ -764,9 +764,9 @@ export default function AIInsights() {
                 </button>
               </div>
 
-              {/* Centered Interactive Search Case Pill */}
-              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 14 }}>
-                <div ref={caseSearchRef} style={{ position: 'relative', width: '100%', maxWidth: 300 }}>
+              {/* Centered Interactive Search Case Pill (Compact Width) */}
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
+                <div ref={caseSearchRef} style={{ position: 'relative', width: '100%', maxWidth: 220 }}>
                   <div
                     style={{
                       display: 'flex',
