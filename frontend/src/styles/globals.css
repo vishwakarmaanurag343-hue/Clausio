@@ -419,8 +419,9 @@ button:active, .glass-button:active, .glass-pill:active {
   100% { background-position: -100% 0; }
 }
 
-/* Mobile-only navigation items */
-.mobile-only-nav-item {
+/* Mobile-only elements (Hidden on Desktop) */
+.mobile-only-nav-item,
+.mobile-only-case-search {
   display: none !important;
 }
 
@@ -526,6 +527,10 @@ button:active, .glass-button:active, .glass-pill:active {
   }
 
   .mobile-only-nav-item {
+    display: flex !important;
+  }
+
+  .mobile-only-case-search {
     display: flex !important;
   }
 
