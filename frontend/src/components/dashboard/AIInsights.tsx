@@ -3,15 +3,16 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCaseStore, useUIStore } from '@/lib/store'
-import { aiApi, BASE } from '@/lib/api'
+import { aiApi, casesApi, BASE } from '@/lib/api'
 import ReactMarkdown from 'react-markdown'
 import CitationPanel from './CitationPanel'
 
 export default function AIInsights() {
   const router = useRouter()
-  const { selectedCaseId } = useCaseStore()
+  const { selectedCaseId, setSelectedCase } = useCaseStore()
   const { aiPanelExpanded, aiPanelWidth, setAIPanelWidth, toggleAIPanelExpand, toggleAIPanel } = useUIStore()
 
+  const [allUserCases, setAllUserCases] = useState<any[]>([])
   const [summary,     setSummary]     = useState<any>(null)
   const [loading,     setLoading]     = useState(false)
   const [chatInput,   setChatInput]   = useState('')
@@ -36,6 +37,14 @@ export default function AIInsights() {
   const processorRef = useRef<ScriptProcessorNode | null>(null)
   const pcmBufferRef = useRef<Float32Array[]>([])
   const chunkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    const token = localStorage.getItem('clausio_token')
+    if (!token) return
+    casesApi.getAll()
+      .then(d => setAllUserCases(Array.isArray(d) ? d : []))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -598,9 +607,8 @@ export default function AIInsights() {
             {/* Quick navigation */}
             <div style={{ marginTop: 16 }}>
               <p style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 8, fontWeight: 700 }}>Quick Access</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                 {[
-                  { label: '📋 Strategy', route: '/strategy' },
                   { label: '⚖️ Hearings', route: '/hearings' },
                   { label: '📄 Drafting', route: '/drafting' },
                   { label: '💰 Financial', route: '/financial' },
@@ -619,13 +627,15 @@ export default function AIInsights() {
           </>
         )}
 
-        {/* Empty Chat State (Suggestions) */}
-        {chatHistory.length === 0 && !chatLoading && selectedCaseId && (
-          <div style={{ marginTop: 'auto', marginBottom: 60, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        {/* Empty Chat State (Suggestions & Case Selection) */}
+        {chatHistory.length === 0 && !chatLoading && (
+          <div style={{ marginTop: 'auto', marginBottom: 40, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div style={{ width: 48, height: 48, borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 32px rgba(56, 189, 248, 0.4)', border: '1px solid rgba(255,255,255,0.8)' }}>
               <video src="/aivideo.mp4" autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scale(1.8)' }} />
             </div>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: '#0f172a', margin: '16px 0 20px', letterSpacing: '-0.01em' }}>Ask Clausio anything</h3>
+            <h2 className="mobile-ai-hero-title" style={{ fontSize: 22, fontWeight: 600, color: '#0f172a', margin: '16px 0 20px', letterSpacing: '-0.02em', textAlign: 'center' }}>
+              Where Should We Begin ?
+            </h2>
             
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', width: '100%', paddingBottom: 8, padding: '0 4px' }}>
               {[
@@ -812,8 +822,39 @@ export default function AIInsights() {
             {chatLoading ? <i className="ti ti-loader animate-spin" /> : <i className="ti ti-arrow-right" style={{ fontSize: 16 }} />}
           </button>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px 0', fontSize: 10, color: '#64748b' }}>
-          <span>Press Enter to send · Shift + Enter for new line</span>
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <select
+              value={selectedCaseId}
+              onChange={e => {
+                const found = allUserCases.find(c => c.id === e.target.value)
+                if (found) setSelectedCase(found.id, found.name)
+              }}
+              style={{
+                appearance: 'none',
+                WebkitAppearance: 'none',
+                background: '#e2e8f0',
+                border: '1px solid rgba(0,0,0,0.06)',
+                borderRadius: 20,
+                padding: '6px 32px 6px 16px',
+                fontSize: 12,
+                fontWeight: 600,
+                color: '#334155',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                outline: 'none',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              }}
+            >
+              <option value="" disabled>Search Your Case ▾</option>
+              {allUserCases.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.caseNumber || 'No #'})
+                </option>
+              ))}
+            </select>
+            <i className="ti ti-chevron-down" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: '#64748b', pointerEvents: 'none' }} />
+          </div>
         </div>
       </div>
 

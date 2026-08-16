@@ -94,13 +94,22 @@ export default function Header() {
   const role     = user?.role ?? 'Guest'
 
   return (
-    <header className="glass-panel" style={{ height: 60, display: 'flex', alignItems: 'center', padding: '0 24px', gap: 16, flexShrink: 0, margin: '16px 16px 0 16px', position: 'relative', zIndex: 100 }}>
+    <header className="glass-panel app-header-panel" style={{ height: 60, display: 'flex', alignItems: 'center', padding: '0 24px', gap: 16, flexShrink: 0, margin: '16px 16px 0 16px', position: 'relative', zIndex: 100 }}>
+
+      {/* Mobile Hamburger Button (< 768px) */}
+      <button
+        onClick={toggleSidebar}
+        className="mobile-hamburger-btn glass-button"
+        style={{ width: 40, height: 40, display: 'none', alignItems: 'center', justifyContent: 'center', color: '#0f172a', cursor: 'pointer', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 12, flexShrink: 0 }}
+      >
+        <i className="ti ti-menu-2" style={{ fontSize: 20 }} />
+      </button>
 
       {/* Logo */}
-      <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 18, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px' }}>Clausio</span>
+      <span className="desktop-logo" style={{ fontFamily: 'Inter, sans-serif', fontSize: 18, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px' }}>Clausio</span>
 
-      {/* Panel toggles */}
-      <div style={{ display: 'flex', gap: 8, marginLeft: 16 }}>
+      {/* Panel toggles (Desktop only) */}
+      <div className="desktop-panel-toggles" style={{ display: 'flex', gap: 8, marginLeft: 16 }}>
         {pill(sidebarExpanded, 'ti-layout-sidebar', 'Sidebar',  toggleSidebar)}
         {pill(caseListVisible,  'ti-list',           'Cases',    toggleCaseList)}
         {pill(aiPanelVisible,   'ti-brain',          'AI',       toggleAIPanel)}
@@ -174,7 +183,7 @@ export default function Header() {
         <select
           value={language}
           onChange={e => setLanguage(e.target.value)}
-          className="glass-pill"
+          className="glass-pill desktop-header-item"
           style={{ fontSize: 12, color: '#0f172a', fontWeight: 600, padding: '6px 10px', border: '1px solid rgba(0,0,0,0.05)', background: 'rgba(255,255,255,0.6)', borderRadius: 20, cursor: 'pointer' }}
         >
           {Object.entries(LANGUAGES).map(([code, label]) => (
@@ -182,21 +191,37 @@ export default function Header() {
           ))}
         </select>
 
-        <button onClick={() => router.push('/settings')} className="glass-button" style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', cursor: 'pointer' }}>
+        <button onClick={() => router.push('/settings')} className="glass-button desktop-header-item" style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', cursor: 'pointer' }}>
           <i className="ti ti-bell" style={{ fontSize: 18 }} />
         </button>
 
-        <button onClick={() => router.push('/settings')} className="glass-button" style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', cursor: 'pointer' }}>
+        <button onClick={() => router.push('/settings')} className="glass-button desktop-header-item" style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', cursor: 'pointer' }}>
           <i className="ti ti-settings" style={{ fontSize: 18 }} />
         </button>
 
-        <div onClick={() => router.push('/settings')} style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 8, borderLeft: '1px solid rgba(255,255,255,0.3)', cursor: 'pointer' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{fullName}</span>
-            <span style={{ fontSize: 10, color: '#64748b' }}>{role}</span>
+        {/* User Pill (Matches Prototype exactly) */}
+        <div
+          onClick={() => router.push('/settings')}
+          className="user-profile-pill glass-pill"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '6px 14px 6px 16px',
+            background: 'rgba(255, 255, 255, 0.85)',
+            border: '1px solid rgba(0, 0, 0, 0.08)',
+            borderRadius: 30,
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            transition: 'all 0.2s'
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', lineHeight: 1.2 }}>{fullName}</span>
+            <span style={{ fontSize: 9, color: '#64748b', fontWeight: 500, whiteSpace: 'nowrap', lineHeight: 1.2 }}>{role}</span>
           </div>
-          <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', boxShadow: '0 4px 12px rgba(59,130,246,0.3)' }}>
-            {initials}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0f172a', marginLeft: 2 }}>
+            <i className="ti ti-user-check" style={{ fontSize: 18 }} />
           </div>
         </div>
       </div>

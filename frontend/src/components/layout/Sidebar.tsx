@@ -93,38 +93,57 @@ export default function Sidebar() {
   const expanded = sidebarExpanded
 
   return (
-    <aside
-      className="glass-sidebar"
-      style={{
-        width: expanded ? 220 : 64, // Slightly wider for iOS feel
-        flexShrink: 0,
-        overflow: 'hidden',
-        transition: 'width .3s cubic-bezier(0.4, 0, 0.2, 1)', // Apple springy feel
-        display: 'flex',
-        flexDirection: 'column',
-        margin: '16px 0 16px 16px',
-        borderRadius: 24,
-      }}
-    >
-      {/* Toggle */}
-      <div style={{ padding: '16px 16px 8px 16px', display: 'flex', justifyContent: expanded ? 'flex-end' : 'center' }}>
-        <button
+    <>
+      {/* Mobile Backdrop Overlay (< 768px) */}
+      {sidebarExpanded && (
+        <div
+          className="mobile-sidebar-backdrop"
           onClick={toggleSidebar}
-          className="glass-button"
           style={{
-            width: 32,
-            height: 32,
-            border: 'none',
-            color: '#475569',
-            cursor: 'pointer',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
+            display: 'none',
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.4)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
+            zIndex: 9997,
           }}
-        >
-          <i className="ti ti-menu-2" style={{ fontSize: 18 }} />
-        </button>
-      </div>
+        />
+      )}
+
+      <aside
+        className={`glass-sidebar app-sidebar ${sidebarExpanded ? 'mobile-open' : 'mobile-closed'}`}
+        style={{
+          width: expanded ? 220 : 64, // Slightly wider for iOS feel
+          flexShrink: 0,
+          overflow: 'hidden',
+          transition: 'all .3s cubic-bezier(0.4, 0, 0.2, 1)', // Apple springy feel
+          display: 'flex',
+          flexDirection: 'column',
+          margin: '16px 0 16px 16px',
+          borderRadius: 24,
+        }}
+      >
+        {/* Toggle & Mobile Header */}
+        <div style={{ padding: '16px 16px 8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span className="mobile-sidebar-title" style={{ display: 'none', fontSize: 20, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px' }}>Clausio</span>
+          <button
+            onClick={toggleSidebar}
+            className="glass-button"
+            style={{
+              width: 32,
+              height: 32,
+              border: 'none',
+              color: '#475569',
+              cursor: 'pointer',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+          >
+            <i className="ti ti-menu-2" style={{ fontSize: 18 }} />
+          </button>
+        </div>
 
       {expanded && selectedCaseName && (
         <div style={{ padding: '0 16px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -293,5 +312,6 @@ export default function Sidebar() {
         </button>
       </div>
     </aside>
+    </>
   )
 }
