@@ -11,6 +11,7 @@ using Clausio.Legal.Core.Interfaces.AI.Pipeline;
 using Clausio.Legal.Core.Interfaces.AI.Validation;
 using Clausio.Legal.Core.Interfaces.AI.Security;
 using Clausio.Legal.Core.Interfaces.Memory;
+using Clausio.Legal.Service.Security;
 using Microsoft.Extensions.Logging;
 
 namespace Clausio.Legal.Service.AI.Pipeline;
@@ -28,6 +29,7 @@ public class AIPipeline : IAIPipeline
     private readonly Clausio.MCP.Planners.WorkflowPlanner _workflowPlanner;
     private readonly Clausio.MCP.Planners.CapabilityPlanner _capabilityPlanner;
     private readonly Clausio.MCP.Registry.AiCapabilityRegistry _capabilityRegistry;
+    private readonly IPiiTokenService _piiTokenService;
     private readonly ILogger<AIPipeline> _logger;
 
     public AIPipeline(
@@ -42,6 +44,7 @@ public class AIPipeline : IAIPipeline
         Clausio.MCP.Planners.WorkflowPlanner workflowPlanner,
         Clausio.MCP.Planners.CapabilityPlanner capabilityPlanner,
         Clausio.MCP.Registry.AiCapabilityRegistry capabilityRegistry,
+        IPiiTokenService piiTokenService,
         ILogger<AIPipeline> logger)
     {
         _contextEngine = contextEngine;
@@ -55,6 +58,7 @@ public class AIPipeline : IAIPipeline
         _workflowPlanner = workflowPlanner;
         _capabilityPlanner = capabilityPlanner;
         _capabilityRegistry = capabilityRegistry;
+        _piiTokenService = piiTokenService;
         _logger = logger;
     }
 
@@ -85,15 +89,20 @@ public class AIPipeline : IAIPipeline
 
         // === STEP 2: Context Engine (Memory + Retrieval) ===
         var contextXml = await BuildContextAsync(caseId, taskType, userInput, parameters, cancellationToken);
-        context.CaseMemoryXml = contextXml;
-        _logger.LogInformation("[Pipeline] Context assembled. Size={Chars} chars", contextXml.Length);
+
+        // === STEP 2.5: PII Tokenization (DPDP / Zero-PII to LLM) ===
+        var tokenizedContextXml = await _piiTokenService.TokenizeAsync(contextXml, caseId, cancellationToken);
+        var tokenizedUserInput = await _piiTokenService.TokenizeAsync(userInput, caseId, cancellationToken);
+
+        context.CaseMemoryXml = tokenizedContextXml;
+        _logger.LogInformation("[Pipeline] Context assembled and PII tokenized. Size={Chars} chars", context.CaseMemoryXml.Length);
 
         // === STEP 3: Prompt Builder ===
         var templateName = ResolveTemplate(taskType, parameters);
         var promptVersion = _promptBuilder.GetTemplateVersion(templateName);
         var variables = new Dictionary<string, string> { { "CONTEXT", context.CaseMemoryXml } };
         context.SystemPrompt = _promptBuilder.BuildSystemPrompt(templateName, variables);
-        context.FinalUserPrompt = userInput;
+        context.FinalUserPrompt = tokenizedUserInput;
         _logger.LogInformation("[Pipeline] Prompt built. Template={Template} v{Version}", templateName, promptVersion);
 
         // === STEP 4: AI Router / Draft Engine ===
@@ -111,6 +120,9 @@ public class AIPipeline : IAIPipeline
 
         // === STEP 5: Citation Verification ===
         response = await _citationVerifier.VerifyCitationsAsync(response, cancellationToken);
+
+        // === STEP 5.5: PII Detokenization (Restores real names for Lawyer) ===
+        response = await _piiTokenService.DetokenizeAsync(response, caseId, cancellationToken);
 
         sw.Stop();
         var elapsedMs = sw.ElapsedMilliseconds;

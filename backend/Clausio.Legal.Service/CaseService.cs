@@ -4,6 +4,8 @@ using Clausio.Legal.Core.Entities.Memory;
 using Clausio.Legal.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
+using Clausio.Legal.Service.Security;
+
 namespace Clausio.Legal.Service;
 
 public interface ICaseService
@@ -15,7 +17,7 @@ public interface ICaseService
     Task<bool> DeleteAsync(Guid id, Guid userId, CancellationToken cancellationToken = default);
 }
 
-public class CaseService(ClausioDbContext db) : ICaseService
+public class CaseService(ClausioDbContext db, IPiiTokenService piiTokenService) : ICaseService
 {
     public Task<List<Case>> ListAsync(Guid userId, CancellationToken cancellationToken = default) =>
         db.Cases.AsNoTracking().Include(c => c.Client)
@@ -47,6 +49,16 @@ public class CaseService(ClausioDbContext db) : ICaseService
         };
         db.Cases.Add(entity);
         await db.SaveChangesAsync(cancellationToken);
+
+        // Auto register client PII tokens in sensitive vault if client is present
+        if (dto.ClientId != Guid.Empty)
+        {
+            var client = await db.Clients.FirstOrDefaultAsync(c => c.Id == dto.ClientId, cancellationToken);
+            if (client != null)
+            {
+                await piiTokenService.RegisterCaseTokensAsync(entity.Id, client, cancellationToken);
+            }
+        }
 
         // Automatically populate initial CaseMemory so AI Context Engine has case summary facts immediately
         var summaryText = !string.IsNullOrWhiteSpace(dto.Description) ? dto.Description : $"{dto.Name} ({dto.CaseType})";

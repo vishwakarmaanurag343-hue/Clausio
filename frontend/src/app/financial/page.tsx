@@ -111,74 +111,219 @@ export default function FinancialPage() {
 
   return (
     <>
-      <div className="glass-panel" style={{ flex: 1, overflowY: 'auto', margin: '16px', padding: 20, borderRadius: 24 }}>
+      <div className="glass-panel mobile-financial-container" style={{ flex: 1, overflowY: 'auto', margin: '16px', padding: 20, borderRadius: 24, display: 'flex', flexDirection: 'column' }}>
 
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <div>
-            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px' }}>
-              Financial Intelligence
-            </h1>
-            <p style={{ marginTop: 4, color: '#64748b', fontSize: 13, fontWeight: 500 }}>
-              {caseType
-                ? <><span style={{ color: '#2563eb', fontWeight: 700 }}>{caseType}</span> — AI financial analysis and calculators for this case type.</>
-                : 'Select a case to see relevant financial calculators.'}
-            </p>
-            {/* Case info */}
-            {caseName && selectedCaseId && (
-              <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', background: '#f1f5f9', padding: '2px 10px', borderRadius: 20, border: '1px solid #e2e8f0' }}>{caseName}</span>
-                {caseType && <span style={{ fontSize: 11, color: '#2563eb', fontWeight: 600, background: '#eff6ff', padding: '2px 10px', borderRadius: 20, border: '1px solid #bfdbfe' }}>{caseType}</span>}
-              </div>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            {activeTab === 'AI Analysis' && (
-              <button onClick={analyse} disabled={loading || !selectedCaseId}
-                style={{ padding: '0 16px', height: 38, borderRadius: 10, border: 'none', background: loading ? '#93c5fd' : '#7c3aed', color: '#fff', cursor: loading || !selectedCaseId ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, opacity: !selectedCaseId ? 0.5 : 1, fontFamily: 'inherit' }}>
-                <i className="ti ti-sparkles" />{loading ? 'Analysing...' : analysis ? 'Re-analyse' : 'Run AI Analysis'}
+        {/* ── DESKTOP FINANCIAL VIEW ── */}
+        <div className="desktop-financial-view" style={{ display: 'flex', flexDirection: 'column' }}>
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div>
+              <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px' }}>
+                Financial Intelligence
+              </h1>
+              <p style={{ marginTop: 4, color: '#64748b', fontSize: 13, fontWeight: 500 }}>
+                {caseType
+                  ? <><span style={{ color: '#2563eb', fontWeight: 700 }}>{caseType}</span> — AI financial analysis and calculators for this case type.</>
+                  : 'Select a case to see relevant financial calculators.'}
+              </p>
+              {/* Case info */}
+              {caseName && selectedCaseId && (
+                <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', background: '#f1f5f9', padding: '2px 10px', borderRadius: 20, border: '1px solid #e2e8f0' }}>{caseName}</span>
+                  {caseType && <span style={{ fontSize: 11, color: '#2563eb', fontWeight: 600, background: '#eff6ff', padding: '2px 10px', borderRadius: 20, border: '1px solid #bfdbfe' }}>{caseType}</span>}
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              {activeTab === 'AI Analysis' && (
+                <button onClick={analyse} disabled={loading || !selectedCaseId}
+                  style={{ padding: '0 16px', height: 38, borderRadius: 10, border: 'none', background: loading ? '#93c5fd' : '#7c3aed', color: '#fff', cursor: loading || !selectedCaseId ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, opacity: !selectedCaseId ? 0.5 : 1, fontFamily: 'inherit' }}>
+                  <i className="ti ti-sparkles" />{loading ? 'Analysing...' : analysis ? 'Re-analyse' : 'Run AI Analysis'}
+                </button>
+              )}
+              <button onClick={() => setShowModal(true)} disabled={!selectedCaseId}
+                style={{ padding: '0 16px', height: 38, borderRadius: 10, border: 'none', background: '#3b82f6', color: '#fff', cursor: !selectedCaseId ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, opacity: !selectedCaseId ? 0.5 : 1, fontFamily: 'inherit' }}>
+                <i className="ti ti-chart-bar" />Detailed Analysis
               </button>
-            )}
-            <button onClick={() => setShowModal(true)} disabled={!selectedCaseId}
-              style={{ padding: '0 16px', height: 38, borderRadius: 10, border: 'none', background: '#3b82f6', color: '#fff', cursor: !selectedCaseId ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, opacity: !selectedCaseId ? 0.5 : 1, fontFamily: 'inherit' }}>
-              <i className="ti ti-chart-bar" />Detailed Analysis
-            </button>
+            </div>
           </div>
+
+          {/* No case selected */}
+          {!selectedCaseId && (
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
+              <i className="ti ti-folder-open" style={{ fontSize: 48, display: 'block', marginBottom: 12, opacity: 0.4 }} />
+              <div style={{ fontSize: 16, fontWeight: 600, color: '#64748b', marginBottom: 6 }}>No Case Selected</div>
+              <div style={{ fontSize: 13 }}>Go to the Dashboard and select a case to see relevant financial calculators.</div>
+            </div>
+          )}
+
+          {selectedCaseId && (
+            <>
+              {/* Dynamic tabs */}
+              <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #e2e8f0', marginBottom: 24 }}>
+                {tabs.map(tab => (
+                  <button key={tab} onClick={() => setActiveTab(tab)}
+                    style={{ padding: '10px 16px', border: 'none', borderBottom: activeTab === tab ? '2px solid #2563eb' : '2px solid transparent', marginBottom: -1, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, background: 'transparent', whiteSpace: 'nowrap', color: activeTab === tab ? '#1e40af' : '#64748b', transition: 'all 0.15s' }}>
+                    {tab}
+                  </button>
+                ))}
+              </div>
+
+              {/* Error */}
+              {error && (
+                <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626', marginBottom: 20, display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{error}</span>
+                  <button onClick={analyse} style={{ fontWeight: 700, textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontFamily: 'inherit' }}>Retry</button>
+                </div>
+              )}
+
+              {/* Tab content */}
+              {renderTab()}
+            </>
+          )}
         </div>
 
-        {/* No case selected */}
-        {!selectedCaseId && (
-          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
-            <i className="ti ti-folder-open" style={{ fontSize: 48, display: 'block', marginBottom: 12, opacity: 0.4 }} />
-            <div style={{ fontSize: 16, fontWeight: 600, color: '#64748b', marginBottom: 6 }}>No Case Selected</div>
-            <div style={{ fontSize: 13 }}>Go to the Dashboard and select a case to see relevant financial calculators.</div>
-          </div>
-        )}
-
-        {selectedCaseId && (
-          <>
-            {/* Dynamic tabs */}
-            <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #e2e8f0', marginBottom: 24 }}>
-              {tabs.map(tab => (
-                <button key={tab} onClick={() => setActiveTab(tab)}
-                  style={{ padding: '10px 16px', border: 'none', borderBottom: activeTab === tab ? '2px solid #2563eb' : '2px solid transparent', marginBottom: -1, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, background: 'transparent', whiteSpace: 'nowrap', color: activeTab === tab ? '#1e40af' : '#64748b', transition: 'all 0.15s' }}>
+        {/* ── MOBILE FINANCIAL VIEW (Matching Prototype) ── */}
+        <div className="mobile-financial-view" style={{ display: 'none', flexDirection: 'column', gap: 16 }}>
+          {/* Top Pill Tabs Bar */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              background: '#ffffff',
+              borderRadius: 30,
+              padding: '6px 8px',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
+              gap: 6,
+              overflowX: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+            }}
+          >
+            {tabs.map((tab) => {
+              const isSelected = activeTab === tab
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: 20,
+                    background: isSelected ? '#cbd5e1' : 'transparent',
+                    color: '#0f172a',
+                    border: 'none',
+                    fontSize: 11,
+                    fontWeight: isSelected ? 700 : 600,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    fontFamily: 'inherit',
+                    transition: 'all 0.15s ease',
+                    flexShrink: 0,
+                  }}
+                >
                   {tab}
                 </button>
+              )
+            })}
+          </div>
+
+          {/* Main Solid Grey Section */}
+          <div
+            style={{
+              background: '#cbd5e1',
+              borderTopLeftRadius: 36,
+              borderTopRightRadius: 36,
+              borderBottomLeftRadius: 0,
+              borderBottomRightRadius: 0,
+              padding: '24px 16px 40px 16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 20,
+              margin: '8px -16px 0 -16px',
+              flex: 1,
+            }}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <h2 style={{ margin: '0 0 2px 6px', fontSize: 18, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.3px' }}>
+                  Financial Intelligence
+                </h2>
+                <p style={{ margin: '0 0 14px 6px', fontSize: 11, fontWeight: 600, color: '#475569' }}>
+                  {caseName || 'Select a case'} · {activeTab}
+                </p>
+              </div>
+              <button
+                onClick={analyse}
+                disabled={loading || !selectedCaseId}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: 20,
+                  background: '#0f172a',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: selectedCaseId ? 'pointer' : 'not-allowed',
+                  fontFamily: 'inherit',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {loading ? 'Analysing...' : 'Analyse'}
+              </button>
+            </div>
+
+            {/* 3 Top Metric Cards */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: 10,
+                marginBottom: 12,
+              }}
+            >
+              {[
+                { title: 'Est. Income', value: analysis?.affidavitAnalysis?.declaredIncome ? `₹${(analysis.affidavitAnalysis.declaredIncome / 1000).toFixed(0)}k` : '₹85k', sub: 'Monthly' },
+                { title: 'Demands', value: '₹2.4L', sub: 'Aggregate' },
+                { title: 'Risk Tier', value: 'Med', sub: 'Exposure' },
+              ].map((item, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    background: '#e2e8f0',
+                    borderRadius: 22,
+                    padding: '16px 10px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textAlign: 'center',
+                    minHeight: 110,
+                  }}
+                >
+                  <span style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', lineHeight: 1.1 }}>{item.value}</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#475569', marginTop: 4 }}>{item.title}</span>
+                </div>
               ))}
             </div>
 
-            {/* Error */}
-            {error && (
-              <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626', marginBottom: 20, display: 'flex', justifyContent: 'space-between' }}>
-                <span>{error}</span>
-                <button onClick={analyse} style={{ fontWeight: 700, textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontFamily: 'inherit' }}>Retry</button>
+            {/* Main Content Area */}
+            {!selectedCaseId ? (
+              <div style={{ background: '#e2e8f0', borderRadius: 24, padding: '32px 16px', textAlign: 'center', color: '#64748b' }}>
+                <i className="ti ti-folder-open" style={{ fontSize: 36, display: 'block', marginBottom: 8, opacity: 0.5 }} />
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>No Case Selected</div>
+                <p style={{ fontSize: 12, margin: '4px 0 0' }}>Select a case from the dashboard first.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {renderTab()}
               </div>
             )}
 
-            {/* Tab content */}
-            {renderTab()}
-          </>
-        )}
+          </div>
+        </div>
+
       </div>
 
       {showModal && (

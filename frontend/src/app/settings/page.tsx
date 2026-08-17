@@ -55,42 +55,126 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="glass-panel" style={{ flex: 1, overflowY: 'auto', margin: '16px', padding: 28, borderRadius: 24 }}>
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ margin: 0, fontSize: 26, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px' }}>Settings</h1>
-        <p style={{ marginTop: 6, fontSize: 14, color: '#64748b' }}>Manage your account and preferences.</p>
-      </div>
+    <div className="glass-panel mobile-settings-container" style={{ flex: 1, overflowY: 'auto', margin: '16px', padding: 28, borderRadius: 24, display: 'flex', flexDirection: 'column' }}>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 24, alignItems: 'start' }}>
-        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 16, position: 'sticky', top: 0 }}>
-          {SECTIONS.map(section => (
-            <div key={section.group} style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8, paddingLeft: 4 }}>
-                {section.group}
+      {/* ── DESKTOP SETTINGS VIEW ── */}
+      <div className="desktop-settings-view" style={{ display: 'flex', flexDirection: 'column' }}>
+        <div style={{ marginBottom: 28 }}>
+          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px' }}>Settings</h1>
+          <p style={{ marginTop: 6, fontSize: 14, color: '#64748b' }}>Manage your account and preferences.</p>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 24, alignItems: 'start' }}>
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 16, position: 'sticky', top: 0 }}>
+            {SECTIONS.map(section => (
+              <div key={section.group} style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8, paddingLeft: 4 }}>
+                  {section.group}
+                </div>
+                {section.items.map(item => {
+                  const isActive = active === item.name
+                  return (
+                    <button
+                      key={item.name}
+                      onClick={() => setActive(item.name)}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', marginBottom: 4, border: 'none', borderRadius: 10, cursor: 'pointer', background: isActive ? '#eff6ff' : 'transparent', color: isActive ? '#1e40af' : item.live ? '#475569' : '#94a3b8', fontWeight: isActive ? 600 : 400, fontSize: 13, fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s' }}
+                    >
+                      <i className={`ti ${item.icon}`} style={{ fontSize: 16, width: 20, textAlign: 'center', flexShrink: 0 }} />
+                      <span style={{ flex: 1 }}>{item.name}</span>
+                      {!item.live && <span style={{ fontSize: 9, padding: '2px 6px', background: '#fef3c7', color: '#d97706', borderRadius: 10, fontWeight: 700 }}>SOON</span>}
+                      {isActive && item.live && <i className="ti ti-chevron-right" style={{ fontSize: 14 }} />}
+                    </button>
+                  )
+                })}
               </div>
-              {section.items.map(item => {
-                const isActive = active === item.name
-                return (
-                  <button
-                    key={item.name}
-                    onClick={() => setActive(item.name)}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', marginBottom: 4, border: 'none', borderRadius: 10, cursor: 'pointer', background: isActive ? '#eff6ff' : 'transparent', color: isActive ? '#1e40af' : item.live ? '#475569' : '#94a3b8', fontWeight: isActive ? 600 : 400, fontSize: 13, fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s' }}
-                  >
-                    <i className={`ti ${item.icon}`} style={{ fontSize: 16, width: 20, textAlign: 'center', flexShrink: 0 }} />
-                    <span style={{ flex: 1 }}>{item.name}</span>
-                    {!item.live && <span style={{ fontSize: 9, padding: '2px 6px', background: '#fef3c7', color: '#d97706', borderRadius: 10, fontWeight: 700 }}>SOON</span>}
-                    {isActive && item.live && <i className="ti ti-chevron-right" style={{ fontSize: 14 }} />}
-                  </button>
-                )
-              })}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 28, minHeight: 500 }}>
-          {renderContent()}
+          <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 28, minHeight: 500 }}>
+            {renderContent()}
+          </div>
         </div>
       </div>
+
+      {/* ── MOBILE SETTINGS VIEW (Matching Prototype) ── */}
+      <div className="mobile-settings-view" style={{ display: 'none', flexDirection: 'column', gap: 16 }}>
+        {/* Top Pill Tabs Bar */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            background: '#ffffff',
+            borderRadius: 30,
+            padding: '6px 8px',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
+            gap: 6,
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+          }}
+        >
+          {SECTIONS.flatMap(s => s.items).map((item) => {
+            const isSelected = active === item.name
+            return (
+              <button
+                key={item.name}
+                onClick={() => setActive(item.name)}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: 20,
+                  background: isSelected ? '#cbd5e1' : 'transparent',
+                  color: '#0f172a',
+                  border: 'none',
+                  fontSize: 11,
+                  fontWeight: isSelected ? 700 : 600,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  fontFamily: 'inherit',
+                  transition: 'all 0.15s ease',
+                  flexShrink: 0,
+                }}
+              >
+                {item.name}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Main Solid Grey Section */}
+        <div
+          style={{
+            background: '#cbd5e1',
+            borderTopLeftRadius: 36,
+            borderTopRightRadius: 36,
+            borderBottomLeftRadius: 0,
+            borderBottomRightRadius: 0,
+            padding: '24px 16px 40px 16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 20,
+            margin: '8px -16px 0 -16px',
+            flex: 1,
+          }}
+        >
+          {/* Header */}
+          <div>
+            <h2 style={{ margin: '0 0 2px 6px', fontSize: 18, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.3px' }}>
+              Settings & Preferences
+            </h2>
+            <p style={{ margin: '0 0 14px 6px', fontSize: 11, fontWeight: 600, color: '#475569' }}>
+              {active} Configuration
+            </p>
+          </div>
+
+          {/* Main Content Card */}
+          <div style={{ background: '#ffffff', borderRadius: 24, padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {renderContent()}
+          </div>
+
+        </div>
+      </div>
+
     </div>
   )
 }

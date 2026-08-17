@@ -56,8 +56,50 @@ export default function AddCaseModal({ open, onClose, onSaved }: AddCaseModalPro
   const [translating,   setTranslating]   = useState(false)
   const [detectedLang,  setDetectedLang]  = useState('')
 
-  const next     = () => { if (step < 6) setStep(step + 1) }
-  const previous = () => { if (step > 1) setStep(step - 1) }
+  const next = () => {
+    setError('')
+    if (step === 1 && !form.practiceArea) {
+      setError('Please select a practice area.')
+      return
+    }
+    if (step === 2) {
+      if (!form.caseTitle.trim()) {
+        setError('Case title is required.')
+        return
+      }
+      if (form.caseTitle.trim().length < 3) {
+        setError('Case title must be at least 3 characters.')
+        return
+      }
+      if (!form.caseType) {
+        setError('Please select a case type.')
+        return
+      }
+    }
+    if (step === 3) {
+      if (!form.clientName.trim()) {
+        setError('Client name is required.')
+        return
+      }
+      if (form.clientEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.clientEmail)) {
+        setError('Please enter a valid client email address.')
+        return
+      }
+      if (form.clientPhone && !/^[0-9+\s-]{8,15}$/.test(form.clientPhone)) {
+        setError('Please enter a valid phone number (at least 8 digits).')
+        return
+      }
+    }
+    if (step === 4) {
+      if (!form.court.trim()) {
+        setError('Court name is required.')
+        return
+      }
+    }
+
+    if (step < 6) setStep(step + 1)
+  }
+  const previous = () => { setError(''); if (step > 1) setStep(step - 1) }
 
   const updateField = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value })

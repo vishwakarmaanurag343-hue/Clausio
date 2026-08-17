@@ -7,6 +7,7 @@ namespace Clausio.Legal.Infrastructure;
 public class ClausioDbContext(DbContextOptions<ClausioDbContext> options) : DbContext(options)
 {
     public DbSet<User> Users => Set<User>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<Case> Cases => Set<Case>();
 

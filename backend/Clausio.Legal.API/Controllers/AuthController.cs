@@ -50,6 +50,43 @@ public class AuthController(IAuthService authService) : ControllerBase
         }
     }
 
+    [HttpPost("refresh")]
+    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto dto, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var userAgent = Request.Headers.UserAgent.ToString();
+            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+            var result = await authService.RefreshTokenAsync(dto.RefreshToken, userAgent, ipAddress, cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message ?? "An error occurred while refreshing the token." });
+        }
+    }
+
+    [HttpPost("verify-otp")]
+    public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDto dto, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var success = await authService.VerifyEmailOtpAsync(dto, cancellationToken);
+            if (!success)
+                return BadRequest(new { message = "Invalid or expired OTP." });
+
+            return Ok(new { message = "Email verified successfully." });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message ?? "An error occurred while verifying OTP." });
+        }
+    }
+
     [Authorize]
     [HttpGet("me")]
     public async Task<IActionResult> Me(CancellationToken cancellationToken)

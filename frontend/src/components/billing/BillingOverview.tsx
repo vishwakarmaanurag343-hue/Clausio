@@ -12,7 +12,7 @@ export default function BillingOverview({ cases, clients, stats, loading, onRefr
   return (
     <div>
       {/* Financial stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
+      <div className="billing-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
         {[
           { label: 'Total Billed',    value: fmt(stats?.totalBilled),    icon: 'ti-receipt-2',    color: '#2563eb', bg: '#eff6ff'  },
           { label: 'Amount Received', value: fmt(stats?.totalPaid),      icon: 'ti-circle-check', color: '#16a34a', bg: '#f0fdf4'  },
@@ -32,7 +32,7 @@ export default function BillingOverview({ cases, clients, stats, loading, onRefr
       </div>
 
       {/* Invoice status + Case stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
+      <div className="billing-counts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
         {[
           { label: 'Total Invoices', value: stats?.invoiceCount ?? 0,  color: '#2563eb' },
           { label: 'Paid Invoices',  value: stats?.paidCount    ?? 0,  color: '#16a34a' },
@@ -46,7 +46,7 @@ export default function BillingOverview({ cases, clients, stats, loading, onRefr
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div className="billing-bottom-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         {/* Cases by type */}
         <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 22 }}>
           <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 16, marginBottom: 16 }}>Cases by Practice Area</div>

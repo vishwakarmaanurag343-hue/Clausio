@@ -19,11 +19,23 @@ public class LoginDto
 public class AuthResponseDto
 {
     public string Token { get; set; } = string.Empty;
+    public string? RefreshToken { get; set; }
     public Guid UserId { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
     public string? Email { get; set; }
     public string? Role { get; set; }
+}
+
+public class RefreshTokenRequestDto
+{
+    public string RefreshToken { get; set; } = string.Empty;
+}
+
+public class VerifyOtpDto
+{
+    public string Email { get; set; } = string.Empty;
+    public string Otp { get; set; } = string.Empty;
 }
 
 public class ChangePasswordDto

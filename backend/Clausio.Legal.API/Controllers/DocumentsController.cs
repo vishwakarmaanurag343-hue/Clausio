@@ -27,6 +27,13 @@ public class DocumentsController(IDocumentService documentService) : ControllerB
             return BadRequest("A non-empty file is required.");
         }
 
+        var allowedExtensions = new[] { ".pdf", ".docx", ".doc", ".jpg", ".jpeg", ".png", ".txt", ".tiff", ".csv" };
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!allowedExtensions.Contains(ext))
+        {
+            return BadRequest($"File type '{ext}' is not allowed. Allowed types: {string.Join(", ", allowedExtensions)}");
+        }
+
         await using var stream = file.OpenReadStream();
         var document = await documentService.UploadAsync(
             caseId, file.FileName, file.ContentType, documentType, exhibitLabel, stream, file.Length, cancellationToken);

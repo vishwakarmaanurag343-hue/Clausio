@@ -742,4 +742,188 @@ button:active,
     background: transparent !important;
     border: none !important;
   }
+
+  /* Seamless Mobile /cases view matching Prototype */
+  .mobile-cases-container {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 16px 0 16px !important;
+    height: 100% !important;
+    overflow-y: auto !important;
+  }
+
+  .desktop-cases-view {
+    display: none !important;
+  }
+
+  .mobile-cases-view {
+    display: flex !important;
+    min-height: 100% !important;
+  }
+
+  /* Seamless Mobile /hearings view matching Prototype */
+  .mobile-hearings-container {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 16px 0 16px !important;
+    height: 100% !important;
+    overflow-y: auto !important;
+  }
+
+  .desktop-hearings-view {
+    display: none !important;
+  }
+
+  .mobile-hearings-view {
+    display: flex !important;
+    min-height: 100% !important;
+  }
+
+  /* Seamless Mobile /strategy view matching Prototype */
+  .mobile-strategy-container {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 16px 0 16px !important;
+    height: 100% !important;
+    overflow-y: auto !important;
+  }
+
+  .desktop-strategy-view {
+    display: none !important;
+  }
+
+  .mobile-strategy-view {
+    display: flex !important;
+    min-height: 100% !important;
+  }
+
+  /* Seamless Mobile /readiness view */
+  .mobile-readiness-container {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 16px 0 16px !important;
+    height: 100% !important;
+    overflow-y: auto !important;
+  }
+
+  .desktop-readiness-view {
+    display: none !important;
+  }
+
+  .mobile-readiness-view {
+    display: flex !important;
+    min-height: 100% !important;
+  }
+
+  /* Seamless Mobile /financial view */
+  .mobile-financial-container {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 16px 0 16px !important;
+    height: 100% !important;
+    overflow-y: auto !important;
+  }
+
+  .desktop-financial-view {
+    display: none !important;
+  }
+
+  .mobile-financial-view {
+    display: flex !important;
+    min-height: 100% !important;
+  }
+
+  /* Seamless Mobile /billing view */
+  .mobile-billing-container {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 16px 0 16px !important;
+    height: 100% !important;
+    overflow-y: auto !important;
+  }
+
+  .desktop-billing-view {
+    display: none !important;
+  }
+
+  .mobile-billing-view {
+    display: flex !important;
+    min-height: 100% !important;
+  }
+
+  /* Seamless Mobile /client view */
+  .mobile-client-container {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 16px 0 16px !important;
+    height: 100% !important;
+    overflow-y: auto !important;
+  }
+
+  .desktop-client-view {
+    display: none !important;
+  }
+
+  .mobile-client-view {
+    display: flex !important;
+    min-height: 100% !important;
+  }
+
+  /* Seamless Mobile /settings view */
+  .mobile-settings-container {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 16px 0 16px !important;
+    height: 100% !important;
+    overflow-y: auto !important;
+  }
+
+  .desktop-settings-view {
+    display: none !important;
+  }
+
+  .mobile-settings-view {
+    display: flex !important;
+    min-height: 100% !important;
+  }
+
+  /* Responsive billing grids */
+  .billing-stats-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .billing-counts-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .billing-bottom-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
 }

@@ -38,9 +38,36 @@ builder.Services.AddSwaggerGen();
 // JWT Settings
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
 
-// Database
+// Database with vector support and connection pooling
 builder.Services.AddDbContext<ClausioDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("Default"), o => o.UseVector()));
+{
+    var connString = builder.Configuration.GetConnectionString("Default");
+    // Ensure connection pool limits
+    if (!string.IsNullOrEmpty(connString) && !connString.Contains("Maximum Pool Size", StringComparison.OrdinalIgnoreCase))
+    {
+        connString += ";Maximum Pool Size=30;Minimum Pool Size=2;";
+    }
+    options.UseNpgsql(connString, o => o.UseVector());
+});
+
+// Second Sensitive Database (PII Token Vault)
+builder.Services.AddDbContext<Clausio.Legal.Infrastructure.Security.SensitiveDbContext>(options =>
+{
+    var sensConnString = builder.Configuration.GetConnectionString("SensitiveDb")
+                         ?? builder.Configuration.GetConnectionString("Default");
+    if (!string.IsNullOrEmpty(sensConnString) && !sensConnString.Contains("Maximum Pool Size", StringComparison.OrdinalIgnoreCase))
+    {
+        sensConnString += ";Maximum Pool Size=20;Minimum Pool Size=2;";
+    }
+    options.UseNpgsql(sensConnString);
+});
+
+// Security & PII Token Services
+builder.Services.AddSingleton<Clausio.Legal.Service.Security.IEncryptionService, Clausio.Legal.Service.Security.AesEncryptionService>();
+builder.Services.AddScoped<Clausio.Legal.Service.Security.IPiiTokenService, Clausio.Legal.Service.Security.PiiTokenService>();
+
+// Health Checks
+builder.Services.AddHealthChecks();
 
 // Cache
 builder.Services.AddMemoryCache();
@@ -198,6 +225,27 @@ app.UseSwaggerUI(c =>
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<DeviceBindingMiddleware>();
+
+// Health check endpoint for ALB / Docker
+app.MapHealthChecks("/health");
+app.MapGet("/api/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
+
 app.MapControllers();
+
+// Auto database migration on startup (non-blocking log on dev/offline DB)
+try
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<ClausioDbContext>();
+    await db.Database.MigrateAsync();
+
+    var sensDb = scope.ServiceProvider.GetRequiredService<Clausio.Legal.Infrastructure.Security.SensitiveDbContext>();
+    await sensDb.Database.EnsureCreatedAsync();
+}
+catch (Exception ex)
+{
+    var logger = app.Services.GetService<ILogger<Program>>();
+    logger?.LogWarning(ex, "Database migration on startup skipped or failed: {Message}", ex.Message);
+}
 
 app.Run();

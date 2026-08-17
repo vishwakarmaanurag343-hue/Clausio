@@ -25,7 +25,7 @@ public class OpenAIEmbeddingProvider : IEmbeddingProvider
     {
         _logger = logger;
         _http = httpClient;
-        _apiKey = config["AI:EmbeddingProvider:ApiKey"] ?? throw new InvalidOperationException("AI:EmbeddingProvider:ApiKey missing");
+        _apiKey = config["AI:EmbeddingProvider:ApiKey"] ?? string.Empty;
         _baseUrl = config["AI:EmbeddingProvider:BaseUrl"] ?? "https://api.openai.com/v1";
         _modelId = config["AI:EmbeddingProvider:ModelId"] ?? "text-embedding-3-small";
         
@@ -41,6 +41,12 @@ public class OpenAIEmbeddingProvider : IEmbeddingProvider
 
     public async Task<List<float[]>> GenerateEmbeddingsAsync(List<string> texts, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(_apiKey))
+        {
+            _logger.LogWarning("OpenAIEmbeddingProvider: AI:EmbeddingProvider:ApiKey is not configured. Returning empty embeddings fallback.");
+            return texts.Select(_ => Array.Empty<float>()).ToList();
+        }
+
         _logger.LogInformation("Generating embeddings for {Count} texts using model {Model}", texts.Count, _modelId);
 
         var requestBody = new

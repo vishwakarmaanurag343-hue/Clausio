@@ -45,101 +45,256 @@ export default function ClientPage() {
 
   return (
     <>
-      <div className="glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: 'calc(100vh - 32px)', overflow: 'hidden', margin: '16px', padding: 20, borderRadius: 24 }}>
-        {/* ================= HEADER ================= */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexShrink: 0 }}>
-          <div>
-            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px' }}>
-              Client
-            </h1>
-            <p style={{ marginTop: 4, color: '#64748b', fontSize: 13, fontWeight: 500 }}>
-              Generate client updates instantly using AI.
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {/* Client Badge */}
-            <div style={{ padding: '4px 10px', borderRadius: 999, background: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', fontWeight: 600, fontSize: 11, border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-              {clientName}
+      <div className="glass-panel mobile-client-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: 'calc(100vh - 32px)', overflow: 'hidden', margin: '16px', padding: 20, borderRadius: 24 }}>
+        
+        {/* ── DESKTOP CLIENT VIEW ── */}
+        <div className="desktop-client-view" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          {/* ================= HEADER ================= */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexShrink: 0 }}>
+            <div>
+              <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px' }}>
+                Client
+              </h1>
+              <p style={{ marginTop: 4, color: '#64748b', fontSize: 13, fontWeight: 500 }}>
+                Generate client updates instantly using AI.
+              </p>
             </div>
 
-            {/* Generate Button */}
-            <button
-              className="glass-button"
-              onClick={() => setShowModal(true)}
-              style={{ padding: '0 16px', height: 38, borderRadius: 10, border: 'none', background: '#3b82f6', color: '#fff', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {/* Client Badge */}
+              <div style={{ padding: '4px 10px', borderRadius: 999, background: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', fontWeight: 600, fontSize: 11, border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                {clientName}
+              </div>
+
+              {/* Generate Button */}
+              <button
+                className="glass-button"
+                onClick={() => setShowModal(true)}
+                style={{ padding: '0 16px', height: 38, borderRadius: 10, border: 'none', background: '#3b82f6', color: '#fff', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}
+              >
+                <i className="ti ti-sparkles" />
+                Generate Update
+              </button>
+            </div>
+          </div>
+
+          {/* ================= TABS ================= */}
+          <div
+            style={{
+              display: 'flex',
+              gap: 12,
+              borderBottom: '1px solid #e2e8f0',
+              paddingBottom: 12,
+              marginBottom: 16,
+              flexShrink: 0,
+            }}
+          >
+            <TabButton
+              active={activeTab === 'update'}
+              onClick={() => setActiveTab('update')}
             >
-              <i className="ti ti-sparkles" />
-              Generate Update
+              WhatsApp Update
+            </TabButton>
+
+            <TabButton
+              active={activeTab === 'fees'}
+              onClick={() => setActiveTab('fees')}
+            >
+              Fee Tracker
+            </TabButton>
+          </div>
+
+          {/* ================= CONTENT ================= */}
+          {error && (
+            <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626', marginBottom: 16, flexShrink: 0 }}>
+              {error}
+            </div>
+          )}
+
+          {activeTab === 'update' && (
+            <div
+              style={{
+                flex: 1,
+                minHeight: 0,
+                display: 'grid',
+                gridTemplateColumns: '36% 64%',
+                gap: 24,
+              }}
+            >
+              <WhatsAppUpdate onGenerate={generate} generating={generating} />
+
+              <WhatsAppPreview message={message} generating={generating} onRegenerate={generate} />
+            </div>
+          )}
+
+          {activeTab === 'fees' && (
+            <div
+              style={{
+                background: '#ffffff',
+                borderRadius: 16,
+                padding: 32,
+                border: '1px solid #e2e8f0',
+                textAlign: 'center',
+                color: '#64748b',
+              }}
+            >
+              Fee Tracker will be built next.
+            </div>
+          )}
+        </div>
+
+        {/* ── MOBILE CLIENT VIEW (Matching Prototype) ── */}
+        <div className="mobile-client-view" style={{ display: 'none', flexDirection: 'column', gap: 16, overflowY: 'auto' }}>
+          {/* Top Pill Tabs Bar */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              background: '#ffffff',
+              borderRadius: 30,
+              padding: '6px 8px',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
+              gap: 6,
+              justifyContent: 'space-between',
+            }}
+          >
+            <button
+              onClick={() => setActiveTab('update')}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                borderRadius: 20,
+                background: activeTab === 'update' ? '#cbd5e1' : 'transparent',
+                color: '#0f172a',
+                border: 'none',
+                fontSize: 11,
+                fontWeight: activeTab === 'update' ? 700 : 600,
+                cursor: 'pointer',
+                textAlign: 'center',
+                fontFamily: 'inherit',
+              }}
+            >
+              WhatsApp Update
+            </button>
+            <button
+              onClick={() => setActiveTab('fees')}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                borderRadius: 20,
+                background: activeTab === 'fees' ? '#cbd5e1' : 'transparent',
+                color: '#0f172a',
+                border: 'none',
+                fontSize: 11,
+                fontWeight: activeTab === 'fees' ? 700 : 600,
+                cursor: 'pointer',
+                textAlign: 'center',
+                fontFamily: 'inherit',
+              }}
+            >
+              Fee Tracker
             </button>
           </div>
-        </div>
 
-        {/* ================= TABS ================= */}
-
-        <div
-          style={{
-            display: 'flex',
-            gap: 12,
-            borderBottom: '1px solid #e2e8f0',
-            paddingBottom: 12,
-            marginBottom: 16,
-            flexShrink: 0,
-          }}
-        >
-          <TabButton
-            active={activeTab === 'update'}
-            onClick={() => setActiveTab('update')}
-          >
-            WhatsApp Update
-          </TabButton>
-
-          <TabButton
-            active={activeTab === 'fees'}
-            onClick={() => setActiveTab('fees')}
-          >
-            Fee Tracker
-          </TabButton>
-        </div>
-
-        {/* ================= CONTENT ================= */}
-
-        {error && (
-          <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626', marginBottom: 16, flexShrink: 0 }}>
-            {error}
-          </div>
-        )}
-
-        {activeTab === 'update' && (
+          {/* Main Solid Grey Section */}
           <div
             style={{
+              background: '#cbd5e1',
+              borderTopLeftRadius: 36,
+              borderTopRightRadius: 36,
+              borderBottomLeftRadius: 0,
+              borderBottomRightRadius: 0,
+              padding: '24px 16px 40px 16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16,
+              margin: '8px -16px 0 -16px',
               flex: 1,
-              minHeight: 0,
-              display: 'grid',
-              gridTemplateColumns: '36% 64%',
-              gap: 24,
             }}
           >
-            <WhatsAppUpdate onGenerate={generate} generating={generating} />
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <h2 style={{ margin: '0 0 2px 6px', fontSize: 18, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.3px' }}>
+                  Client Updates
+                </h2>
+                <p style={{ margin: '0 0 14px 6px', fontSize: 11, fontWeight: 600, color: '#475569' }}>
+                  {clientName} · Automated AI Drafts
+                </p>
+              </div>
+              <button
+                onClick={() => setShowModal(true)}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: 20,
+                  background: '#0f172a',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Generate
+              </button>
+            </div>
 
-            <WhatsAppPreview message={message} generating={generating} onRegenerate={generate} />
-          </div>
-        )}
+            {/* 3 Top Metric Cards */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: 10,
+                marginBottom: 12,
+              }}
+            >
+              {[
+                { title: 'Status', value: 'Active', sub: 'Client' },
+                { title: 'Updates', value: '4', sub: 'Sent' },
+                { title: 'Pending', value: '1', sub: 'Draft' },
+              ].map((item, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    background: '#e2e8f0',
+                    borderRadius: 22,
+                    padding: '16px 10px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textAlign: 'center',
+                    minHeight: 110,
+                  }}
+                >
+                  <span style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', lineHeight: 1.1 }}>{item.value}</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#475569', marginTop: 4 }}>{item.title}</span>
+                </div>
+              ))}
+            </div>
 
-        {activeTab === 'fees' && (
-          <div
-            style={{
-              background: '#ffffff',
-              borderRadius: 16,
-              padding: 32,
-              border: '1px solid #e2e8f0',
-              textAlign: 'center',
-              color: '#64748b',
-            }}
-          >
-            Fee Tracker will be built next.
+            {/* Main Content Area */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {activeTab === 'update' && (
+                <>
+                  <WhatsAppUpdate onGenerate={generate} generating={generating} />
+                  <WhatsAppPreview message={message} generating={generating} onRegenerate={generate} />
+                </>
+              )}
+              {activeTab === 'fees' && (
+                <div style={{ background: '#e2e8f0', borderRadius: 24, padding: '32px 16px', textAlign: 'center', color: '#64748b' }}>
+                  <i className="ti ti-receipt" style={{ fontSize: 36, display: 'block', marginBottom: 8, opacity: 0.5 }} />
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Fee Tracker</div>
+                  <p style={{ fontSize: 12, margin: '4px 0 0' }}>Client fee tracker is coming soon.</p>
+                </div>
+              )}
+            </div>
+
           </div>
-        )}
+        </div>
+
       </div>
 
       {/* ================= MODAL ================= */}

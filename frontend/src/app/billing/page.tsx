@@ -43,45 +43,152 @@ export default function BillingPage() {
   useEffect(() => { reload() }, [reload])
 
   return (
-    <div className="glass-panel" style={{ flex: 1, overflowY: 'auto', margin: '16px', padding: 20, borderRadius: 24 }}>
+    <div className="glass-panel mobile-billing-container" style={{ flex: 1, overflowY: 'auto', margin: '16px', padding: 20, borderRadius: 24, display: 'flex', flexDirection: 'column' }}>
 
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px' }}>Billing & Finance</h1>
-          <p style={{ marginTop: 4, color: '#64748b', fontSize: 13, fontWeight: 500 }}>
-            Manage invoices, payments, expenses and client billing.
-          </p>
-        </div>
-        {/* Quick stats in header */}
-        {stats && !loading && (
-          <div style={{ display: 'flex', gap: 12 }}>
-            <Chip label="Billed" value={`₹${Number(stats.totalBilled).toLocaleString('en-IN')}`} color="#2563eb" />
-            <Chip label="Received" value={`₹${Number(stats.totalPaid).toLocaleString('en-IN')}`} color="#16a34a" />
-            <Chip label="Pending" value={`₹${Number(stats.totalPending).toLocaleString('en-IN')}`} color="#dc2626" />
+      {/* ── DESKTOP BILLING VIEW ── */}
+      <div className="desktop-billing-view" style={{ display: 'flex', flexDirection: 'column' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px' }}>Billing & Finance</h1>
+            <p style={{ marginTop: 4, color: '#64748b', fontSize: 13, fontWeight: 500 }}>
+              Manage invoices, payments, expenses and client billing.
+            </p>
           </div>
-        )}
+          {/* Quick stats in header */}
+          {stats && !loading && (
+            <div style={{ display: 'flex', gap: 12 }}>
+              <Chip label="Billed" value={`₹${Number(stats.totalBilled).toLocaleString('en-IN')}`} color="#2563eb" />
+              <Chip label="Received" value={`₹${Number(stats.totalPaid).toLocaleString('en-IN')}`} color="#16a34a" />
+              <Chip label="Pending" value={`₹${Number(stats.totalPending).toLocaleString('en-IN')}`} color="#dc2626" />
+            </div>
+          )}
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #e2e8f0', marginBottom: 24, overflowX: 'auto' }}>
+          {TABS.map(tab => (
+            <button key={tab.name} onClick={() => setActiveTab(tab.name)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', border: 'none', borderBottom: activeTab === tab.name ? '2px solid #2563eb' : '2px solid transparent', marginBottom: -1, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, background: 'transparent', whiteSpace: 'nowrap', color: activeTab === tab.name ? '#1e40af' : '#64748b', transition: 'all 0.15s' }}>
+              <i className={`ti ${tab.icon}`} style={{ fontSize: 15 }} />
+              {tab.name}
+              {!tab.live && <span style={{ fontSize: 9, padding: '1px 5px', background: '#fef3c7', color: '#d97706', borderRadius: 8, fontWeight: 700 }}>SOON</span>}
+            </button>
+          ))}
+        </div>
+
+        {/* Content */}
+        {activeTab === 'Overview'       && <BillingOverview cases={cases} clients={clients} stats={stats} loading={loading} onRefresh={reload} />}
+        {activeTab === 'Invoices'       && <InvoiceManager  cases={cases} clients={clients} onRefresh={reload} />}
+        {activeTab === 'Payments'       && <PaymentTracker  cases={cases} onRefresh={reload} />}
+        {activeTab === 'Expenses'       && <ExpenseTracker  cases={cases} onRefresh={reload} />}
+        {activeTab === 'Client Billing' && <ClientBilling   cases={cases} clients={clients} loading={loading} />}
+        {activeTab === 'Subscription'   && <SubscriptionComingSoon />}
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #e2e8f0', marginBottom: 24, overflowX: 'auto' }}>
-        {TABS.map(tab => (
-          <button key={tab.name} onClick={() => setActiveTab(tab.name)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', border: 'none', borderBottom: activeTab === tab.name ? '2px solid #2563eb' : '2px solid transparent', marginBottom: -1, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, background: 'transparent', whiteSpace: 'nowrap', color: activeTab === tab.name ? '#1e40af' : '#64748b', transition: 'all 0.15s' }}>
-            <i className={`ti ${tab.icon}`} style={{ fontSize: 15 }} />
-            {tab.name}
-            {!tab.live && <span style={{ fontSize: 9, padding: '1px 5px', background: '#fef3c7', color: '#d97706', borderRadius: 8, fontWeight: 700 }}>SOON</span>}
-          </button>
-        ))}
+      {/* ── MOBILE BILLING VIEW (Matching Prototype) ── */}
+      <div className="mobile-billing-view" style={{ display: 'none', flexDirection: 'column', gap: 16 }}>
+        {/* Top Pill Tabs Bar */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            background: '#ffffff',
+            borderRadius: 30,
+            padding: '6px 8px',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
+            gap: 6,
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+          }}
+        >
+          {TABS.map((tab) => {
+            const isSelected = activeTab === tab.name
+            return (
+              <button
+                key={tab.name}
+                onClick={() => setActiveTab(tab.name)}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: 20,
+                  background: isSelected ? '#cbd5e1' : 'transparent',
+                  color: '#0f172a',
+                  border: 'none',
+                  fontSize: 11,
+                  fontWeight: isSelected ? 700 : 600,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  fontFamily: 'inherit',
+                  transition: 'all 0.15s ease',
+                  flexShrink: 0,
+                }}
+              >
+                {tab.name}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Main Solid Grey Section */}
+        <div
+          style={{
+            background: '#cbd5e1',
+            borderTopLeftRadius: 36,
+            borderTopRightRadius: 36,
+            borderBottomLeftRadius: 0,
+            borderBottomRightRadius: 0,
+            padding: '24px 16px 40px 16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16,
+            margin: '8px -16px 0 -16px',
+            flex: 1,
+          }}
+        >
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <h2 style={{ margin: '0 0 2px 6px', fontSize: 18, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.3px' }}>
+                Billing & Finance
+              </h2>
+              <p style={{ margin: '0 0 14px 6px', fontSize: 11, fontWeight: 600, color: '#475569' }}>
+                {activeTab} Overview
+              </p>
+            </div>
+            <button
+              onClick={reload}
+              style={{
+                padding: '8px 14px',
+                borderRadius: 20,
+                background: '#0f172a',
+                color: '#ffffff',
+                border: 'none',
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Refresh
+            </button>
+          </div>
+
+          {/* Main Content Area */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {activeTab === 'Overview'       && <BillingOverview cases={cases} clients={clients} stats={stats} loading={loading} onRefresh={reload} />}
+            {activeTab === 'Invoices'       && <InvoiceManager  cases={cases} clients={clients} onRefresh={reload} />}
+            {activeTab === 'Payments'       && <PaymentTracker  cases={cases} onRefresh={reload} />}
+            {activeTab === 'Expenses'       && <ExpenseTracker  cases={cases} onRefresh={reload} />}
+            {activeTab === 'Client Billing' && <ClientBilling   cases={cases} clients={clients} loading={loading} />}
+            {activeTab === 'Subscription'   && <SubscriptionComingSoon />}
+          </div>
+
+        </div>
       </div>
 
-      {/* Content */}
-      {activeTab === 'Overview'       && <BillingOverview cases={cases} clients={clients} stats={stats} loading={loading} onRefresh={reload} />}
-      {activeTab === 'Invoices'       && <InvoiceManager  cases={cases} clients={clients} onRefresh={reload} />}
-      {activeTab === 'Payments'       && <PaymentTracker  cases={cases} onRefresh={reload} />}
-      {activeTab === 'Expenses'       && <ExpenseTracker  cases={cases} onRefresh={reload} />}
-      {activeTab === 'Client Billing' && <ClientBilling   cases={cases} clients={clients} loading={loading} />}
-      {activeTab === 'Subscription'   && <SubscriptionComingSoon />}
     </div>
   )
 }
