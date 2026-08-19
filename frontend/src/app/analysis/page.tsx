@@ -37,18 +37,28 @@ export default function AnalysisPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Load any documents/timeline already saved for this case so results persist across refresh
+  // Load any documents/timeline/summary already saved for this case so results persist across refresh
   useEffect(() => {
     if (!selectedCaseId) return
     Promise.all([
       documentsApi.getByCaseId(selectedCaseId),
       timelineApi.getByCaseId(selectedCaseId),
-    ]).then(([docs, tl]) => {
+      aiApi.getSummary(selectedCaseId).catch(() => null),
+    ]).then(([docs, tl, sumRes]) => {
       const docsArr = Array.isArray(docs) ? docs : []
       const tlArr   = Array.isArray(tl) ? tl : []
       setDocuments(docsArr)
       setTimeline(tlArr)
-      if (docsArr.length > 0 || tlArr.length > 0) setStatus('completed')
+
+      if (sumRes && sumRes.result) {
+        const parsedSummary = parseAiJson<CaseSummaryResponse>(sumRes.result)
+        setSummary(parsedSummary)
+        setSummaryRaw(parsedSummary ? '' : sumRes.result)
+      }
+
+      if (docsArr.length > 0 || tlArr.length > 0 || (sumRes && sumRes.result)) {
+        setStatus('completed')
+      }
     }).catch(err => console.error(err))
   }, [selectedCaseId])
 
