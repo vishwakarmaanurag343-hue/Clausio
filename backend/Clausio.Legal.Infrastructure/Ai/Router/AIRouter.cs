@@ -93,8 +93,9 @@ public class AIRouter : IAIRouter
         }
 
         string result = string.Empty;
-        foreach (var model in modelsToTry)
+        for (int i = 0; i < modelsToTry.Count; i++)
         {
+            var model = modelsToTry[i];
             try
             {
                 _logger.LogInformation("[Router:Complete] Attempting LLM call with model: {Model} (Target: {Type})", model, modelType);
@@ -108,10 +109,10 @@ public class AIRouter : IAIRouter
             catch (Exception ex)
             {
                 _logger.LogWarning("[Router:Complete] Model {Model} failed ({Error}). Trying next fallback model...", model, ex.Message);
-                if (ex.Message.Contains("429") || ex.Message.Contains("TooManyRequests") || ex.Message.Contains("rate_limit"))
+                if (i < modelsToTry.Count - 1)
                 {
-                    _logger.LogInformation("[Router] Rate limited — waiting 25 seconds...");
-                    await Task.Delay(25000, cancellationToken);
+                    // Brief pause before trying next fallback model to avoid immediate concurrency burst
+                    await Task.Delay(1000, cancellationToken);
                 }
             }
         }
