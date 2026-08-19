@@ -29,13 +29,13 @@ public class JudgmentSeeder(ClausioDbContext db, ILogger<JudgmentSeeder> logger)
     public async Task SeedAsync(CancellationToken ct = default)
     {
         var existing = await db.Judgments.CountAsync(ct);
-        if (existing >= 100)
+        if (existing > 0)
         {
-            logger.LogInformation("Judgments already seeded ({Count}). Skipping.", existing);
+            logger.LogInformation("Judgments database already seeded and ready in memory ({Count} precedents). Skipping external fetch.", existing);
             return;
         }
 
-        logger.LogInformation("Starting judgment seeding...");
+        logger.LogInformation("Starting initial judgment seeding for empty database...");
 
         using var http = new HttpClient();
         http.DefaultRequestHeaders.Authorization =
