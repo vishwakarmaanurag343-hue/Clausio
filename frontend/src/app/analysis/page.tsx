@@ -38,14 +38,18 @@ export default function AnalysisPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Auto-select first case if none selected
+  const [allCases, setAllCases] = useState<any[]>([])
+
+  // Load all user cases for case switcher
   useEffect(() => {
-    if (selectedCaseId) return
     casesApi.getAll()
       .then(cases => {
-        if (Array.isArray(cases) && cases.length > 0) {
-          const first = cases[0]
-          useCaseStore.getState().setSelectedCase(first.id, first.name || first.caseNumber || 'Active Case')
+        if (Array.isArray(cases)) {
+          setAllCases(cases)
+          if (!selectedCaseId && cases.length > 0) {
+            const first = cases[0]
+            useCaseStore.getState().setSelectedCase(first.id, first.name || first.caseNumber || 'Active Case')
+          }
         }
       })
       .catch(() => {})
@@ -106,8 +110,8 @@ export default function AnalysisPage() {
   }
 
   const handleRunAnalysis = useCallback(async () => {
-    if (!selectedCaseId) { setError('Please select a case from the top dropdown first.'); return }
-    if (pendingFiles.length === 0 && !pastedText.trim()) {
+    if (!selectedCaseId) { setError('Please select a case first.'); return }
+    if (documents.length === 0 && pendingFiles.length === 0 && !pastedText.trim()) {
       setError('Please upload at least one document or paste case text to analyze.')
       return
     }
@@ -163,7 +167,7 @@ export default function AnalysisPage() {
     } finally {
       setAnalyzing(false)
     }
-  }, [selectedCaseId, pendingFiles, pastedText])
+  }, [selectedCaseId, documents.length, pendingFiles, pastedText])
 
   const handleLoadSample = () => {
     setPastedText(`PETITION FOR DIVORCE UNDER SECTION 13(1)(ia) OF THE HINDU MARRIAGE ACT, 1955
@@ -215,13 +219,43 @@ Respondent: Rajesh Sharma, Age 35, Residing at Bandra West, Mumbai
   return (
     <div className="glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', margin: '16px', padding: 16, borderRadius: 24, minHeight: 'calc(100vh - 120px)' }}>
       {/* ── HEADER ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px' }}>
-            Analysis
-          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px' }}>
+              Analysis
+            </h1>
+            {/* Case Dropdown */}
+            {allCases.length > 0 && (
+              <select
+                value={selectedCaseId}
+                onChange={(e) => {
+                  const c = allCases.find(item => item.id === e.target.value)
+                  if (c) useCaseStore.getState().setSelectedCase(c.id, c.name || c.caseNumber || 'Active Case')
+                }}
+                style={{
+                  background: 'rgba(255,255,255,0.9)',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: 8,
+                  padding: '4px 10px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: '#1e293b',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  maxWidth: 260
+                }}
+              >
+                {allCases.map(c => (
+                  <option key={c.id} value={c.id}>
+                    📁 {c.name || c.caseNumber || 'Untitled Case'}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
           <p style={{ marginTop: 4, color: '#64748b', fontSize: 13, fontWeight: 500 }}>
-            Chronology, Structured Case Summary, and Evidence Intelligence.
+            Chronology, Structured Case Summary, and Evidence Intelligence for active case documents.
           </p>
         </div>
 
@@ -247,11 +281,34 @@ Respondent: Rajesh Sharma, Age 35, Residing at Bandra West, Mumbai
 
           <button
             className="glass-button"
-            onClick={() => setShowUploadModal(true)}
-            style={{ height: 38, padding: '0 16px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}
+            disabled={analyzing}
+            onClick={() => {
+              if (documents.length > 0 && pendingFiles.length === 0 && !pastedText.trim()) {
+                handleRunAnalysis()
+              } else {
+                setShowUploadModal(true)
+              }
+            }}
+            style={{
+              height: 38, padding: '0 16px',
+              background: analyzing ? '#94a3b8' : '#3b82f6',
+              color: '#fff', border: 'none', borderRadius: 10,
+              cursor: analyzing ? 'not-allowed' : 'pointer',
+              fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6,
+              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+            }}
           >
-            <i className="ti ti-brain" style={{ fontSize: 14 }} />
-            Run Analysis
+            {analyzing ? (
+              <>
+                <i className="ti ti-loader animate-spin" style={{ fontSize: 14 }} />
+                Analyzing Case...
+              </>
+            ) : (
+              <>
+                <i className="ti ti-brain" style={{ fontSize: 14 }} />
+                {documents.length > 0 ? `Run Analysis (${documents.length} docs)` : 'Run Analysis'}
+              </>
+            )}
           </button>
         </div>
       </div>
