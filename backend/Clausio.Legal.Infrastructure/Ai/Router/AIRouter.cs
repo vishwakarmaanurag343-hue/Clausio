@@ -32,12 +32,18 @@ public class AIRouter : IAIRouter
         _fastProvider = fastProvider;
         _logger = logger;
 
-        _deepModel = config["AI:Groq:DeepModel"] ?? config["AI:DeepProvider:ModelId"] ?? "openai/gpt-oss-120b";
-        var modelsSection = config.GetSection("AI:FastProvider:FallbackModels")
+        _deepModel = config["AI:TokenRouter:ModelId"] 
+                  ?? config["AI:DeepProvider:ModelId"] 
+                  ?? config["AI:OpenRouter:ModelId"] 
+                  ?? "deepseek/deepseek-v4-pro-0813-free";
+
+        var modelsSection = config.GetSection("AI:OpenRouter:FallbackModels")
             .GetChildren()
+            .Concat(config.GetSection("AI:FastProvider:FallbackModels").GetChildren())
             .Select(c => c.Value)
             .Where(v => !string.IsNullOrEmpty(v))
             .Select(v => v!)
+            .Distinct()
             .ToArray();
 
         if (modelsSection.Length > 0)
@@ -48,9 +54,9 @@ public class AIRouter : IAIRouter
         {
             _fastModels = new[]
             {
-                config["AI:Groq:FastModel"] ?? "openai/gpt-oss-120b",
-                "openai/gpt-oss-20b",
-                "qwen/qwen3.6-27b"
+                "deepseek/deepseek-v4-pro-0813-free",
+                "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+                "qwen/qwen3.8-max-free"
             };
         }
 

@@ -6,6 +6,8 @@ import { documentsApi, timelineApi, aiApi, casesApi, parseAiJson } from '@/lib/a
 import type { CaseSummaryResponse } from '@/types/AIResponse'
 import AIResponseFormatter from '@/components/common/AIResponseFormatter'
 import FlashCard from '@/components/common/FlashCard'
+import CanvasFlowTimeline, { CanvasCardItem } from '@/components/common/CanvasFlowTimeline'
+import SerpentineTimeline, { SerpentineTimelineItem } from '@/components/common/SerpentineTimeline'
 
 type AnalysisStatus = 'idle' | 'uploading' | 'completed'
 
@@ -24,6 +26,7 @@ export default function AnalysisPage() {
   const [analyzing,    setAnalyzing]    = useState(false)
   const [loadingStep,  setLoadingStep]  = useState<number>(0)
   const [activeTab,    setActiveTab]    = useState<'chronology' | 'summary' | 'evidence'>('chronology')
+  const [viewMode,     setViewMode]     = useState<'canvas' | 'table'>('canvas')
   const [error,        setError]        = useState('')
   const [showUploadModal, setShowUploadModal] = useState(false)
 
@@ -353,68 +356,323 @@ Respondent: Rajesh Sharma, Age 35, Residing at Bandra West, Mumbai
 
           {/* TAB 1: CHRONOLOGY TABLE */}
           {activeTab === 'chronology' && (
-            <div style={{ flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
-              {timeline.length === 0 && chronologyRaw && (
-                <div style={{ padding: 16 }}>
-                  <AIResponseFormatter content={chronologyRaw} />
+            <div style={{ flex: 1, overflow: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {/* If we have documents, show individual per-document chronology triggers & results */}
+              {documents.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
+                      Case Documents (<strong style={{ color: '#0f172a' }}>{documents.length}</strong>). Click <strong>"Extract Timeline"</strong> on any individual document or run cross-document analysis:
+                    </p>
+                    <button
+                      disabled={analyzing}
+                      onClick={handleRunAnalysis}
+                      style={{
+                        background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe',
+                        padding: '6px 14px', borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 6
+                      }}
+                    >
+                      <i className="ti ti-calendar-event" /> Run Full Case Timeline
+                    </button>
+                  </div>
+
+                  {documents.map((doc) => {
+                    const isLoading = evidenceLoading[`chron_${doc.id}`]
+                    const result = evidenceResults[`chron_${doc.id}`]
+                    return (
+                      <div key={doc.id} style={{ display: 'flex', flexDirection: 'column', border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                            <i className="ti ti-calendar" style={{ fontSize: 16, color: '#2563eb' }} />
+                            <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.fileName}</span>
+                            <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, background: '#f1f5f9', color: '#475569', fontWeight: 500 }}>{doc.documentType || 'Exhibit'}</span>
+                          </div>
+
+                          <button
+                            disabled={isLoading}
+                            onClick={async () => {
+                              if (evidenceLoading[`chron_${doc.id}`]) return
+                              setEvidenceLoading(prev => ({ ...prev, [`chron_${doc.id}`]: true }))
+                              try {
+                                const res = await aiApi.getChronology(doc.id)
+                                setEvidenceResults(prev => ({ ...prev, [`chron_${doc.id}`]: res.result || res.chronology }))
+                              } catch (err: any) {
+                                setEvidenceResults(prev => ({ ...prev, [`chron_${doc.id}`]: `Error: ${err.message || 'Failed to extract timeline.'}` }))
+                              } finally {
+                                setEvidenceLoading(prev => ({ ...prev, [`chron_${doc.id}`]: false }))
+                              }
+                            }}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 6,
+                              padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                              background: result ? '#f8fafc' : '#2563eb',
+                              color: result ? '#475569' : '#fff',
+                              border: result ? '1px solid #cbd5e1' : 'none',
+                              cursor: isLoading ? 'not-allowed' : 'pointer',
+                              boxShadow: result ? 'none' : '0 2px 6px rgba(37,99,235,0.25)',
+                              transition: 'all 0.15s'
+                            }}
+                          >
+                            {isLoading ? (
+                              <>
+                                <i className="ti ti-loader animate-spin" style={{ fontSize: 13 }} />
+                                Extracting...
+                              </>
+                            ) : result ? (
+                              <>
+                                <i className="ti ti-refresh" style={{ fontSize: 13 }} />
+                                Re-extract Timeline
+                              </>
+                            ) : (
+                              <>
+                                <i className="ti ti-calendar-plus" style={{ fontSize: 13 }} />
+                                Extract Timeline
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {isLoading && (
+                          <div style={{ padding: '16px 14px', display: 'flex', alignItems: 'center', gap: 10, color: '#2563eb', fontSize: 12, background: '#f8fafc' }}>
+                            <i className="ti ti-loader animate-spin" style={{ fontSize: 16 }} />
+                            <span>Extracting date sequences and procedural events from <strong>{doc.fileName}</strong>...</span>
+                          </div>
+                        )}
+
+                        {!isLoading && result && (
+                          <div style={{ padding: '16px', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <i className="ti ti-calendar-time" style={{ color: '#2563eb' }} /> Date & Time Incident Timeline
+                              </span>
+                              <div style={{ display: 'flex', gap: 6 }}>
+                                <button
+                                  onClick={() => setEvidenceResults(prev => ({ ...prev, [`mode_chron_${doc.id}`]: 'canvas' }))}
+                                  style={{
+                                    padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600, border: 'none',
+                                    background: (evidenceResults[`mode_chron_${doc.id}`] ?? 'canvas') === 'canvas' ? '#2563eb' : '#e2e8f0',
+                                    color: (evidenceResults[`mode_chron_${doc.id}`] ?? 'canvas') === 'canvas' ? '#fff' : '#64748b',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  <i className="ti ti-layout-grid" /> Spatial Flow
+                                </button>
+                                <button
+                                  onClick={() => setEvidenceResults(prev => ({ ...prev, [`mode_chron_${doc.id}`]: 'list' }))}
+                                  style={{
+                                    padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600, border: 'none',
+                                    background: evidenceResults[`mode_chron_${doc.id}`] === 'list' ? '#2563eb' : '#e2e8f0',
+                                    color: evidenceResults[`mode_chron_${doc.id}`] === 'list' ? '#fff' : '#64748b',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  <i className="ti ti-list" /> List View
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Serpentine Snake Roadmap View */}
+                            {(evidenceResults[`mode_chron_${doc.id}`] ?? 'canvas') === 'canvas' && (
+                              <div style={{ height: 540, width: '100%', borderRadius: 12, overflow: 'hidden' }}>
+                                <SerpentineTimeline
+                                  items={(() => {
+                                    const parsed = parseAiJson(result)
+                                    // If AI returned structured events array
+                                    if (Array.isArray(parsed?.Events) && parsed.Events.length > 0) {
+                                      return parsed.Events.map((ev: any, i: number) => {
+                                        const isMilestone = (ev.Category || '').toLowerCase().includes('police') || (ev.Category || '').toLowerCase().includes('fir') || (ev.Category || '').toLowerCase().includes('order') || i === 0
+                                        return {
+                                          id: `chron_ev_${doc.id}_${i}`,
+                                          date: ev.DisplayDate || ev.Date || `Step ${i + 1}`,
+                                          year: ev.Year || (ev.Date ? ev.Date.split('-')[0] : undefined),
+                                          title: ev.Title || ev.Category || 'Incident Event',
+                                          description: ev.Description || ev.EventDetails || String(ev),
+                                          category: ev.Category,
+                                          source: ev.Source || doc.fileName,
+                                          isMajorMilestone: isMilestone,
+                                          highlightColor: isMilestone ? 'red' : 'grey'
+                                        } as SerpentineTimelineItem
+                                      })
+                                    }
+
+                                    // Fallback parser from markdown lines (Extracting dates)
+                                    const rawText = parsed?.DraftText || parsed?.draftText || (typeof result === 'string' ? result : JSON.stringify(result || ''))
+                                    const lines = String(rawText).split('\n')
+                                    const itemsList: SerpentineTimelineItem[] = []
+                                    let stepCount = 1
+
+                                    lines.forEach((l) => {
+                                      const trimmed = l.trim()
+                                      if (trimmed.startsWith('# ') || trimmed.startsWith('## ') || trimmed.startsWith('### ') || /^\d+\.\s+/.test(trimmed)) {
+                                        const cleanTitle = trimmed.replace(/^#+\s*/, '').replace(/^\d+\.\s*/, '')
+                                        // Try to extract date pattern if present (e.g. 15th March, 2018, 24 August 2023)
+                                        const dateMatch = cleanTitle.match(/\(?(\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+(?:\s+\d{4})?|\d{4})\)?/)
+                                        const dateStr = dateMatch ? dateMatch[1] : `Step ${stepCount}`
+                                        const yearMatch = cleanTitle.match(/\b(19\d\d|20\d\d)\b/)
+
+                                        itemsList.push({
+                                          id: `chron_node_${doc.id}_${stepCount}`,
+                                          date: dateStr,
+                                          year: yearMatch ? yearMatch[1] : undefined,
+                                          title: cleanTitle.replace(/\(?(\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+(?:\s+\d{4})?)\)?/g, '').trim() || cleanTitle,
+                                          description: cleanTitle,
+                                          isMajorMilestone: stepCount === 1 || cleanTitle.toLowerCase().includes('fir') || cleanTitle.toLowerCase().includes('arrest'),
+                                          highlightColor: stepCount === 1 ? 'red' : 'grey'
+                                        })
+                                        stepCount++
+                                      }
+                                    })
+
+                                    return itemsList.length > 0 ? itemsList : [
+                                      {
+                                        id: `chron_node_${doc.id}_1`,
+                                        date: 'Case Timeline',
+                                        year: '2024',
+                                        title: 'Procedural Events Extracted',
+                                        description: String(rawText),
+                                        isMajorMilestone: true
+                                      }
+                                    ]
+                                  })()}
+                                />
+                              </div>
+                            )}
+
+                            {/* List View */}
+                            {evidenceResults[`mode_chron_${doc.id}`] === 'list' && (
+                              <AIResponseFormatter content={result} />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               )}
-              {timeline.length === 0 && !chronologyRaw && (
+
+              {/* Aggregated Timeline Events: Canvas Flow View OR Master Table View */}
+              {timeline.length > 0 && (
+                <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
+                        Cross-Document Master Chronology
+                      </span>
+                      <span style={{ fontSize: 11, background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', padding: '2px 8px', borderRadius: 12, fontWeight: 600 }}>
+                        {timeline.length} Events
+                      </span>
+                    </div>
+
+                    {/* View Switcher: Serpentine Roadmap vs Interactive Flow vs Table */}
+                    <div style={{ display: 'flex', background: '#f1f5f9', padding: '2px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                      <button
+                        onClick={() => setViewMode('canvas')}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px',
+                          borderRadius: 6, fontSize: 11, fontWeight: 600, border: 'none',
+                          background: viewMode === 'canvas' ? '#ffffff' : 'transparent',
+                          color: viewMode === 'canvas' ? '#1e293b' : '#64748b',
+                          boxShadow: viewMode === 'canvas' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <i className="ti ti-timeline" /> Snake Roadmap
+                      </button>
+                      <button
+                        onClick={() => setViewMode('table')}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px',
+                          borderRadius: 6, fontSize: 11, fontWeight: 600, border: 'none',
+                          background: viewMode === 'table' ? '#ffffff' : 'transparent',
+                          color: viewMode === 'table' ? '#1e293b' : '#64748b',
+                          boxShadow: viewMode === 'table' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <i className="ti ti-table" /> Table View
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* ── SERPENTINE SNAKE ROADMAP VIEW (MATCHING USER REFERENCE IMAGE) ── */}
+                  {viewMode === 'canvas' && (
+                    <div style={{ height: 600, width: '100%', borderRadius: 12, overflow: 'hidden' }}>
+                      <SerpentineTimeline
+                        items={timeline.map((ev, i) => {
+                          const dateObj = ev.eventDate ? new Date(ev.eventDate) : null
+                          const dateStr = dateObj
+                            ? dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                            : 'Unknown Date'
+                          const yearStr = dateObj ? dateObj.getFullYear() : undefined
+                          
+                          const evLower = (ev.event || '').toLowerCase()
+                          const isMajor = evLower.includes('fir') || evLower.includes('arrest') || evLower.includes('death') || evLower.includes('order') || evLower.includes('judgment') || i === 0
+
+                          return {
+                            id: ev.id ?? i,
+                            date: dateStr,
+                            year: yearStr,
+                            title: ev.event,
+                            description: ev.event,
+                            category: ev.category || 'Procedural Step',
+                            source: ev.source || 'Case Dossier',
+                            isMajorMilestone: isMajor,
+                            highlightColor: isMajor ? 'red' : 'grey'
+                          } as SerpentineTimelineItem
+                        })}
+                      />
+                    </div>
+                  )}
+
+                  {/* ── TRADITIONAL TABLE VIEW ── */}
+                  {viewMode === 'table' && (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: 650, border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+                      <thead>
+                        <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                          <th style={{ padding: '10px 14px', fontSize: 11, fontWeight: 600, color: '#475569', width: 120 }}>Date</th>
+                          <th style={{ padding: '10px 14px', fontSize: 11, fontWeight: 600, color: '#475569' }}>Event Description</th>
+                          <th style={{ padding: '10px 14px', fontSize: 11, fontWeight: 600, color: '#475569', width: 130 }}>Category</th>
+                          <th style={{ padding: '10px 14px', fontSize: 11, fontWeight: 600, color: '#475569', width: 220 }}>Source</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {timeline.map((ev, i) => (
+                          <tr key={ev.id ?? i} style={{ borderBottom: i < timeline.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                            <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap' }}>
+                              📅 {ev.eventDate ? new Date(ev.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                            </td>
+                            <td style={{ padding: '12px 14px', fontSize: 12, color: '#0f172a', lineHeight: 1.5 }}>
+                              {ev.event}
+                            </td>
+                            <td style={{ padding: '12px 14px' }}>
+                              <span style={{ fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 12, display: 'inline-block', background: '#f1f5f9', color: '#475569' }}>
+                                {ev.category || 'General'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px 14px', fontSize: 11, color: '#64748b', fontWeight: 500 }}>
+                              <i className="ti ti-file" style={{ fontSize: 11, marginRight: 4, color: '#94a3b8' }} />
+                              {ev.source || 'Case Dossier'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              )}
+
+              {documents.length === 0 && (
                 <div style={{ padding: 60, textAlign: 'center', color: '#64748b', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                   <i className="ti ti-calendar-event" style={{ fontSize: 36, color: '#cbd5e1' }} />
-                  <div>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: '#1e293b', margin: 0 }}>No chronology generated yet.</p>
-                    <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>
-                      {documents.length > 0 
-                        ? `You have ${documents.length} document(s) uploaded. Click below to generate an automatic timeline.` 
-                        : 'Upload case documents or petition text to build an automatic legal timeline.'}
-                    </p>
-                  </div>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: '#1e293b', margin: 0 }}>No documents uploaded yet.</p>
                   <button
-                    disabled={analyzing}
-                    onClick={() => {
-                      if (documents.length > 0) handleRunAnalysis()
-                      else setShowUploadModal(true)
-                    }}
-                    style={{ background: analyzing ? '#94a3b8' : '#2563eb', color: '#fff', border: 'none', padding: '9px 18px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: analyzing ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                    onClick={() => setShowUploadModal(true)}
+                    style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '9px 18px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                   >
-                    {analyzing ? <i className="ti ti-loader animate-spin" /> : <i className="ti ti-sparkles" />}
-                    {analyzing ? 'Analyzing...' : documents.length > 0 ? `Generate Chronology (${documents.length} docs)` : 'Upload & Generate Chronology'}
+                    Upload Document
                   </button>
                 </div>
-              )}
-              {timeline.length > 0 && (
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: 650 }}>
-                  <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                      <th style={{ padding: '10px 14px', fontSize: 11, fontWeight: 600, color: '#475569', width: 120 }}>Date</th>
-                      <th style={{ padding: '10px 14px', fontSize: 11, fontWeight: 600, color: '#475569' }}>Event Description</th>
-                      <th style={{ padding: '10px 14px', fontSize: 11, fontWeight: 600, color: '#475569', width: 130 }}>Category</th>
-                      <th style={{ padding: '10px 14px', fontSize: 11, fontWeight: 600, color: '#475569', width: 220 }}>Source</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {timeline.map((ev, i) => (
-                      <tr key={ev.id ?? i} style={{ borderBottom: i < timeline.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
-                        <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap' }}>
-                          📅 {ev.eventDate ? new Date(ev.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
-                        </td>
-                        <td style={{ padding: '12px 14px', fontSize: 12, color: '#0f172a', lineHeight: 1.5 }}>
-                          {ev.event}
-                        </td>
-                        <td style={{ padding: '12px 14px' }}>
-                          <span style={{ fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 12, display: 'inline-block', background: '#f1f5f9', color: '#475569' }}>
-                            {ev.category || 'General'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '12px 14px', fontSize: 11, color: '#64748b', fontWeight: 500 }}>
-                          <i className="ti ti-file" style={{ fontSize: 11, marginRight: 4, color: '#94a3b8' }} />
-                          {ev.source || 'Case Dossier'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
               )}
             </div>
           )}
@@ -422,31 +680,106 @@ Respondent: Rajesh Sharma, Age 35, Residing at Bandra West, Mumbai
           {/* TAB 2: CASE SUMMARY VIEW */}
           {activeTab === 'summary' && (
             <div style={{ padding: 16, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {!summary && !summaryRaw && (
-                <div style={{ padding: 60, textAlign: 'center', color: '#64748b', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-                  <i className="ti ti-notes" style={{ fontSize: 36, color: '#cbd5e1' }} />
-                  <div>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: '#1e293b', margin: 0 }}>No case summary generated yet.</p>
-                    <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>
-                      {documents.length > 0 
-                        ? `You have ${documents.length} document(s) uploaded. Click below to synthesize core facts, strengths, and risks.` 
-                        : 'Run analysis on your case files to synthesize core facts, strengths, and risks.'}
+              {/* Document list with on-demand summary buttons */}
+              {documents.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
+                      Case Documents (<strong style={{ color: '#0f172a' }}>{documents.length}</strong>). Click <strong>"Summarize Document"</strong> on any file to evaluate individually or run Master Summary:
                     </p>
+                    <button
+                      disabled={analyzing}
+                      onClick={handleRunAnalysis}
+                      style={{
+                        background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe',
+                        padding: '6px 14px', borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 6
+                      }}
+                    >
+                      <i className="ti ti-notes" /> Run Full Case Summary
+                    </button>
                   </div>
-                  <button
-                    disabled={analyzing}
-                    onClick={() => {
-                      if (documents.length > 0) handleRunAnalysis()
-                      else setShowUploadModal(true)
-                    }}
-                    style={{ background: analyzing ? '#94a3b8' : '#2563eb', color: '#fff', border: 'none', padding: '9px 18px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: analyzing ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-                  >
-                    {analyzing ? <i className="ti ti-loader animate-spin" /> : <i className="ti ti-notes" />}
-                    {analyzing ? 'Analyzing...' : documents.length > 0 ? `Generate Case Summary (${documents.length} docs)` : 'Upload & Generate Summary'}
-                  </button>
+
+                  {documents.map((doc) => {
+                    const isLoading = evidenceLoading[`sum_${doc.id}`]
+                    const result = evidenceResults[`sum_${doc.id}`]
+                    return (
+                      <div key={doc.id} style={{ display: 'flex', flexDirection: 'column', border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                            <i className="ti ti-file-description" style={{ fontSize: 16, color: '#2563eb' }} />
+                            <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.fileName}</span>
+                            <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, background: '#f1f5f9', color: '#475569', fontWeight: 500 }}>{doc.documentType || 'Document'}</span>
+                          </div>
+
+                          <button
+                            disabled={isLoading}
+                            onClick={async () => {
+                              if (evidenceLoading[`sum_${doc.id}`]) return
+                              setEvidenceLoading(prev => ({ ...prev, [`sum_${doc.id}`]: true }))
+                              try {
+                                const res = await aiApi.getEvidence(doc.id)
+                                setEvidenceResults(prev => ({ ...prev, [`sum_${doc.id}`]: res.result }))
+                              } catch (err: any) {
+                                setEvidenceResults(prev => ({ ...prev, [`sum_${doc.id}`]: `Error: ${err.message || 'Failed to summarize document.'}` }))
+                              } finally {
+                                setEvidenceLoading(prev => ({ ...prev, [`sum_${doc.id}`]: false }))
+                              }
+                            }}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 6,
+                              padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                              background: result ? '#f8fafc' : '#2563eb',
+                              color: result ? '#475569' : '#fff',
+                              border: result ? '1px solid #cbd5e1' : 'none',
+                              cursor: isLoading ? 'not-allowed' : 'pointer',
+                              boxShadow: result ? 'none' : '0 2px 6px rgba(37,99,235,0.25)',
+                              transition: 'all 0.15s'
+                            }}
+                          >
+                            {isLoading ? (
+                              <>
+                                <i className="ti ti-loader animate-spin" style={{ fontSize: 13 }} />
+                                Summarizing...
+                              </>
+                            ) : result ? (
+                              <>
+                                <i className="ti ti-refresh" style={{ fontSize: 13 }} />
+                                Re-summarize
+                              </>
+                            ) : (
+                              <>
+                                <i className="ti ti-sparkles" style={{ fontSize: 13 }} />
+                                Summarize Document
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {isLoading && (
+                          <div style={{ padding: '16px 14px', display: 'flex', alignItems: 'center', gap: 10, color: '#2563eb', fontSize: 12, background: '#f8fafc' }}>
+                            <i className="ti ti-loader animate-spin" style={{ fontSize: 16 }} />
+                            <span>Synthesizing legal facts and strategic points from <strong>{doc.fileName}</strong>...</span>
+                          </div>
+                        )}
+
+                        {!isLoading && result && (
+                          <div style={{ padding: '16px', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <i className="ti ti-notes" style={{ color: '#2563eb' }} /> Document Legal Summary
+                              </span>
+                            </div>
+                            <AIResponseFormatter content={result} />
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               )}
 
+              {/* Master Case Summary */}
               {!summary && summaryRaw && (
                 <div style={{ padding: 4 }}>
                   <AIResponseFormatter content={summaryRaw} />
@@ -454,7 +787,7 @@ Respondent: Rajesh Sharma, Age 35, Residing at Bandra West, Mumbai
               )}
 
               {summary && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14, marginTop: 6 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <div style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 14, background: '#fafbfc' }}>
                       <h4 style={{ fontSize: 11, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -483,7 +816,7 @@ Respondent: Rajesh Sharma, Age 35, Residing at Bandra West, Mumbai
                         <i className="ti ti-alert-triangle" /> Key Case Risks & Weaknesses
                       </h4>
                       <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, color: '#7f1d1d', lineHeight: 1.6 }}>
-                        {summary.keyWeaknesses?.map((s, i) => <li key={i}>{s}</li>)}
+                        {summary.keyWeaknesses?.map((w, i) => <li key={i}>{w}</li>)}
                       </ul>
                     </div>
                     <div style={{ border: '1px solid #ddd6fe', borderRadius: 10, padding: 14, background: '#f5f3ff' }}>
@@ -495,6 +828,19 @@ Respondent: Rajesh Sharma, Age 35, Residing at Bandra West, Mumbai
                       </ul>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {documents.length === 0 && !summary && !summaryRaw && (
+                <div style={{ padding: 60, textAlign: 'center', color: '#64748b', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                  <i className="ti ti-notes" style={{ fontSize: 36, color: '#cbd5e1' }} />
+                  <p style={{ fontSize: 14, fontWeight: 600, color: '#1e293b', margin: 0 }}>No case summary generated yet.</p>
+                  <button
+                    onClick={() => setShowUploadModal(true)}
+                    style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '9px 18px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Upload Document
+                  </button>
                 </div>
               )}
             </div>
@@ -584,11 +930,141 @@ Respondent: Rajesh Sharma, Age 35, Residing at Bandra West, Mumbai
                         )}
 
                         {!isLoading && result && (
-                          <div style={{ padding: '14px', background: '#faf5ff' }}>
-                            <p style={{ fontSize: 10, color: '#7c3aed', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5, margin: '0 0 8px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                              <i className="ti ti-shield-check" /> Legal Evidentiary Assessment
-                            </p>
-                            <AIResponseFormatter content={result} />
+                          <div style={{ padding: '20px', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, paddingBottom: 10, borderBottom: '1px solid #e2e8f0' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ width: 22, height: 22, borderRadius: 6, background: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>
+                                  <i className="ti ti-sparkles" />
+                                </span>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>
+                                  Evidentiary Intelligence & Strategic Analysis
+                                </span>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                {/* Canvas vs List Toggle */}
+                                <div style={{ display: 'flex', background: '#e2e8f0', padding: '2px', borderRadius: 8 }}>
+                                  <button
+                                    onClick={() => setEvidenceResults(prev => ({ ...prev, [`mode_${doc.id}`]: 'canvas' }))}
+                                    style={{
+                                      display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px',
+                                      borderRadius: 6, fontSize: 11, fontWeight: 600, border: 'none',
+                                      background: (evidenceResults[`mode_${doc.id}`] ?? 'canvas') === 'canvas' ? '#ffffff' : 'transparent',
+                                      color: (evidenceResults[`mode_${doc.id}`] ?? 'canvas') === 'canvas' ? '#1e293b' : '#64748b',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    <i className="ti ti-layout-grid" /> Sticky Canvas
+                                  </button>
+                                  <button
+                                    onClick={() => setEvidenceResults(prev => ({ ...prev, [`mode_${doc.id}`]: 'list' }))}
+                                    style={{
+                                      display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px',
+                                      borderRadius: 6, fontSize: 11, fontWeight: 600, border: 'none',
+                                      background: evidenceResults[`mode_${doc.id}`] === 'list' ? '#ffffff' : 'transparent',
+                                      color: evidenceResults[`mode_${doc.id}`] === 'list' ? '#1e293b' : '#64748b',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    <i className="ti ti-list" /> List View
+                                  </button>
+                                </div>
+
+                                <button
+                                  onClick={() => navigator.clipboard.writeText(typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result))}
+                                  style={{
+                                    display: 'flex', alignItems: 'center', gap: 4,
+                                    background: '#fff', border: '1px solid #cbd5e1',
+                                    padding: '4px 10px', borderRadius: 6, fontSize: 11,
+                                    fontWeight: 600, color: '#475569', cursor: 'pointer'
+                                  }}
+                                >
+                                  <i className="ti ti-copy" style={{ fontSize: 12 }} /> Copy
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Sticky Canvas View */}
+                            {(evidenceResults[`mode_${doc.id}`] ?? 'canvas') === 'canvas' && (
+                              <div style={{ height: 560, width: '100%', borderRadius: 12, overflow: 'hidden' }}>
+                                <CanvasFlowTimeline
+                                  items={(() => {
+                                    const parsed = parseAiJson(result)
+                                    const rawText = parsed?.DraftText || parsed?.draftText || parsed?.Analysis || parsed?.analysis || (typeof result === 'string' ? result : JSON.stringify(result || ''))
+                                    const lines = String(rawText || '').split('\n')
+                                    const cardItems: CanvasCardItem[] = []
+                                    let currentSection = 'Evidence Overview'
+                                    let currentBuffer: string[] = []
+                                    let stepCount = 1
+
+                                    lines.forEach((l) => {
+                                      const trimmed = l.trim()
+                                      if (trimmed.startsWith('# ') || trimmed.startsWith('## ') || trimmed.startsWith('### ') || /^\d+\.\s+/.test(trimmed)) {
+                                        if (currentBuffer.length > 0) {
+                                          const desc = currentBuffer.join('\n').trim()
+                                          const descLower = desc.toLowerCase()
+                                          const isRed = descLower.includes('risk') || descLower.includes('fail') || descLower.includes('misconduct') || descLower.includes('misappropriation') || descLower.includes('poison') || descLower.includes('suspicious') || descLower.includes('contradict')
+                                          const isGreen = descLower.includes('compliance') || descLower.includes('natural justice') || descLower.includes('negative') || descLower.includes('favorable') || descLower.includes('support')
+                                          const isAmber = descLower.includes('pending') || descLower.includes('examination') || descLower.includes('medium')
+
+                                          cardItems.push({
+                                            id: `card_${doc.id}_${stepCount}`,
+                                            stepNumber: stepCount,
+                                            title: currentSection,
+                                            badgeText: `Point ${stepCount}`,
+                                            badgeColor: isRed ? 'red' : isGreen ? 'green' : isAmber ? 'amber' : 'blue',
+                                            description: desc,
+                                            icon: isRed ? '⚠️' : isGreen ? '✅' : '📋'
+                                          })
+                                          stepCount++
+                                          currentBuffer = []
+                                        }
+                                        currentSection = trimmed.replace(/^#+\s*/, '').replace(/^\d+\.\s*/, '')
+                                      } else if (trimmed && !trimmed.match(/^---+$/)) {
+                                        currentBuffer.push(trimmed)
+                                      }
+                                    })
+
+                                    if (currentBuffer.length > 0) {
+                                      const desc = currentBuffer.join('\n').trim()
+                                      const descLower = desc.toLowerCase()
+                                      const isRed = descLower.includes('risk') || descLower.includes('fail') || descLower.includes('misconduct') || descLower.includes('misappropriation') || descLower.includes('poison') || descLower.includes('suspicious') || descLower.includes('contradict')
+                                      const isGreen = descLower.includes('compliance') || descLower.includes('natural justice') || descLower.includes('negative') || descLower.includes('favorable') || descLower.includes('support')
+                                      const isAmber = descLower.includes('pending') || descLower.includes('examination') || descLower.includes('medium')
+
+                                      cardItems.push({
+                                        id: `card_${doc.id}_${stepCount}`,
+                                        stepNumber: stepCount,
+                                        title: currentSection,
+                                        badgeText: `Point ${stepCount}`,
+                                        badgeColor: isRed ? 'red' : isGreen ? 'green' : isAmber ? 'amber' : 'blue',
+                                        description: desc,
+                                        icon: isRed ? '⚠️' : isGreen ? '✅' : '📋'
+                                      })
+                                    }
+
+                                    return cardItems.length > 0 ? cardItems : [
+                                      {
+                                        id: `card_${doc.id}_1`,
+                                        stepNumber: 1,
+                                        title: 'Evidence Summary',
+                                        badgeText: 'Summary',
+                                        badgeColor: 'blue',
+                                        description: String(rawText),
+                                        icon: '📄'
+                                      }
+                                    ]
+                                  })()}
+                                />
+                              </div>
+                            )}
+
+                            {/* Classic List View */}
+                            {evidenceResults[`mode_${doc.id}`] === 'list' && (
+                              <div style={{ lineHeight: 1.7, fontSize: 13, color: '#334155' }}>
+                                <AIResponseFormatter content={result} />
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

@@ -295,6 +295,11 @@ public class AIPipeline : IAIPipeline
             };
         }
 
+        if (taskType == "Chronology" || taskType == "Timeline")
+        {
+            return "Analysis/Chronology";
+        }
+
         if (taskType == "Analysis")
         {
             return "Analysis/LegalReasoning";

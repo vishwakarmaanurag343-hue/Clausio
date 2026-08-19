@@ -41,7 +41,7 @@ public class AiService : IAiService
         => _pipeline.ExecuteAsync(caseId, "Prepare a comprehensive case summary brief.", "Summarization", null, cancellationToken);
 
     public Task<string> GenerateChronologyAsync(Guid caseId, CancellationToken cancellationToken = default)
-        => _pipeline.ExecuteAsync(caseId, "Construct a comprehensive chronological timeline.", "Analysis", null, cancellationToken);
+        => _pipeline.ExecuteAsync(caseId, "Extract and construct a clear chronological timeline of all incidents, dates, times, and procedural steps.", "Chronology", null, cancellationToken);
 
     public Task<string> DetectContradictionsAsync(Guid caseId, CancellationToken cancellationToken = default)
         => _pipeline.ExecuteAsync(caseId, "Detect contradictions in the provided evidence and statements.", "Analysis", null, cancellationToken);

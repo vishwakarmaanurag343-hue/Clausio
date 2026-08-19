@@ -81,17 +81,28 @@ function ProbGrid({ favorable, partial, adverse }: { favorable: number; partial:
 // ── BULLET ITEM ───────────────────────────────────────────────────────
 function BulletItem({ text, color }: { text: string; color: 'green' | 'red' | 'amber' | 'blue' | 'purple' }) {
   const map = {
-    green:  { bg: '#f0fdf4', border: '#86efac', dot: '#16a34a' },
-    red:    { bg: '#fef2f2', border: '#fca5a5', dot: '#dc2626' },
-    amber:  { bg: '#fffbeb', border: '#fcd34d', dot: '#d97706' },
-    blue:   { bg: '#eff6ff', border: '#93c5fd', dot: '#2563eb' },
-    purple: { bg: '#eef2ff', border: '#a5b4fc', dot: '#4f46e5' },
+    green:  { bg: '#f0fdf4', border: '#bbf7d0', dot: '#16a34a', text: '#15803d', icon: 'ti-check', label: 'Favorable / Compliant' },
+    red:    { bg: '#fef2f2', border: '#fecaca', dot: '#dc2626', text: '#b91c1c', icon: 'ti-alert-triangle', label: 'Risk / Adverse Flag' },
+    amber:  { bg: '#fffbeb', border: '#fef3c7', dot: '#d97706', text: '#b45309', icon: 'ti-clock', label: 'Under Review / Pending' },
+    blue:   { bg: '#eff6ff', border: '#bfdbfe', dot: '#2563eb', text: '#1d4ed8', icon: 'ti-info-circle', label: 'Fact / Evidence' },
+    purple: { bg: '#f5f3ff', border: '#ddd6fe', dot: '#7c3aed', text: '#6d28d9', icon: 'ti-scale', label: 'Legal Statute' },
   }
   const c = map[color]
   return (
-    <div style={{ display: 'flex', gap: 10, padding: '10px 14px', borderRadius: 10, marginBottom: 8, border: `1.5px solid ${c.border}`, background: c.bg, alignItems: 'flex-start' }}>
-      <div style={{ width: 9, height: 9, borderRadius: '50%', background: c.dot, flexShrink: 0, marginTop: 5 }} />
-      <span style={{ fontSize: 13, lineHeight: 1.6, color: '#0f172a' }} dangerouslySetInnerHTML={{ __html: boldify(text) }} />
+    <div style={{
+      display: 'flex', flexDirection: 'column', gap: 6,
+      padding: '12px 16px', borderRadius: 12, marginBottom: 10,
+      border: `1.5px solid ${c.border}`, background: c.bg,
+      boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+      transition: 'all 0.15s ease-out'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: c.text }}>
+          <i className={`ti ${c.icon}`} style={{ fontSize: 13 }} />
+          <span>{c.label}</span>
+        </div>
+      </div>
+      <div style={{ fontSize: 13, lineHeight: 1.65, color: '#1e293b' }} dangerouslySetInnerHTML={{ __html: boldify(text) }} />
     </div>
   )
 }
@@ -179,15 +190,44 @@ function SectionDivider({ text }: { text: string }) {
 
 // ── HELPERS ───────────────────────────────────────────────────────────
 function boldify(text: string) {
-  return text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  if (!text) return ''
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<strong>$1</strong>')
+    .replace(/\*\*/g, '')
+    .replace(/^\*\s*/g, '')
 }
 
 function detectColor(text: string): 'green' | 'red' | 'amber' | 'blue' | 'purple' {
   const t = text.toLowerCase()
-  if (t.includes('strength') || t.includes('strong') || t.includes('favorable') || t.includes('support') || t.includes('good')) return 'green'
-  if (t.includes('risk') || t.includes('weak') || t.includes('danger') || t.includes('critical') || t.includes('adverse') || t.includes('fail')) return 'red'
-  if (t.includes('medium') || t.includes('moderate') || t.includes('consider') || t.includes('may')) return 'amber'
-  if (t.includes('judgment') || t.includes('court') || t.includes('section') || t.includes('article')) return 'purple'
+  // Adverse / Dangerous / Red Flags
+  if (
+    t.includes('chargesheet') || t.includes('misappropriation') || t.includes('misconduct') ||
+    t.includes('suspicious') || t.includes('unnatural death') || t.includes('positive') ||
+    t.includes('ketamine') || t.includes('poison') || t.includes('adverse') ||
+    t.includes('risk') || t.includes('weak') || t.includes('danger') || t.includes('critical') ||
+    t.includes('assault') || t.includes('dowry') || t.includes('default') || t.includes('fail') ||
+    t.includes('objected') || t.includes('congestion') || t.includes('edema')
+  ) return 'red'
+
+  // Favorable / Positive / Green Flags
+  if (
+    t.includes('negative for') || t.includes('negative') || t.includes('due compliance') ||
+    t.includes('natural justice') || t.includes('favorable') || t.includes('strength') ||
+    t.includes('strong') || t.includes('support') || t.includes('good') || t.includes('discharged') ||
+    t.includes('acquitted') || t.includes('valid') || t.includes('timely')
+  ) return 'green'
+
+  // Caution / Pending / Amber
+  if (
+    t.includes('interim') || t.includes('pending') || t.includes('medium') ||
+    t.includes('moderate') || t.includes('consider') || t.includes('may') ||
+    t.includes('fsl report') || t.includes('examination') || t.includes('call data')
+  ) return 'amber'
+
+  // Law / Section / Court / Purple
+  if (t.includes('section 174') || t.includes('section') || t.includes('crpc') || t.includes('ipc') || t.includes('hma') || t.includes('court')) return 'purple'
+
   return 'blue'
 }
 
@@ -203,9 +243,9 @@ function sectionIcon(title: string): string {
   const t = title.toLowerCase()
   if (t.includes('verdict') || t.includes('probability') || t.includes('outcome')) return '⚖️'
   if (t.includes('strength')) return '💪'
-  if (t.includes('risk') || t.includes('weak') || t.includes('danger')) return '⚠️'
+  if (t.includes('risk') || t.includes('weak') || t.includes('danger') || t.includes('misconduct')) return '⚠️'
   if (t.includes('action') || t.includes('step') || t.includes('task') || t.includes('plan')) return '✅'
-  if (t.includes('judgment') || t.includes('citation') || t.includes('case')) return '🔨'
+  if (t.includes('judgment') || t.includes('citation') || t.includes('case') || t.includes('vs') || t.includes('v.')) return '⚖️'
   if (t.includes('financial') || t.includes('income') || t.includes('mainten') || t.includes('money')) return '💰'
   if (t.includes('summary') || t.includes('overview') || t.includes('executive')) return '📄'
   if (t.includes('cross') || t.includes('witness') || t.includes('question')) return '❓'
@@ -221,7 +261,7 @@ function sectionBorder(title: string): string {
   if (t.includes('risk') || t.includes('weak') || t.includes('danger') || t.includes('adverse')) return '#fca5a5'
   if (t.includes('verdict') || t.includes('probability')) return '#818cf8'
   if (t.includes('financial') || t.includes('income') || t.includes('mainten')) return '#86efac'
-  if (t.includes('judgment') || t.includes('citation') || t.includes('research')) return '#818cf8'
+  if (t.includes('judgment') || t.includes('citation') || t.includes('research') || t.includes('vs') || t.includes('v.')) return '#c7d2fe'
   if (t.includes('action') || t.includes('step') || t.includes('plan')) return '#818cf8'
   if (t.includes('hearing') || t.includes('brief')) return '#fcd34d'
   return '#e2e8f0'
@@ -324,7 +364,7 @@ function renderBodyContent(body: string, sectionTitle: string): React.ReactNode 
         {items.map((line, idx) => {
           const m = line.match(/^(\d+)\.\s+(.+)/)
           if (!m) return null
-          const title = m[2]
+          const title = m[2].replace(/^[\*\-•]\s*/, '').trim()
           return <NumItem key={idx} num={parseInt(m[1])} title={title} priority={detectPriority(title)} />
         })}
       </>
@@ -336,7 +376,7 @@ function renderBodyContent(body: string, sectionTitle: string): React.ReactNode 
     return (
       <>
         {lines.filter(l => /^[-•*]/.test(l)).map((line, idx) => {
-          const text = line.replace(/^[-•*]\s+/, '')
+          const text = line.replace(/^[-•*]+\s*/, '').replace(/^\*\s*/, '').trim()
           return <BulletItem key={idx} text={text} color={detectColor(text)} />
         })}
       </>
@@ -448,6 +488,54 @@ function renderStructuredJSON(data: any): React.ReactNode {
             </FlashCard>
           )
         })}
+      </div>
+    )
+  }
+
+  // Generic object with DraftText / Markdown content
+  if (data.DraftText || data.draftText || data.Analysis || data.analysis || data.markdown) {
+    const markdownContent = data.DraftText || data.draftText || data.Analysis || data.analysis || data.markdown
+    return (
+      <div style={{ fontFamily: 'Inter,-apple-system,sans-serif', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* Top Badges for metadata if present */}
+        {(data.OverallRiskRating || data.overallRiskRating || data.TopRecommendation || data.topRecommendation) && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 4 }}>
+            {(data.OverallRiskRating || data.overallRiskRating) && (
+              <div style={{
+                background: (data.OverallRiskRating || data.overallRiskRating).toLowerCase().includes('high') ? '#fef2f2' : '#f0fdf4',
+                color: (data.OverallRiskRating || data.overallRiskRating).toLowerCase().includes('high') ? '#dc2626' : '#16a34a',
+                border: `1px solid ${(data.OverallRiskRating || data.overallRiskRating).toLowerCase().includes('high') ? '#fca5a5' : '#86efac'}`,
+                padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6
+              }}>
+                <i className="ti ti-shield-alert" /> Risk Rating: {data.OverallRiskRating || data.overallRiskRating}
+              </div>
+            )}
+            {(data.TopRecommendation || data.topRecommendation) && (
+              <div style={{
+                background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe',
+                padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, flex: 1, minWidth: 250, display: 'flex', alignItems: 'center', gap: 6
+              }}>
+                <i className="ti ti-bulb" /> <strong>Key Strategy:</strong> {data.TopRecommendation || data.topRecommendation}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Rich Markdown rendered sections */}
+        {parseMarkdownToFlashCards(String(markdownContent))}
+
+        {/* Citations used pill list */}
+        {Array.isArray(data.CitationsUsed || data.citationsUsed) && (data.CitationsUsed || data.citationsUsed).length > 0 && (
+          <FlashCard title="Applicable Citations & Statutes" icon="⚖️" badge={`${(data.CitationsUsed || data.citationsUsed).length} Cited`} badgeColor="purple" borderColor="#c7d2fe">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+              {(data.CitationsUsed || data.citationsUsed).map((c: string, i: number) => (
+                <span key={i} style={{ background: '#f5f3ff', color: '#6d28d9', border: '1px solid #ddd6fe', padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+                  § {c}
+                </span>
+              ))}
+            </div>
+          </FlashCard>
+        )}
       </div>
     )
   }

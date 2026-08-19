@@ -207,6 +207,29 @@ public class ContextEngine : IContextEngine
     public async Task<string> BuildAnalysisContextAsync(Guid caseId, string analysisType, CancellationToken cancellationToken = default)
     {
         var sb = new StringBuilder();
+
+        // 0. Check if the provided ID is actually a specific Document ID (e.g. Evidence analysis on a single file)
+        var singleDoc = _db.Documents.FirstOrDefault(d => d.Id == caseId);
+        if (singleDoc != null)
+        {
+            var parentCase = _db.Cases.FirstOrDefault(c => c.Id == singleDoc.CaseId);
+            if (parentCase != null)
+            {
+                sb.AppendLine("<case_context>");
+                sb.AppendLine($"Title: {parentCase.Name}");
+                sb.AppendLine($"Type: {parentCase.CaseType}");
+                sb.AppendLine($"Court: {parentCase.Court}");
+                sb.AppendLine("</case_context>");
+            }
+
+            sb.AppendLine("<retrieved_evidence>");
+            sb.AppendLine($"[Document Name: {singleDoc.FileName}]");
+            sb.AppendLine($"[Document Type: {singleDoc.DocumentType ?? "Exhibit"}]");
+            sb.AppendLine($"[Extracted Text Content]:\n{singleDoc.ExtractedText}");
+            sb.AppendLine("</retrieved_evidence>");
+
+            return await _contextRanker.ScoreRankAndCompressAsync(sb.ToString(), 1200);
+        }
         
         var caseMemory = await _memoryStore.GetCaseMemoryAsync(caseId, cancellationToken);
         if (caseMemory != null)

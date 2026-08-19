@@ -25,13 +25,14 @@ public class TokenRouterProvider : ILLMProvider
     {
         _logger = logger;
         _http = httpClient;
-        _apiKey = config["AI:Groq:ApiKey"] 
-               ?? config["AI:DeepProvider:ApiKey"] 
-               ?? throw new InvalidOperationException("AI:Groq:ApiKey missing");
+        _apiKey = config["AI:TokenRouter:ApiKey"]
+               ?? config["AI:DeepProvider:ApiKey"]
+               ?? config["AI:OpenRouter:ApiKey"]
+               ?? throw new InvalidOperationException("TokenRouter / DeepProvider API key missing");
         
-        _baseUrl = config["AI:Groq:BaseUrl"] 
-                ?? config["AI:DeepProvider:BaseUrl"] 
-                ?? "https://api.groq.com/openai/v1";
+        _baseUrl = config["AI:TokenRouter:BaseUrl"]
+                ?? config["AI:DeepProvider:BaseUrl"]
+                ?? "https://openrouter.ai/api/v1";
         
         _http.DefaultRequestHeaders.Add("User-Agent", "ClausioLegalAI/1.0");
         _http.Timeout = TimeSpan.FromSeconds(180);

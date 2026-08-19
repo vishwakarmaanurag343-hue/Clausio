@@ -73,16 +73,17 @@ export default function DocumentsPage() {
   }, {} as Record<string, number>)
 
   return (
-    <div style={{ padding: 24, maxWidth: 1100, margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
+    <div className="glass-panel mobile-client-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: 'calc(100vh - 32px)', overflowY: 'auto', margin: '16px', padding: '24px 32px', borderRadius: 24 }}>
+      <div style={{ maxWidth: 1200, width: '100%', margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
 
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px' }}>Documents</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>
-            {documents.length} documents · AI classified by type
-          </p>
-        </div>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px' }}>Documents</h1>
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>
+              {documents.length} documents · AI classified by type
+            </p>
+          </div>
         <label style={{ padding: '10px 18px', borderRadius: 10, background: '#2563eb', color: '#fff', cursor: uploading ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, opacity: uploading ? 0.7 : 1 }}>
           <i className="ti ti-upload" style={{ fontSize: 14 }} />
           {uploading ? 'Uploading...' : 'Upload Document'}
@@ -205,6 +206,7 @@ export default function DocumentsPage() {
           </div>
         </>
       )}
+      </div>
     </div>
   )
 }
