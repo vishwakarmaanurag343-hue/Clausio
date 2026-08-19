@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useCaseStore } from '@/lib/store'
-import { documentsApi, timelineApi, aiApi, parseAiJson } from '@/lib/api'
+import { documentsApi, timelineApi, aiApi, casesApi, parseAiJson } from '@/lib/api'
 import type { CaseSummaryResponse } from '@/types/AIResponse'
 import AIResponseFormatter from '@/components/common/AIResponseFormatter'
 import FlashCard from '@/components/common/FlashCard'
@@ -37,6 +37,19 @@ export default function AnalysisPage() {
   const [evidenceLoading, setEvidenceLoading] = useState<Record<string, boolean>>({})
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Auto-select first case if none selected
+  useEffect(() => {
+    if (selectedCaseId) return
+    casesApi.getAll()
+      .then(cases => {
+        if (Array.isArray(cases) && cases.length > 0) {
+          const first = cases[0]
+          useCaseStore.getState().setSelectedCase(first.id, first.name || first.caseNumber || 'Active Case')
+        }
+      })
+      .catch(() => {})
+  }, [selectedCaseId])
 
   // Load existing documents, timeline, and summary on case select
   const loadCaseData = useCallback(async () => {
