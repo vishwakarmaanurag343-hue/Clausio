@@ -364,13 +364,22 @@ Respondent: Rajesh Sharma, Age 35, Residing at Bandra West, Mumbai
                   <i className="ti ti-calendar-event" style={{ fontSize: 36, color: '#cbd5e1' }} />
                   <div>
                     <p style={{ fontSize: 14, fontWeight: 600, color: '#1e293b', margin: 0 }}>No chronology generated yet.</p>
-                    <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>Upload case documents or petition text to build an automatic legal timeline.</p>
+                    <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>
+                      {documents.length > 0 
+                        ? `You have ${documents.length} document(s) uploaded. Click below to generate an automatic timeline.` 
+                        : 'Upload case documents or petition text to build an automatic legal timeline.'}
+                    </p>
                   </div>
                   <button
-                    onClick={() => setShowUploadModal(true)}
-                    style={{ background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                    disabled={analyzing}
+                    onClick={() => {
+                      if (documents.length > 0) handleRunAnalysis()
+                      else setShowUploadModal(true)
+                    }}
+                    style={{ background: analyzing ? '#94a3b8' : '#2563eb', color: '#fff', border: 'none', padding: '9px 18px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: analyzing ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
                   >
-                    Upload & Run Chronology
+                    {analyzing ? <i className="ti ti-loader animate-spin" /> : <i className="ti ti-sparkles" />}
+                    {analyzing ? 'Analyzing...' : documents.length > 0 ? `Generate Chronology (${documents.length} docs)` : 'Upload & Generate Chronology'}
                   </button>
                 </div>
               )}
@@ -418,13 +427,22 @@ Respondent: Rajesh Sharma, Age 35, Residing at Bandra West, Mumbai
                   <i className="ti ti-notes" style={{ fontSize: 36, color: '#cbd5e1' }} />
                   <div>
                     <p style={{ fontSize: 14, fontWeight: 600, color: '#1e293b', margin: 0 }}>No case summary generated yet.</p>
-                    <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>Run analysis on your case files to synthesize core facts, strengths, and risks.</p>
+                    <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>
+                      {documents.length > 0 
+                        ? `You have ${documents.length} document(s) uploaded. Click below to synthesize core facts, strengths, and risks.` 
+                        : 'Run analysis on your case files to synthesize core facts, strengths, and risks.'}
+                    </p>
                   </div>
                   <button
-                    onClick={() => setShowUploadModal(true)}
-                    style={{ background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                    disabled={analyzing}
+                    onClick={() => {
+                      if (documents.length > 0) handleRunAnalysis()
+                      else setShowUploadModal(true)
+                    }}
+                    style={{ background: analyzing ? '#94a3b8' : '#2563eb', color: '#fff', border: 'none', padding: '9px 18px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: analyzing ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
                   >
-                    Run Case Summary
+                    {analyzing ? <i className="ti ti-loader animate-spin" /> : <i className="ti ti-notes" />}
+                    {analyzing ? 'Analyzing...' : documents.length > 0 ? `Generate Case Summary (${documents.length} docs)` : 'Upload & Generate Summary'}
                   </button>
                 </div>
               )}

@@ -266,6 +266,6 @@ public class ContextEngine : IContextEngine
             }
         }
 
-        return await _contextRanker.ScoreRankAndCompressAsync(sb.ToString(), 2000);
+        return await _contextRanker.ScoreRankAndCompressAsync(sb.ToString(), 1200);
     }
 }
