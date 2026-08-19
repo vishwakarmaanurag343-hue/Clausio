@@ -142,7 +142,7 @@ export default function MaintenanceRange({ analysis, rawText, loading, caseId, c
                 <i className="ti ti-gavel" style={{ color: '#15803d' }} />
                 <span style={{ fontWeight: 700, color: '#15803d', fontSize: 12 }}>Court Argument</span>
               </div>
-              <div style={{ fontSize: 12, color: '#14532d', lineHeight: 1.8, lineHeight: 1.7 }}>{analysis.courtArgument}</div>
+              <div style={{ fontSize: 12, color: '#14532d', lineHeight: 1.7 }}>{analysis.courtArgument}</div>
             </div>
           )}
 
@@ -158,7 +158,7 @@ export default function MaintenanceRange({ analysis, rawText, loading, caseId, c
                   <i className={`ti ${copied ? 'ti-check' : 'ti-copy'}`} />{copied ? 'Copied!' : 'Copy'}
                 </button>
               </div>
-              <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.7, lineHeight: 1.7, maxHeight: 280, overflowY: 'auto' }}>{draft}</div>
+              <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.7, maxHeight: 280, overflowY: 'auto' }}>{draft}</div>
             </div>
           )}
 

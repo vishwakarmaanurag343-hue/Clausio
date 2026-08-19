@@ -159,7 +159,7 @@ export default function TaxDemandCalculator({ caseType, caseId }: Props) {
                       <i className={`ti ${copied ? 'ti-check' : 'ti-copy'}`} />{copied ? 'Copied!' : 'Copy'}
                     </button>
                   </div>
-                  <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.7, lineHeight: 1.7, maxHeight: 300, overflowY: 'auto' }}>{draft}</div>
+                  <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.7, maxHeight: 300, overflowY: 'auto' }}>{draft}</div>
                 </div>
               )}
 

@@ -218,11 +218,11 @@ export const hearingsApi = {
 export const documentsApi = {
   getByCaseId: (caseId: string) => get(`/cases/${caseId}/documents`, 'Failed to fetch documents'),
 
-  upload: async (caseId: string, file: File, documentType: string, exhibitLabel?: string) => {
+  upload: async (caseId: string, file: File, documentType: string = 'Document', exhibitLabel?: string) => {
     const token = getToken()
     const formData = new FormData()
     formData.append('file', file)
-    formData.append('documentType', documentType)
+    formData.append('documentType', documentType || 'Document')
     if (exhibitLabel) formData.append('exhibitLabel', exhibitLabel)
 
     const res = await fetch(`${BASE}/cases/${caseId}/documents`, {
