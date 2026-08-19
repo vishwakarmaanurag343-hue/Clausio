@@ -6,6 +6,7 @@ import { useCaseStore, useUIStore } from '@/lib/store'
 import { aiApi, casesApi, BASE } from '@/lib/api'
 import ReactMarkdown from 'react-markdown'
 import CitationPanel from './CitationPanel'
+import AIResponseFormatter from '@/components/common/AIResponseFormatter'
 
 export default function AIInsights() {
   const router = useRouter()
@@ -918,43 +919,20 @@ export default function AIInsights() {
                     </div>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '0 4px', maxWidth: '90%' }}>
-                    <div style={{ width: 22, height: 22, borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid rgba(0,0,0,0.1)', marginTop: 2 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '0 4px', maxWidth: '95%' }}>
+                    <div style={{ width: 24, height: 24, borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid rgba(0,0,0,0.1)', marginTop: 2 }}>
                       <video src="/aivideo.mp4" autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scale(1.8)' }} />
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <div className="prose prose-sm prose-slate max-w-none" style={{ fontSize: 12, color: '#0f172a', lineHeight: 1.6, margin: 0, fontWeight: 500 }}>
-                        <ReactMarkdown 
-                          components={{
-                            a: ({ node, ...props }) => {
-                              // Style citations as pills
-                              const citationText = props.children?.toString() || ''
-                              const isCitation = props.href?.startsWith('#') || citationText.includes('Section') || citationText.includes('Act') || citationText.includes('Clause') || citationText.includes('Article')
-                              if (isCitation) {
-                                return (
-                                  <span 
-                                    onClick={() => {
-                                      setCitationTitle(citationText)
-                                      setCitationContent(`This is the verified source text for ${citationText}. In a production environment, this text would be fetched directly from the case documents or legal databases via an API call using the citation reference.`)
-                                      setCitationOpen(true)
-                                    }}
-                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#f1f5f9', color: '#3b82f6', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: '1px solid #cbd5e1', transition: 'background 0.2s' }}
-                                    onMouseEnter={e => e.currentTarget.style.background = '#e2e8f0'}
-                                    onMouseLeave={e => e.currentTarget.style.background = '#f1f5f9'}
-                                  >
-                                    <i className="ti ti-book" style={{ fontSize: 12 }} />
-                                    {props.children}
-                                  </span>
-                                )
-                              }
-                              return <a {...props} style={{ color: '#3b82f6', textDecoration: 'none', fontWeight: 600 }} />
-                            }
-                          }}
-                        >
-                          {msg.content}
-                        </ReactMarkdown>
-                        {msg.isStreaming && <span className="animate-pulse">...</span>}
-                      </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <AIResponseFormatter 
+                        content={msg.content} 
+                        citationCallback={(title, text) => {
+                          setCitationTitle(title)
+                          setCitationContent(text)
+                          setCitationOpen(true)
+                        }} 
+                      />
+                      {msg.isStreaming && <span className="animate-pulse" style={{ color: '#2563eb', fontWeight: 700, marginLeft: 4 }}>...</span>}
                     </div>
                   </div>
                 )}

@@ -1,3 +1,4 @@
+import AIResponseFormatter from '@/components/common/AIResponseFormatter'
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'

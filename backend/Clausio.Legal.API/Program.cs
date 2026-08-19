@@ -169,6 +169,8 @@ builder.Services.AddScoped<ITimelineService, TimelineService>();
 builder.Services.AddScoped<IReadinessService, ReadinessService>();
 builder.Services.AddScoped<IStatsService, StatsService>();
 builder.Services.AddScoped<IAiService, AiService>();
+builder.Services.AddScoped<Clausio.Legal.Service.DocumentClassifierService>();
+builder.Services.AddScoped<Clausio.Legal.Service.JudgmentSearchService>();
 
 // JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -193,6 +195,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 builder.Services.AddAuthorization();
+builder.Services.AddScoped<Clausio.Legal.Service.Seeding.JudgmentSeeder>();
 
 builder.Services.AddCors(options =>
 {
@@ -214,6 +217,7 @@ app.UseMiddleware<RequestIdMiddleware>();
 app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseMiddleware<RateLimitingMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
+app.UseMiddleware<AuditMiddleware>();
 
 app.UseSwagger();
 app.UseSwaggerUI(c =>
@@ -247,5 +251,11 @@ catch (Exception ex)
     var logger = app.Services.GetService<ILogger<Program>>();
     logger?.LogWarning(ex, "Database migration on startup skipped or failed: {Message}", ex.Message);
 }
+// Seed judgments in background
+_ = Task.Run(async () => {
+    using var scope = app.Services.CreateScope();
+    var seeder = scope.ServiceProvider.GetRequiredService<Clausio.Legal.Service.Seeding.JudgmentSeeder>();
+    await seeder.SeedAsync();
+});
 
 app.Run();

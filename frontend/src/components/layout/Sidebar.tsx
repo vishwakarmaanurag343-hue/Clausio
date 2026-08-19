@@ -36,6 +36,11 @@ const NAV = [
         label: 'Strategy',
       },
       {
+        href: '/documents',
+        icon: 'ti-files',
+        label: 'Documents',
+      },
+      {
         href: '/client',
         icon: 'ti-message-circle',
         label: 'Client',

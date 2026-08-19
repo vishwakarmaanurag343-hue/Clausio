@@ -13,6 +13,7 @@ using Clausio.Legal.Core.Interfaces.AI.Security;
 using Clausio.Legal.Core.Interfaces.Memory;
 using Clausio.Legal.Service.Security;
 using Microsoft.Extensions.Logging;
+using Clausio.Legal.Service;
 
 namespace Clausio.Legal.Service.AI.Pipeline;
 
@@ -31,6 +32,7 @@ public class AIPipeline : IAIPipeline
     private readonly Clausio.MCP.Registry.AiCapabilityRegistry _capabilityRegistry;
     private readonly IPiiTokenService _piiTokenService;
     private readonly ILogger<AIPipeline> _logger;
+    private readonly JudgmentSearchService _judgmentSearch;
 
     public AIPipeline(
         IContextEngine contextEngine,
@@ -45,7 +47,8 @@ public class AIPipeline : IAIPipeline
         Clausio.MCP.Planners.CapabilityPlanner capabilityPlanner,
         Clausio.MCP.Registry.AiCapabilityRegistry capabilityRegistry,
         IPiiTokenService piiTokenService,
-        ILogger<AIPipeline> logger)
+        ILogger<AIPipeline> logger,
+        JudgmentSearchService judgmentSearch)
     {
         _contextEngine = contextEngine;
         _promptBuilder = promptBuilder;
@@ -60,6 +63,7 @@ public class AIPipeline : IAIPipeline
         _capabilityRegistry = capabilityRegistry;
         _piiTokenService = piiTokenService;
         _logger = logger;
+        _judgmentSearch = judgmentSearch;
     }
 
     public async Task<string> ExecuteAsync(Guid caseId, string userInput, string taskType, Dictionary<string, object>? parameters = null, CancellationToken cancellationToken = default)
@@ -94,7 +98,22 @@ public class AIPipeline : IAIPipeline
         var tokenizedContextXml = await _piiTokenService.TokenizeAsync(contextXml, caseId, cancellationToken);
         var tokenizedUserInput = await _piiTokenService.TokenizeAsync(userInput, caseId, cancellationToken);
 
-        context.CaseMemoryXml = tokenizedContextXml;
+        // === STEP 2.8: RAG — Search 136K SC Judgments ===
+        var judgmentChunks = await _judgmentSearch.SearchAsync(userInput, topK: 2, cancellationToken);
+        var judgmentContext = "";
+        if (judgmentChunks.Any())
+        {
+            judgmentContext = "\n\n=== RELEVANT SUPREME COURT JUDGMENTS (Verified) ===\n" +
+                string.Join("\n---\n", judgmentChunks.Select(c => string.Join(" ", c.Split(" ").Take(300)))) +
+                "\n=== END OF JUDGMENTS ===";
+            _logger.LogInformation("[Pipeline] RAG found {Count} judgment chunks", judgmentChunks.Count);
+        }
+        else
+        {
+            _logger.LogInformation("[Pipeline] RAG found no judgments — using direct AI");
+        }
+        var enrichedContext = tokenizedContextXml + judgmentContext;
+        context.CaseMemoryXml = enrichedContext;
         _logger.LogInformation("[Pipeline] Context assembled and PII tokenized. Size={Chars} chars", context.CaseMemoryXml.Length);
 
         // === STEP 3: Prompt Builder ===

@@ -25,11 +25,16 @@ public class OpenRouterProvider : ILLMProvider
     {
         _logger = logger;
         _http = httpClient;
-        _apiKey = config["AI:FastProvider:ApiKey"] ?? throw new InvalidOperationException("AI:FastProvider:ApiKey missing");
-        _baseUrl = config["AI:FastProvider:BaseUrl"] ?? "https://openrouter.ai/api/v1";
+        _apiKey = config["AI:Groq:ApiKey"] 
+               ?? config["AI:FastProvider:ApiKey"] 
+               ?? throw new InvalidOperationException("AI:Groq:ApiKey missing");
+        
+        _baseUrl = config["AI:Groq:BaseUrl"] 
+                ?? config["AI:FastProvider:BaseUrl"] 
+                ?? "https://api.groq.com/openai/v1";
         
         _http.DefaultRequestHeaders.Add("User-Agent", "ClausioLegalAI/1.0");
-        _http.Timeout = TimeSpan.FromSeconds(60); // Fast models shouldn't take more than a minute
+        _http.Timeout = TimeSpan.FromSeconds(60);
     }
 
     public async Task<string> CompleteAsync(string model, string systemPrompt, string userPrompt, CancellationToken cancellationToken = default)

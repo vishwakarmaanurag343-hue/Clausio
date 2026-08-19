@@ -37,6 +37,12 @@ public class DocumentsController(IDocumentService documentService) : ControllerB
         await using var stream = file.OpenReadStream();
         var document = await documentService.UploadAsync(
             caseId, file.FileName, file.ContentType, documentType, exhibitLabel, stream, file.Length, cancellationToken);
+        _ = Task.Run(async () =>
+        {
+            using var scope = HttpContext.RequestServices.CreateScope();
+            var classifier = scope.ServiceProvider.GetRequiredService<Clausio.Legal.Service.DocumentClassifierService>();
+            await classifier.ClassifyDocumentAsync(document.Id);
+        });
         return Ok(document);
     }
 

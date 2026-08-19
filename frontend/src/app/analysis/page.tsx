@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useCaseStore } from '@/lib/store'
 import { documentsApi, timelineApi, aiApi, parseAiJson } from '@/lib/api'
 import type { CaseSummaryResponse } from '@/types/AIResponse'
+import AIResponseFormatter from '@/components/common/AIResponseFormatter'
+import FlashCard from '@/components/common/FlashCard'
 
 type AnalysisStatus = 'idle' | 'uploading' | 'completed'
 
@@ -410,7 +412,9 @@ export default function AnalysisPage() {
               {activeTab === 'chronology' && (
                 <div style={{ flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
                   {timeline.length === 0 && chronologyRaw && (
-                    <div style={{ padding: 16, fontSize: 12, color: '#334155', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{chronologyRaw}</div>
+                    <div style={{ padding: 14 }}>
+                      <AIResponseFormatter content={chronologyRaw} />
+                    </div>
                   )}
                   {timeline.length === 0 && !chronologyRaw && (
                     <div style={{ padding: 30, textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>No chronology events yet.</div>
@@ -459,7 +463,9 @@ export default function AnalysisPage() {
                   )}
 
                   {!summary && summaryRaw && (
-                    <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{summaryRaw}</div>
+                    <div style={{ padding: 4 }}>
+                      <AIResponseFormatter content={summaryRaw} />
+                    </div>
                   )}
 
                   {summary && (
@@ -530,7 +536,7 @@ export default function AnalysisPage() {
                               <p style={{ fontSize: 9, color: '#7c3aed', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, marginBottom: 2 }}>
                                 <i className="ti ti-brain" /> AI Evidence Insight
                               </p>
-                              <p style={{ fontSize: 10, color: '#475569', lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>{evidenceResults[doc.id]}</p>
+                              <AIResponseFormatter content={evidenceResults[doc.id]} />
                             </div>
                           )}
                         </div>

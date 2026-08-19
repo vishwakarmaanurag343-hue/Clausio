@@ -3,6 +3,7 @@ using System;
 using Clausio.Legal.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -12,9 +13,11 @@ using Pgvector;
 namespace Clausio.Legal.Infrastructure.Migrations
 {
     [DbContext(typeof(ClausioDbContext))]
-    partial class ClausioDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260817145316_AddRefreshTokensAndAuthEnhancements")]
+    partial class AddRefreshTokensAndAuthEnhancements
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -129,60 +132,6 @@ namespace Clausio.Legal.Infrastructure.Migrations
                     b.HasIndex("CaseId");
 
                     b.ToTable("ActionPlans");
-                });
-
-            modelBuilder.Entity("Clausio.Legal.Core.Entities.AuditLog", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<long?>("Duration")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("EntityId")
-                        .HasColumnType("text");
-
-                    b.Property<string>("EntityType")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ErrorMessage")
-                        .HasColumnType("text");
-
-                    b.Property<string>("IpAddress")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Method")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Path")
-                        .HasColumnType("text");
-
-                    b.Property<int?>("StatusCode")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("UserAgent")
-                        .HasColumnType("text");
-
-                    b.Property<string>("UserEmail")
-                        .HasColumnType("text");
-
-                    b.Property<Guid?>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("UserRole")
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("AuditLogs");
                 });
 
             modelBuilder.Entity("Clausio.Legal.Core.Entities.Case", b =>
@@ -369,15 +318,6 @@ namespace Clausio.Legal.Infrastructure.Migrations
 
                     b.Property<Guid>("CaseId")
                         .HasColumnType("uuid");
-
-                    b.Property<string>("Category")
-                        .HasColumnType("text");
-
-                    b.Property<int>("CategoryConfidence")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("CategoryDescription")
-                        .HasColumnType("text");
 
                     b.Property<string>("ContentType")
                         .HasColumnType("text");
@@ -663,48 +603,6 @@ namespace Clausio.Legal.Infrastructure.Migrations
                     b.HasIndex("ClientId");
 
                     b.ToTable("Invoices");
-                });
-
-            modelBuilder.Entity("Clausio.Legal.Core.Entities.Judgment", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("CaseType")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Citation")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Court")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("FullText")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsVerified")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("RatioDecidendi")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ShortName")
-                        .HasColumnType("text");
-
-                    b.Property<string>("SourceUrl")
-                        .HasColumnType("text");
-
-                    b.Property<int?>("Year")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Judgments");
                 });
 
             modelBuilder.Entity("Clausio.Legal.Core.Entities.LegalResearch", b =>

@@ -10,6 +10,9 @@ public class ClausioDbContext(DbContextOptions<ClausioDbContext> options) : DbCo
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<Case> Cases => Set<Case>();
+    public DbSet<AuditLog> AuditLogs { get; set; }
+    public DbSet<Judgment> Judgments => Set<Judgment>();
+    public DbSet<JudgmentChunk> JudgmentChunks => Set<JudgmentChunk>();
 
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<Payment> Payments => Set<Payment>();

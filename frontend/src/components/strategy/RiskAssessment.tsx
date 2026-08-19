@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useCaseStore } from '@/lib/store'
 import { aiApi, parseAiJson } from '@/lib/api'
+import AIResponseFormatter from '@/components/common/AIResponseFormatter'
 
 export default function RiskAssessment() {
   const { selectedCaseId } = useCaseStore()
@@ -80,25 +81,11 @@ export default function RiskAssessment() {
         </div>
       )}
 
-      {/* Raw text fallback */}
+      {/* Raw text fallback rendered as FlashCards */}
       {!loading && !error && rawText && !data && (
-        <>
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontWeight: 600, color: '#334155', marginBottom: 12, fontSize: 13 }}>Verdict Probability</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
-              <ScoreCard color="#22c55e" value="—" title="Favorable" />
-              <ScoreCard color="#f59e0b" value="—" title="Partial"   />
-              <ScoreCard color="#ef4444" value="—" title="Adverse"   />
-            </div>
-          </div>
-          <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <i className="ti ti-sparkles" style={{ color: '#2563eb' }} />
-              <span style={{ fontWeight: 700, color: '#2563eb', fontSize: 13 }}>AI Analysis</span>
-            </div>
-            <p style={{ margin: 0, fontSize: 13, color: '#334155', lineHeight: 1.8, whiteSpace: 'pre-line' }}>{rawText}</p>
-          </div>
-        </>
+        <div style={{ marginTop: 12 }}>
+          <AIResponseFormatter content={rawText} />
+        </div>
       )}
 
       {/* Structured JSON data */}

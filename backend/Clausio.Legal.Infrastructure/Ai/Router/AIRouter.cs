@@ -32,7 +32,7 @@ public class AIRouter : IAIRouter
         _fastProvider = fastProvider;
         _logger = logger;
 
-        _deepModel = config["AI:DeepProvider:ModelId"] ?? "google/gemma-2-9b-it:free";
+        _deepModel = config["AI:Groq:DeepModel"] ?? config["AI:DeepProvider:ModelId"] ?? "openai/gpt-oss-120b";
         var modelsSection = config.GetSection("AI:FastProvider:FallbackModels")
             .GetChildren()
             .Select(c => c.Value)
@@ -48,10 +48,9 @@ public class AIRouter : IAIRouter
         {
             _fastModels = new[]
             {
-                "google/gemma-2-9b-it:free",
-                "mistralai/mistral-7b-instruct:free",
-                "qwen/qwen-2.5-coder-32b-instruct:free",
-                "meta-llama/llama-3.1-8b-instruct:free"
+                config["AI:Groq:FastModel"] ?? "openai/gpt-oss-120b",
+                "openai/gpt-oss-20b",
+                "qwen/qwen3.6-27b"
             };
         }
 
@@ -109,6 +108,11 @@ public class AIRouter : IAIRouter
             catch (Exception ex)
             {
                 _logger.LogWarning("[Router:Complete] Model {Model} failed ({Error}). Trying next fallback model...", model, ex.Message);
+                if (ex.Message.Contains("429") || ex.Message.Contains("TooManyRequests") || ex.Message.Contains("rate_limit"))
+                {
+                    _logger.LogInformation("[Router] Rate limited — waiting 25 seconds...");
+                    await Task.Delay(25000, cancellationToken);
+                }
             }
         }
 

@@ -16,10 +16,16 @@ services:
       ConnectionStrings__Default: Host=database-1.cd2o4g4yqiiy.ap-south-1.rds.amazonaws.com;Port=5432;Database=clausio_db;Username=postgres;Password=${RDS_PASSWORD}
       AWS__Region: ap-south-1
       AWS__S3BucketName: clausio-files-prod
-      AWS__SQSQueueUrl: https://sqs.ap-south-1.amazonaws.com/449513325212/clausio-ai-jobs
       Jwt__Secret: ${JWT_SECRET}
       Jwt__Issuer: Clausio
       Jwt__Audience: ClausioClients
+      AI__Groq__ApiKey: ${GROQ_API_KEY:-YOUR_GROQ_API_KEY_HERE}
+      AI__DeepProvider__ApiKey: ${GROQ_API_KEY:-YOUR_GROQ_API_KEY_HERE}
+      AI__DeepProvider__BaseUrl: https://api.groq.com/openai/v1
+      AI__DeepProvider__ModelId: llama-3.3-70b-versatile
+      AI__FastProvider__ApiKey: ${GROQ_API_KEY:-YOUR_GROQ_API_KEY_HERE}
+      AI__FastProvider__BaseUrl: https://api.groq.com/openai/v1
+      AI__FastProvider__ModelId: llama-3.3-70b-versatile
 
   # 3. Next.js 14 Web Frontend
   frontend:

@@ -1,3 +1,4 @@
+import AIResponseFormatter from '@/components/common/AIResponseFormatter'
 'use client'
 
 interface Props { analysis: any; rawText: string; loading: boolean; onAnalyse: () => void; caseType?: string }
@@ -118,7 +119,7 @@ export default function IncomeReality({ analysis, rawText, loading, onAnalyse, c
               <i className="ti ti-sparkles" style={{ color: '#2563eb' }} />
               <span style={{ fontWeight: 700, color: '#2563eb', fontSize: 12 }}>AI Financial Summary</span>
             </div>
-            <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
+            <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.8, lineHeight: 1.7 }}>
               {analysis?.summary ?? rawText?.slice(0, 500) ?? 'No summary available.'}
             </div>
           </div>
