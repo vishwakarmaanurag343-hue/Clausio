@@ -78,18 +78,19 @@ export default function AnalysisPage() {
     loadCaseData()
   }, [loadCaseData])
 
-  // Run evidence analysis for any document that doesn't have a result yet
-  useEffect(() => {
-    if (activeTab !== 'evidence') return
-    documents.forEach(doc => {
-      if (evidenceResults[doc.id] || evidenceLoading[doc.id]) return
-      setEvidenceLoading(prev => ({ ...prev, [doc.id]: true }))
-      aiApi.getEvidence(doc.id)
-        .then(res => setEvidenceResults(prev => ({ ...prev, [doc.id]: res.result })))
-        .catch(err => setEvidenceResults(prev => ({ ...prev, [doc.id]: `Error: ${err.message}` })))
-        .finally(() => setEvidenceLoading(prev => ({ ...prev, [doc.id]: false })))
-    })
-  }, [activeTab, documents, evidenceLoading, evidenceResults])
+  // On-demand analysis for a single document
+  const handleAnalyzeDocument = async (docId: string) => {
+    if (evidenceLoading[docId]) return
+    setEvidenceLoading(prev => ({ ...prev, [docId]: true }))
+    try {
+      const res = await aiApi.getEvidence(docId)
+      setEvidenceResults(prev => ({ ...prev, [docId]: res.result }))
+    } catch (err: any) {
+      setEvidenceResults(prev => ({ ...prev, [docId]: `Error: ${err.message || 'Failed to analyze evidence.'}` }))
+    } finally {
+      setEvidenceLoading(prev => ({ ...prev, [docId]: false }))
+    }
+  }
 
   const handleRunAnalysis = useCallback(async () => {
     if (!selectedCaseId) { setError('Please select a case from the top dropdown first.'); return }
@@ -431,35 +432,80 @@ Respondent: Rajesh Sharma, Age 35, Residing at Bandra West, Mumbai
               )}
 
               {documents.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>AI evidentiary analysis for <strong style={{ color: '#0f172a' }}>{documents.length} document(s)</strong>:</p>
-                  {documents.map((doc) => (
-                    <div key={doc.id} style={{ display: 'flex', flexDirection: 'column', border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                        <i className="ti ti-file-text" style={{ fontSize: 14, color: '#64748b' }} />
-                        <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{doc.fileName}</span>
-                        <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: '#f1f5f9', color: '#64748b' }}>{doc.documentType || 'Document'}</span>
-                        <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: '#dcfce7', color: '#15803d', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 'auto' }}>
-                          <i className="ti ti-scan" style={{ fontSize: 11 }} /> OCR Ingested
-                        </span>
-                      </div>
-                      <div style={{ padding: '10px 14px' }}>
-                        {evidenceLoading[doc.id] && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#2563eb', fontSize: 12 }}>
-                            <i className="ti ti-loader animate-spin" /> Analysing evidentiary impact...
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
+                      Uploaded Case Exhibits & Documents (<strong style={{ color: '#0f172a' }}>{documents.length}</strong>). Click <strong>"Analyze Evidence"</strong> on any document to evaluate its legal weight:
+                    </p>
+                  </div>
+
+                  {documents.map((doc) => {
+                    const isLoading = evidenceLoading[doc.id]
+                    const result = evidenceResults[doc.id]
+                    return (
+                      <div key={doc.id} style={{ display: 'flex', flexDirection: 'column', border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                            <i className="ti ti-file-text" style={{ fontSize: 16, color: '#2563eb' }} />
+                            <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.fileName}</span>
+                            <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, background: '#f1f5f9', color: '#475569', fontWeight: 500 }}>{doc.documentType || 'Exhibit / Document'}</span>
+                            <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, background: '#dcfce7', color: '#15803d', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                              <i className="ti ti-check" style={{ fontSize: 11 }} /> Ingested
+                            </span>
+                          </div>
+
+                          <button
+                            disabled={isLoading}
+                            onClick={() => handleAnalyzeDocument(doc.id)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 6,
+                              padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                              background: result ? '#f8fafc' : '#2563eb',
+                              color: result ? '#475569' : '#fff',
+                              border: result ? '1px solid #cbd5e1' : 'none',
+                              cursor: isLoading ? 'not-allowed' : 'pointer',
+                              boxShadow: result ? 'none' : '0 2px 6px rgba(37,99,235,0.25)',
+                              transition: 'all 0.15s'
+                            }}
+                          >
+                            {isLoading ? (
+                              <>
+                                <i className="ti ti-loader animate-spin" style={{ fontSize: 13 }} />
+                                Analyzing...
+                              </>
+                            ) : result ? (
+                              <>
+                                <i className="ti ti-refresh" style={{ fontSize: 13 }} />
+                                Re-analyze
+                              </>
+                            ) : (
+                              <>
+                                <i className="ti ti-brain" style={{ fontSize: 13 }} />
+                                Analyze Evidence
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Analysis Output Section */}
+                        {isLoading && (
+                          <div style={{ padding: '16px 14px', display: 'flex', alignItems: 'center', gap: 10, color: '#2563eb', fontSize: 12, background: '#f8fafc' }}>
+                            <i className="ti ti-loader animate-spin" style={{ fontSize: 16 }} />
+                            <span>Clausio Legal AI is evaluating facts, credibility, and evidentiary admissibility for <strong>{doc.fileName}</strong>...</span>
                           </div>
                         )}
-                        {!evidenceLoading[doc.id] && evidenceResults[doc.id] && (
-                          <div style={{ background: '#faf5ff', border: '1px solid #f3e8ff', borderRadius: 8, padding: '10px 12px' }}>
-                            <p style={{ fontSize: 10, color: '#7c3aed', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, margin: '0 0 6px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                              <i className="ti ti-brain" /> Legal Evidentiary Assessment
+
+                        {!isLoading && result && (
+                          <div style={{ padding: '14px', background: '#faf5ff' }}>
+                            <p style={{ fontSize: 10, color: '#7c3aed', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5, margin: '0 0 8px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              <i className="ti ti-shield-check" /> Legal Evidentiary Assessment
                             </p>
-                            <AIResponseFormatter content={evidenceResults[doc.id]} />
+                            <AIResponseFormatter content={result} />
                           </div>
                         )}
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
