@@ -6,21 +6,18 @@ import { useUIStore, useCaseStore } from '@/lib/store'
 import { authApi, casesApi, hearingsApi, documentsApi, actionPlansApi } from '@/lib/api'
 import CaseList from '@/components/cases/CaseList'
 import AIInsights from '@/components/dashboard/AIInsights'
+import ScheduleMeetingModal from '@/components/dashboard/ScheduleMeetingModal'
 import {
   DocumentsTab,
   HearingsTab,
-  TasksTab,
-  ResearchTab,
-  TimelineTab,
 } from '@/components/dashboard/DashboardTabs'
+import NotesTab from '@/components/dashboard/NotesTab'
 
 const TABS = [
   { id: 'Overview', icon: 'ti-layout-dashboard' },
   { id: 'Documents', icon: 'ti-files' },
   { id: 'Hearings', icon: 'ti-gavel' },
-  { id: 'Tasks', icon: 'ti-checklist' },
-  { id: 'Research', icon: 'ti-books' },
-  { id: 'Timeline', icon: 'ti-timeline' },
+  { id: 'Notes', icon: 'ti-notes' },
 ]
 
 export default function DashboardPage() {
@@ -36,6 +33,7 @@ export default function DashboardPage() {
   const [documents, setDocuments] = useState<any[]>([])
   const [tasks, setTasks] = useState<any[]>([])
   const [markingId, setMarkingId] = useState<string | null>(null)
+  const [showMeetingModal, setShowMeetingModal] = useState(false)
 
   // Auto-select first case of current user
   useEffect(() => {
@@ -55,11 +53,21 @@ export default function DashboardPage() {
             setSelectedCase('', '')
             setCaseData(null)
           } else {
-            // If current selectedCaseId is not in this user's cases, switch to their first case
-            const exists = cases.some(c => c.id === selectedCaseId)
-            if (!exists) {
-              setSelectedCase(cases[0].id, cases[0].name)
+            // Deep link from Google Calendar events: /dashboard?case=<id>
+            let wanted = selectedCaseId
+            if (!wanted && typeof window !== 'undefined') {
+              const qp = new URLSearchParams(window.location.search).get('case')
+              if (qp && cases.some((c: any) => c.id === qp)) {
+                wanted = qp
+                window.history.replaceState({}, '', '/dashboard')
+              }
             }
+            // Fall back to the first case when nothing valid is selected
+            if (!wanted || !cases.some((c: any) => c.id === wanted)) {
+              wanted = cases[0].id
+            }
+            const match = cases.find((c: any) => c.id === wanted)!
+            setSelectedCase(match.id, match.name)
           }
         }
       })
@@ -91,7 +99,6 @@ export default function DashboardPage() {
   const allOrders = hearings.flatMap(h => (h.orders ?? []).map((o: any) => ({ ...o, hearingId: h.id })))
   const overdueOrders = allOrders.filter(o => !o.done && o.deadline && new Date(o.deadline) < new Date())
   const pendingTasks = tasks.filter(t => !t.done)
-  const readiness = caseData?.readinessScore ?? 0
   const lastHearing = hearings.sort((a, b) => new Date(b.hearingDate).getTime() - new Date(a.hearingDate).getTime())[0]
   const nextHearingDate = caseData?.nextHearing ? new Date(caseData.nextHearing) : null
   const daysToHearing = nextHearingDate ? Math.ceil((nextHearingDate.getTime() - Date.now()) / 86400000) : null
@@ -150,13 +157,6 @@ export default function DashboardPage() {
 
         {/* Action pills */}
         <div className="dashboard-topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#64748b' }}>
-            <span>Readiness</span>
-            <div style={{ width: 60, height: 6, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
-              <div style={{ width: `${readiness}%`, height: '100%', background: readiness > 70 ? '#10b981' : readiness > 40 ? '#f59e0b' : '#ef4444', borderRadius: 3 }} />
-            </div>
-            <span style={{ fontWeight: 600, color: '#0f172a' }}>{readiness}%</span>
-          </div>
           {overdueOrders.length > 0 && (
             <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, background: '#fef2f2', color: '#dc2626', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
               <i className="ti ti-alert-triangle" /> {overdueOrders.length} Emergency
@@ -504,9 +504,8 @@ export default function DashboardPage() {
                       { label: 'Stage', value: caseData?.stage ?? '—' },
                       { label: 'Opposing Adv', value: caseData?.opposingAdv || 'Not recorded' },
                       { label: 'Client', value: caseData?.client ? `${caseData.client.firstName} ${caseData.client.lastName}` : '—' },
-                      { label: 'Readiness', value: `${readiness}%` },
                     ].map((item, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: i < 4 ? '1px solid #f1f5f9' : 'none' }}>
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: i < 3 ? '1px solid #f1f5f9' : 'none' }}>
                         <span style={{ fontSize: 11, color: '#64748b' }}>{item.label}</span>
                         <span style={{ fontSize: 11, fontWeight: 600, color: '#0f172a', textAlign: 'right', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.value}</span>
                       </div>
@@ -520,8 +519,10 @@ export default function DashboardPage() {
                 {/* Quick actions */}
                 <div style={{ background: '#fff', borderRadius: 12, padding: 16, border: '1px solid #e2e8f0' }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Quick Actions</div>
-                  <div className="dashboard-quick-actions-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10 }}>
+                  <div className="dashboard-quick-actions-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 10 }}>
                     {[
+                      { icon: 'ti-calendar-plus', label: 'Client Meeting', action: () => setShowMeetingModal(true), color: '#0d9488', bg: '#f0fdfa' },
+                      { icon: 'ti-alert-triangle', label: 'Emergency', route: '/readiness', color: '#dc2626', bg: '#fef2f2' },
                       { icon: 'ti-alert-triangle', label: 'Emergency', route: '/readiness', color: '#dc2626', bg: '#fef2f2' },
                       { icon: 'ti-clipboard-list', label: 'Hearing Brief', route: '/hearings', color: '#1e40af', bg: '#eff6ff' },
                       { icon: 'ti-message', label: 'Client Update', route: '/client', color: '#15803d', bg: '#f0fdf4' },
@@ -529,7 +530,7 @@ export default function DashboardPage() {
                       { icon: 'ti-file-text', label: 'Draft Document', route: '/drafting', color: '#0369a1', bg: '#f0f9ff' },
                       { icon: 'ti-chart-bar', label: 'Financial', route: '/financial', color: '#c2410c', bg: '#fff7ed' },
                     ].map((a, i) => (
-                      <button key={i} onClick={() => router.push(a.route)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 8px', background: a.bg, border: `1px solid ${a.color}22`, borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}
+                      <button key={i} onClick={() => a.action ? a.action() : router.push(a.route!)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 8px', background: a.bg, border: `1px solid ${a.color}22`, borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}
                         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)' }}
                         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
                       >
@@ -545,12 +546,19 @@ export default function DashboardPage() {
             {/* Other tabs */}
             {activeTab === 'Documents' && selectedCaseId && <DocumentsTab caseId={selectedCaseId} />}
             {activeTab === 'Hearings' && selectedCaseId && <HearingsTab caseId={selectedCaseId} />}
-            {activeTab === 'Tasks' && selectedCaseId && <TasksTab caseId={selectedCaseId} />}
-            {activeTab === 'Research' && selectedCaseId && <ResearchTab caseId={selectedCaseId} />}
-            {activeTab === 'Timeline' && selectedCaseId && <TimelineTab caseId={selectedCaseId} />}
+            {activeTab === 'Notes' && selectedCaseId && <NotesTab caseId={selectedCaseId} />}
 
           </div>
         </div>
+
+        {/* Schedule Client Meeting modal (Quick Actions) */}
+        {showMeetingModal && selectedCaseId && (
+          <ScheduleMeetingModal
+            caseId={selectedCaseId}
+            caseName={allCases.find(c => c.id === selectedCaseId)?.name}
+            onClose={() => setShowMeetingModal(false)}
+          />
+        )}
 
         {/* AI Insights panel - Inline layout on desktop, hidden on mobile dashboard */}
         <div className="desktop-ai-panel-wrapper" style={{ flexShrink: 0, overflow: 'hidden', width: aiPanelVisible ? aiPanelWidth : 0 }}>

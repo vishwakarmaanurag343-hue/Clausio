@@ -1,13 +1,16 @@
+using Clausio.Legal.Core.Dtos;
+using Clausio.Legal.Infrastructure;
 using Clausio.Legal.Service;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Clausio.Legal.API.Controllers;
 
 [Authorize]
 [ApiController]
 [Route("api/cases/{caseId:guid}/documents")]
-public class DocumentsController(IDocumentService documentService) : ControllerBase
+public class DocumentsController(IDocumentService documentService, ClausioDbContext db) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> List(Guid caseId, CancellationToken cancellationToken) =>
@@ -49,4 +52,41 @@ public class DocumentsController(IDocumentService documentService) : ControllerB
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid caseId, Guid id, CancellationToken cancellationToken) =>
         await documentService.DeleteAsync(caseId, id, cancellationToken) ? Ok() : NotFound();
+
+    /// <summary>
+    /// Mark a document Filed / Not Filed. Filing records the date (defaults to now)
+    /// and optionally the hearing it was filed at; un-filing clears both.
+    /// </summary>
+    [HttpPut("{id:guid}/filing-status")]
+    public async Task<IActionResult> SetFilingStatus(
+        Guid caseId, Guid id, UpdateDocumentFilingDto dto, CancellationToken cancellationToken)
+    {
+        var isFiled = string.Equals(dto.FilingStatus, "Filed", StringComparison.OrdinalIgnoreCase);
+        var isNotFiled = string.Equals(dto.FilingStatus, "Not Filed", StringComparison.OrdinalIgnoreCase);
+        if (!isFiled && !isNotFiled)
+            return BadRequest(new { error = "FilingStatus must be \"Filed\" or \"Not Filed\"." });
+
+        var doc = await db.Documents.FirstOrDefaultAsync(d => d.CaseId == caseId && d.Id == id, cancellationToken);
+        if (doc is null) return NotFound();
+
+        if (isFiled)
+        {
+            if (dto.FiledAtHearingId.HasValue &&
+                !await db.Hearings.AnyAsync(h => h.Id == dto.FiledAtHearingId && h.CaseId == caseId, cancellationToken))
+                return BadRequest(new { error = "That hearing does not belong to this case." });
+
+            doc.FilingStatus = "Filed";
+            doc.FiledDate = dto.FiledDate ?? DateTime.UtcNow;
+            doc.FiledAtHearingId = dto.FiledAtHearingId;
+        }
+        else
+        {
+            doc.FilingStatus = "Not Filed";
+            doc.FiledDate = null;
+            doc.FiledAtHearingId = null;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return Ok(doc);
+    }
 }

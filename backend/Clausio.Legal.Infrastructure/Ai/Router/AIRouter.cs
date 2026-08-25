@@ -236,6 +236,8 @@ public class AIRouter : IAIRouter
             "contradiction" => 45,
             "actionplan" => 35,
             "summarization" => 30,
+            "hearingprep" => 40,
+            "witnessprep" => 35,
             "prep" => 25,
             _ => 10
         };

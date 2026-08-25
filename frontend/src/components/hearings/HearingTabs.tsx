@@ -7,7 +7,6 @@ interface HearingTabsProps {
 
 const tabs = [
   'Hearing Diary',
-  'Prep Brief',
   'Witness Intelligence',
 ]
 

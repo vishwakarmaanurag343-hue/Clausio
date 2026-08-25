@@ -1,8 +1,36 @@
 'use client'
+// src/components/strategy/Contradictions.tsx
+// AI contradiction flashcards on top; persisted contradiction cards below (UI unchanged)
 
 import { useState, useEffect, useCallback } from 'react'
 import { useCaseStore } from '@/lib/store'
 import { aiApi, contradictionsApi, parseAiJson } from '@/lib/api'
+
+interface Statement { text?: string; sourceDocument?: string; date?: string }
+interface Contradiction {
+  statementA?:                 Statement
+  statementB?:                 Statement
+  natureOfContradiction?:      string
+  suggestedCrossExamQuestion?: string
+  severity?:                   'High' | 'Medium' | 'Low'
+}
+
+/** Extract contradictions from the model response. Accepts {contradictions:[…]} or a bare array; tolerates legacy flat items. Returns null on ANY failure — callers must never render raw text. */
+function extractContradictions(raw: unknown): Contradiction[] | null {
+  let parsed: any = raw
+  if (typeof raw === 'string') {
+    if (!raw.trim()) return null
+    parsed = parseAiJson<any>(raw.trim())
+  }
+  const list = Array.isArray(parsed) ? parsed : parsed?.contradictions
+  if (!Array.isArray(list)) return null
+  return list.filter((c: any) => c && typeof c === 'object')
+}
+
+const severityStyle = (s?: string) =>
+  s === 'High'   ? { label: 'HIGH',   clr: '#dc2626', bg: '#fef2f2', border: '#fecaca' } :
+  s === 'Medium' ? { label: 'MEDIUM', clr: '#d97706', bg: '#fffbeb', border: '#fde68a' } :
+                   { label: 'LOW',    clr: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' }
 
 export default function Contradictions() {
   const { selectedCaseId } = useCaseStore()
@@ -12,6 +40,11 @@ export default function Contradictions() {
   const [error,      setError]      = useState('')
   const [expanded,   setExpanded]   = useState<string | null>(null)
   const [copied,     setCopied]     = useState<string | null>(null)
+
+  // AI contradiction flashcards — separate from the saved list below
+  const [matches,     setMatches]     = useState<Contradiction[] | null>(null)
+  const [savedAll,    setSavedAll]    = useState(false)
+  const [parseFailed, setParseFailed] = useState(false)
 
   const load = useCallback(() => {
     if (!selectedCaseId) return
@@ -25,25 +58,58 @@ export default function Contradictions() {
   useEffect(() => { load() }, [load])
 
   async function runAI() {
-    if (!selectedCaseId) return
-    setGenerating(true); setError('')
+    if (!selectedCaseId || generating) return
+    setGenerating(true); setError(''); setSavedAll(false); setMatches(null); setParseFailed(false)
     try {
       const res  = await aiApi.getContradictions(selectedCaseId)
-      const raw  = res.contradictions ?? res.result ?? ''
-      const list = parseAiJson<any[]>(raw) ?? []
-      await Promise.all(list.slice(0, 8).map((c: any) =>
-        contradictionsApi.create(selectedCaseId, {
-          claim:          c.claim          ?? '',
-          claimSource:    c.claimSource    ?? '',
-          evidence:       c.evidence       ?? '',
-          evidenceSource: c.evidenceSource ?? '',
-          courtArgument:  c.courtArgument  ?? '',
-          strength:       c.strength       ?? 'Medium',
+      const list = extractContradictions(res.contradictions ?? res.result ?? res)
+      if (!list) { setParseFailed(true); return }
+
+      // Show as flashcards first; nothing touches the DB until the advocate approves.
+      setMatches(list)
+
+      // Persist in the same pass as before so the saved list stays current.
+      await Promise.all(list.slice(0, 8).map((c: any) => {
+        const a = c.statementA ?? {}
+        const b = c.statementB ?? {}
+        return contradictionsApi.create(selectedCaseId, {
+          claim:          a.text ?? '',
+          claimSource:    [a.sourceDocument, a.date].filter(Boolean).join(' · '),
+          evidence:       b.text ?? '',
+          evidenceSource: [b.sourceDocument, b.date].filter(Boolean).join(' · '),
+          courtArgument:  [
+            c.natureOfContradiction ?? '',
+            c.suggestedCrossExamQuestion ? `Cross-examine: ${c.suggestedCrossExamQuestion}` : '',
+          ].filter(Boolean).join('\n\n'),
+          strength:       c.severity ?? 'Medium',
         })
-      ))
+      }))
       load()
     } catch (err: any) { setError(err.message) }
     finally { setGenerating(false) }
+  }
+
+  async function saveAllAgain() {
+    if (!selectedCaseId || !matches?.length) return
+    try {
+      await Promise.all(matches.slice(0, 8).map((c: any) => {
+        const a = c.statementA ?? {}
+        const b = c.statementB ?? {}
+        return contradictionsApi.create(selectedCaseId, {
+          claim:          a.text ?? '',
+          claimSource:    [a.sourceDocument, a.date].filter(Boolean).join(' · '),
+          evidence:       b.text ?? '',
+          evidenceSource: [b.sourceDocument, b.date].filter(Boolean).join(' · '),
+          courtArgument:  [
+            c.natureOfContradiction ?? '',
+            c.suggestedCrossExamQuestion ? `Cross-examine: ${c.suggestedCrossExamQuestion}` : '',
+          ].filter(Boolean).join('\n\n'),
+          strength:       c.severity ?? 'Medium',
+        })
+      }))
+      setSavedAll(true)
+      load()
+    } catch { setError('Failed to save contradictions.') }
   }
 
   async function deleteItem(id: string) {
@@ -55,6 +121,11 @@ export default function Contradictions() {
   function copyArgument(id: string, text: string) {
     navigator.clipboard.writeText(text)
     setCopied(id); setTimeout(() => setCopied(null), 2000)
+  }
+
+  function copyText(key: string, text: string) {
+    navigator.clipboard.writeText(text)
+    setCopied(key); setTimeout(() => setCopied(null), 2000)
   }
 
   function strengthColor(s: string) {
@@ -86,7 +157,103 @@ export default function Contradictions() {
 
       {error && <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626', marginBottom: 16 }}>{error}</div>}
 
-      {!loading && !generating && items.length === 0 && (
+      {/* Parse-failure panel — never dump raw model output */}
+      {!generating && parseFailed && (
+        <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626', marginBottom: 16 }}>
+          The AI response could not be read as contradiction cards.
+          <button onClick={runAI} style={{ marginLeft: 8, fontWeight: 700, textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontFamily: 'inherit' }}>Retry</button>
+        </div>
+      )}
+
+      {/* ============ AI CONTRADICTION FLASHCARDS ============ */}
+      {!generating && !parseFailed && matches && (
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#b91c1c', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 20, padding: '4px 12px' }}>
+              ⚖ AI-detected contradictions — verify both sources before citing in court
+            </span>
+            {matches.length > 0 && (
+              <button onClick={saveAllAgain} style={{ height: 30, padding: '0 12px', border: '1px solid #86efac', borderRadius: 8, background: '#f0fdf4', cursor: 'pointer', fontSize: 11.5, fontWeight: 700, color: '#15803d', fontFamily: 'inherit' }}>
+                <i className="ti ti-download" style={{ fontSize: 12, marginRight: 4 }} />{savedAll ? 'Saved ✓' : 'Save all to My Contradictions'}
+              </button>
+            )}
+          </div>
+
+          {matches.length === 0 && (
+            <div style={{ textAlign: 'center', padding: 20, color: '#94a3b8', fontSize: 13 }}>
+              No contradiction directly supported by two record sources was found — nothing invented to fill the gap.
+            </div>
+          )}
+
+          {matches.map((c, i) => {
+            const sev = severityStyle(c.severity)
+            const a = c.statementA ?? {}
+            const b = c.statementB ?? {}
+            const questionKey = `q-${i}`
+            return (
+              <div key={i} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 14, marginBottom: 10 }}>
+
+                {/* Card header: rank badge + severity pill */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <span style={{ width: 24, height: 24, borderRadius: 7, background: '#fef2f2', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 12, fontWeight: 800, color: '#dc2626' }}>{i + 1}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', color: '#0f172a' }}>Contradiction</span>
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 10px', borderRadius: 10, background: sev.bg, border: `1px solid ${sev.border}`, color: sev.clr }}>{sev.label}</span>
+                </div>
+
+                {/* Conflicting statements side-by-side */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 10, marginBottom: 10 }}>
+                  <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 12px', minWidth: 0 }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: '#b91c1c', letterSpacing: 1, marginBottom: 4 }}>STATEMENT A</div>
+                    <p style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: '#7f1d1d', whiteSpace: 'pre-line' }}>{a.text || '—'}</p>
+                    {(a.sourceDocument || a.date) && (
+                      <div style={{ marginTop: 6, fontSize: 10.5, fontWeight: 600, color: '#b91c1c', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {a.sourceDocument && <span>📄 {a.sourceDocument}</span>}
+                        {a.date && <span>📅 {a.date}</span>}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '10px 12px', minWidth: 0 }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: '#1d4ed8', letterSpacing: 1, marginBottom: 4 }}>STATEMENT B</div>
+                    <p style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: '#1e3a8a', whiteSpace: 'pre-line' }}>{b.text || '—'}</p>
+                    {(b.sourceDocument || b.date) && (
+                      <div style={{ marginTop: 6, fontSize: 10.5, fontWeight: 600, color: '#1d4ed8', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {b.sourceDocument && <span>📄 {b.sourceDocument}</span>}
+                        {b.date && <span>📅 {b.date}</span>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Why it matters */}
+                {c.natureOfContradiction && (
+                  <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 12px', marginBottom: 8 }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: '#92400e', letterSpacing: 1, marginBottom: 4 }}>WHAT CONFLICTS &amp; WHY IT MATTERS</div>
+                    <p style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: '#92400e', whiteSpace: 'pre-line' }}>{c.natureOfContradiction}</p>
+                  </div>
+                )}
+
+                {/* Cross-examination question */}
+                {c.suggestedCrossExamQuestion && (
+                  <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: '#15803d', letterSpacing: 1 }}>✦ SUGGESTED CROSS-EXAMINATION</span>
+                      <button onClick={() => copyText(questionKey, c.suggestedCrossExamQuestion!)}
+                        style={{ height: 22, padding: '0 8px', border: '1px solid #bbf7d0', borderRadius: 6, background: copied === questionKey ? '#dcfce7' : '#fff', cursor: 'pointer', fontSize: 10.5, fontWeight: 700, color: copied === questionKey ? '#15803d' : '#16a34a', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}>
+                        <i className={`ti ${copied === questionKey ? 'ti-check' : 'ti-copy'}`} style={{ fontSize: 11 }} />{copied === questionKey ? 'Copied!' : 'Copy'}
+                      </button>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: '#14532d', whiteSpace: 'pre-line' }}>{c.suggestedCrossExamQuestion}</p>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {!loading && !generating && !matches && items.length === 0 && (
         <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
           <i className="ti ti-alert-triangle" style={{ fontSize: 40, display: 'block', marginBottom: 10, opacity: 0.4 }} />
           <div style={{ fontSize: 14, fontWeight: 600, color: '#64748b', marginBottom: 8 }}>No Contradictions Found Yet</div>

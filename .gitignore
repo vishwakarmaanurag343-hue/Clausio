@@ -57,3 +57,6 @@ backend/Clausio.Legal.API/dotnet-install.sh
 
 # Duplicate stale project
 backend/Clausio.Legal/
+backend/Clausio.Legal.API/appsettings.json
+backend/Clausio.Legal.API/appsettings.Development.json
+docker-compose.yml

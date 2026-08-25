@@ -13,47 +13,87 @@ public class JudgmentSearchService(
     public async Task<List<string>> SearchAsync(
         string query,
         int topK = 3,
+        string? caseCategory = null,
         CancellationToken ct = default)
     {
         try
         {
             // Extract key legal terms from query
             var keywords = ExtractKeywords(query);
-            if (!keywords.Any()) return [];
+            logger.LogInformation("JudgmentSearch keywords: {Keywords}", string.Join(" | ", keywords));
+            if (!keywords.Any() && string.IsNullOrEmpty(caseCategory)) return [];
 
-            var results = new List<(string text, int score)>();
+            var results = new List<(string text, int score, string caseName)>();
 
-            // Search for each keyword and score results
-            foreach (var keyword in keywords.Take(5))
+            if (!string.IsNullOrEmpty(caseCategory))
             {
-                var chunks = await db.JudgmentChunks
+                // Precedent retrieval runs INSIDE the case's own court category first —
+                // a family-law case needs family-law precedents even when its memory is
+                // too thin to yield clean keywords. Keyword overlap only ranks within.
+                var category = caseCategory;
+                var pool = await db.JudgmentChunks
                     .AsNoTracking()
-                    .Where(j => EF.Functions.ILike(j.ChunkText, $"%{keyword}%"))
-                    .Take(20)
-                    .Select(j => new {
-                        j.ChunkText,
-                        j.CaseName,
-                        j.Year,
-                        j.CaseType
-                    })
+                    .Where(j => j.CaseType == category)
+                    .OrderBy(j => j.Id)
+                    .Take(800)
+                    .Select(j => new { j.ChunkText, j.CaseName, j.Year })
                     .ToListAsync(ct);
 
-                foreach (var chunk in chunks)
+                foreach (var chunk in pool)
                 {
-                    // Score by how many keywords appear
-                    var text = chunk.ChunkText;
                     var score = keywords.Count(k =>
-                        text.Contains(k, StringComparison.OrdinalIgnoreCase));
+                        chunk.ChunkText.Contains(k, StringComparison.OrdinalIgnoreCase));
+                    results.Add(($"[{chunk.CaseName} ({chunk.Year})] {chunk.ChunkText}", score, chunk.CaseName ?? ""));
+                }
 
-                    var formatted = $"[{chunk.CaseName} ({chunk.Year})] {chunk.ChunkText}";
-                    results.Add((formatted, score));
+                // Zero lexical overlap anywhere → deterministic distinct-case spread of
+                // the category pool rather than party-name noise from a global search
+                if (!results.Any(r => r.score >= 2))
+                {
+                    return results
+                        .GroupBy(r => r.caseName)
+                        .Select(g => g.OrderByDescending(r => r.score).First())
+                        .Take(topK)
+                        .Select(r => r.text)
+                        .ToList();
+                }
+            }
+            else
+            {
+                // Search for each keyword and score results
+                foreach (var keyword in keywords.Take(5))
+                {
+                    var chunks = await db.JudgmentChunks
+                        .AsNoTracking()
+                        .Where(j => EF.Functions.ILike(j.ChunkText, $"%{keyword}%"))
+                        .Take(20)
+                        .Select(j => new {
+                            j.ChunkText,
+                            j.CaseName,
+                            j.Year,
+                            j.CaseType
+                        })
+                        .ToListAsync(ct);
+
+                    foreach (var chunk in chunks)
+                    {
+                        // Score by how many keywords appear
+                        var text = chunk.ChunkText;
+                        var score = keywords.Count(k =>
+                            text.Contains(k, StringComparison.OrdinalIgnoreCase));
+
+                        var formatted = $"[{chunk.CaseName} ({chunk.Year})] {chunk.ChunkText}";
+                        results.Add((formatted, score, chunk.CaseName ?? ""));
+                    }
                 }
             }
 
-            // Return top K unique results by score
+            // Return top K results — one chunk per case so a single case can't crowd
+            // out the rest; prefer the most substantive chunk of each case
             return results
                 .OrderByDescending(r => r.score)
-                .DistinctBy(r => r.text[..Math.Min(100, r.text.Length)])
+                .ThenByDescending(r => r.text.Length)
+                .DistinctBy(r => r.caseName)
                 .Take(topK)
                 .Select(r => r.text)
                 .ToList();
@@ -97,10 +137,11 @@ public class JudgmentSearchService(
             "could", "case", "court", "judge", "legal", "law", "file"
         };
 
-        var words = query.Split(' ', StringSplitOptions.RemoveEmptyEntries)
-            .Where(w => w.Length >= 4 && !stopWords.Contains(w.ToLower()))
-            .Select(w => w.Trim('.', ',', '?', '!'))
-            .Where(w => w.Length >= 4)
+        // Split on all whitespace (newlines inside a token defeat the filters), strip
+        // surrounding punctuation including XML tag markers, drop tag-like tokens
+        var words = query.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(w => w.Trim('.', ',', '?', '!', ':', ';', '<', '>', '"', '\'', '(', ')', '[', ']'))
+            .Where(w => w.Length >= 4 && !w.Contains('_') && !stopWords.Contains(w.ToLower()))
             .Take(5);
 
         found.AddRange(words);

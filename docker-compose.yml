@@ -19,11 +19,11 @@ services:
       Jwt__Secret: ${JWT_SECRET}
       Jwt__Issuer: Clausio
       Jwt__Audience: ClausioClients
-      AI__Groq__ApiKey: ${GROQ_API_KEY:-YOUR_GROQ_API_KEY_HERE}
-      AI__DeepProvider__ApiKey: ${GROQ_API_KEY:-YOUR_GROQ_API_KEY_HERE}
+      AI__Groq__ApiKey: ${GROQ_API_KEY:-${GROQ_API_KEY}}
+      AI__DeepProvider__ApiKey: ${GROQ_API_KEY:-${GROQ_API_KEY}}
       AI__DeepProvider__BaseUrl: https://api.groq.com/openai/v1
       AI__DeepProvider__ModelId: llama-3.3-70b-versatile
-      AI__FastProvider__ApiKey: ${GROQ_API_KEY:-YOUR_GROQ_API_KEY_HERE}
+      AI__FastProvider__ApiKey: ${GROQ_API_KEY:-${GROQ_API_KEY}}
       AI__FastProvider__BaseUrl: https://api.groq.com/openai/v1
       AI__FastProvider__ModelId: llama-3.3-70b-versatile
 

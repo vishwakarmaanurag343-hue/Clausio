@@ -9,6 +9,14 @@ interface Props {
   onSaved?: () => void
 }
 
+interface OrderRow {
+  text:        string
+  responsible: string
+  deadline:    string
+}
+
+const emptyOrderRow: OrderRow = { text: '', responsible: '', deadline: '' }
+
 const hearingStages = [
   'First Appearance',
   'Interim Application',
@@ -27,13 +35,33 @@ export default function AddHearingModal({ onClose, onSaved }: Props) {
   const [whatHappened,     setWhatHappened]     = useState('')
   const [judgeObservation, setJudgeObservation] = useState('')
   const [nextHearingDate,  setNextHearingDate]  = useState('')
+  const [orders,           setOrders]           = useState<OrderRow[]>([{ ...emptyOrderRow }])
   const [saving,           setSaving]           = useState(false)
   const [error,            setError]            = useState('')
+
+  function updateOrder(index: number, key: keyof OrderRow, value: string) {
+    setOrders(prev => prev.map((o, i) => (i === index ? { ...o, [key]: value } : o)))
+  }
+  function addOrderRow()      { setOrders(prev => [...prev, { ...emptyOrderRow }]) }
+  function removeOrderRow(i: number) { setOrders(prev => (prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev)) }
 
   async function saveHearing() {
     if (!selectedCaseId) { setError('Select a case first.'); return }
     if (!hearingDate || !whatHappened) {
       setError('Please fill Hearing Date and What Happened')
+      return
+    }
+
+    // Keep only rows where an order was actually typed
+    const cleanOrders = orders
+      .filter(o => o.text.trim())
+      .map(o => ({
+        text:        o.text.trim(),
+        responsible: o.responsible.trim(),
+        deadline:    o.deadline ? new Date(o.deadline).toISOString() : '',
+      }))
+    if (cleanOrders.some(o => !o.deadline)) {
+      setError('Each court order needs a deadline date (or remove the empty order row).')
       return
     }
 
@@ -47,7 +75,7 @@ export default function AddHearingModal({ onClose, onSaved }: Props) {
         whatHappened,
         judgeObservation,
         nextObjective: nextHearingDate ? `Next hearing: ${nextHearingDate}` : '',
-        orders:        [],
+        orders:        cleanOrders,
       })
 
       onSaved?.()
@@ -146,6 +174,69 @@ export default function AddHearingModal({ onClose, onSaved }: Props) {
             <Field label="Next Hearing Date">
               <input type="date" value={nextHearingDate} onChange={(e) => setNextHearingDate(e.target.value)} style={inputStyle} />
             </Field>
+          </div>
+
+          {/* Court orders passed at this hearing — saved to the case's Court Orders & Diary */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>
+                Court Orders Passed <span style={{ color: '#94a3b8', fontWeight: 500 }}>(optional)</span>
+              </label>
+              <button
+                onClick={addOrderRow}
+                className="glass-button"
+                style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', color: '#2563eb', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+              >
+                + Add Order
+              </button>
+            </div>
+
+            {orders.map((order, i) => (
+              <div
+                key={i}
+                style={{
+                  display:       'grid',
+                  gridTemplateColumns: 'minmax(0, 1fr) 170px 32px',
+                  gap:           10,
+                  marginBottom:  10,
+                  alignItems:    'start',
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <input
+                    value={order.text}
+                    onChange={(e) => updateOrder(i, 'text', e.target.value)}
+                    placeholder="Order text (e.g. Submit written statement)"
+                    style={inputStyle}
+                  />
+                  <input
+                    value={order.responsible}
+                    onChange={(e) => updateOrder(i, 'responsible', e.target.value)}
+                    placeholder="Responsible (who must comply)"
+                    style={inputStyle}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>Deadline *</label>
+                  <input
+                    type="date"
+                    value={order.deadline}
+                    onChange={(e) => updateOrder(i, 'deadline', e.target.value)}
+                    style={inputStyle}
+                  />
+                </div>
+                <button
+                  onClick={() => removeOrderRow(i)}
+                  title="Remove this order"
+                  style={{ width: 32, height: 32, borderRadius: 8, border: 'none', background: orders.length > 1 ? '#fef2f2' : '#f1f5f9', color: orders.length > 1 ? '#dc2626' : '#cbd5e1', cursor: orders.length > 1 ? 'pointer' : 'not-allowed', fontSize: 14 }}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            {orders.length === 0 && (
+              <p style={{ margin: 0, fontSize: 12, color: '#94a3b8' }}>No orders added — click "+ Add Order" if the court passed any directions.</p>
+            )}
           </div>
 
           {/* Footer — UNCHANGED except button shows loading */}

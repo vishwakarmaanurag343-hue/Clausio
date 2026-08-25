@@ -1,11 +1,31 @@
 'use client'
 // src/components/strategy/LegalResearch.tsx
-// EXACT SAME UI — loads persisted research, "Run AI Research" generates + saves new judgments
+// AI precedent flashcards on top; persisted research cards below (verification UI unchanged)
 
 import { useState, useEffect, useCallback } from 'react'
 import { useCaseStore } from '@/lib/store'
 import { aiApi, researchApi, parseAiJson } from '@/lib/api'
 import type { Judgment } from '@/types/AIResponse'
+
+interface SimilarCase {
+  caseName?:             string
+  citation?:             string
+  courtAndYear?:         string
+  orderSummary?:         string
+  whyRelevantToThisCase?: string
+}
+
+/** Extract similarCases from the model response. Accepts legacy bare arrays of judgments too. Returns null on ANY failure — callers must never render raw text. */
+function extractSimilarCases(raw: unknown): SimilarCase[] | null {
+  let parsed: any = raw
+  if (typeof raw === 'string') {
+    if (!raw.trim()) return null
+    parsed = parseAiJson<any>(raw.trim())
+  }
+  if (Array.isArray(parsed)) return parsed.filter((c: any) => c && typeof c === 'object')
+  if (parsed && Array.isArray(parsed.similarCases)) return parsed.similarCases.filter((c: any) => c && typeof c === 'object')
+  return null
+}
 
 // Build Indian Kanoon search URL from citation
 function getIndianKanoonUrl(citation: string): string {
@@ -43,6 +63,11 @@ export default function LegalResearch() {
   const [generating, setGenerating] = useState(false)
   const [error,      setError]      = useState('')
 
+  // AI precedent flashcards — separate from the saved list below
+  const [matches,     setMatches]     = useState<SimilarCase[] | null>(null)
+  const [savedAll,    setSavedAll]    = useState(false)
+  const [parseFailed, setParseFailed] = useState(false)
+
   const load = useCallback(() => {
     if (!selectedCaseId) return
     setLoading(true)
@@ -56,28 +81,46 @@ export default function LegalResearch() {
   useEffect(() => { load() }, [load])
 
   async function runAiResearch() {
-    if (!selectedCaseId) return
+    if (!selectedCaseId || generating) return
     setGenerating(true)
-    setError('')
+    setError(''); setSavedAll(false); setMatches(null); setParseFailed(false)
     try {
       const res = await aiApi.getLegalResearch(selectedCaseId)
-      const judgments = parseAiJson<Judgment[]>(res.judgments ?? res.result ?? '') ?? []
-      await Promise.all(judgments.map(j => researchApi.create(selectedCaseId, {
-        citation:        j.citation,
-        court:           j.court,
-        year:            j.year,
-        ratioDecidendi:  j.ratioDecidendi,
-        relevance:       j.relevance,
-        howToUse:        j.howToUse,
-        strength:        j.strength,
-        fullJudgmentUrl: j.fullJudgmentUrl,
-      })))
+      const cases = extractSimilarCases(res.judgments ?? res.result ?? res)
+      if (!cases) { setParseFailed(true); return }
+
+      // Show as flashcards first; nothing touches the DB until the advocate approves.
+      setMatches(cases)
+
+      // Persist in the same pass as before so the saved list stays current.
+      await Promise.all(cases.map(c => researchApi.create(selectedCaseId, {
+        citation:       c.citation ?? '',
+        court:          c.courtAndYear ?? '',
+        year:           Number(c.courtAndYear?.match(/\d{4}/)?.[0]) || undefined,
+        ratioDecidendi: c.orderSummary ?? '',
+        relevance:      c.whyRelevantToThisCase ?? '',
+      }) as any))
       load()
     } catch (err: any) {
       setError(err.message || 'Failed to run AI research')
     } finally {
       setGenerating(false)
     }
+  }
+
+  async function saveAllAgain() {
+    if (!selectedCaseId || !matches?.length) return
+    try {
+      await Promise.all(matches.map(c => researchApi.create(selectedCaseId, {
+        citation:       c.citation ?? '',
+        court:          c.courtAndYear ?? '',
+        year:           Number(c.courtAndYear?.match(/\d{4}/)?.[0]) || undefined,
+        ratioDecidendi: c.orderSummary ?? '',
+        relevance:      c.whyRelevantToThisCase ?? '',
+      }) as any))
+      setSavedAll(true)
+      load()
+    } catch { setError('Failed to save matches to your research.') }
   }
 
   // Count verified vs unverified
@@ -106,6 +149,74 @@ export default function LegalResearch() {
       {error && (
         <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626', marginBottom: 16 }}>
           {error}
+        </div>
+      )}
+
+      {/* Parse-failure panel — never dump raw model output */}
+      {!generating && parseFailed && (
+        <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626', marginBottom: 16 }}>
+          The AI response could not be read as precedent cards.
+          <button onClick={runAiResearch} style={{ marginLeft: 8, fontWeight: 700, textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontFamily: 'inherit' }}>Retry</button>
+        </div>
+      )}
+
+      {/* ============ AI PRECEDENT FLASHCARDS (best-match first) ============ */}
+      {!generating && !parseFailed && matches && (
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#1d4ed8', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 20, padding: '4px 12px' }}>
+              ⚖ AI-matched precedent — ranked best-match first
+            </span>
+            <button onClick={saveAllAgain} style={{ height: 30, padding: '0 12px', border: '1px solid #86efac', borderRadius: 8, background: '#f0fdf4', cursor: 'pointer', fontSize: 11.5, fontWeight: 700, color: '#15803d', fontFamily: 'inherit' }}>
+              <i className="ti ti-download" style={{ fontSize: 12, marginRight: 4 }} />{savedAll ? 'Saved ✓' : 'Save all to My Research'}
+            </button>
+          </div>
+
+          {matches.length === 0 && (
+            <div style={{ textAlign: 'center', padding: 20, color: '#94a3b8', fontSize: 13 }}>
+              No genuinely similar judgment was found in the verified corpus for this case — nothing fabricated to fill the gap.
+            </div>
+          )}
+
+          {matches.map((c, i) => (
+            <div key={i} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 14, marginBottom: 10 }}>
+
+              {/* Card header: rank badge + case name + court/citation pills */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, minWidth: 0 }}>
+                  <span style={{ width: 24, height: 24, borderRadius: 7, background: '#eff6ff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 12, fontWeight: 800, color: '#2563eb', marginTop: 1 }}>{i + 1}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', color: '#0f172a', lineHeight: 1.6 }}>{c.caseName || 'Unnamed case'}</span>
+                </div>
+                <div style={{ display: 'flex', flexShrink: 0, gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  {c.courtAndYear && (
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 10px', borderRadius: 10, background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1d4ed8' }}>{c.courtAndYear}</span>
+                  )}
+                  {c.citation && (
+                    <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 10px', borderRadius: 10, background: '#f1f5f9', border: '1px solid #e2e8f0', color: '#475569', fontFamily: 'ui-monospace, Menlo, monospace' }}>{c.citation}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* What the court decided */}
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 12px', marginBottom: 8 }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: '#475569', letterSpacing: 1, marginBottom: 4 }}>WHAT THE COURT DECIDED</div>
+                <p style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: '#334155', whiteSpace: 'pre-line' }}>{c.orderSummary || '—'}</p>
+              </div>
+
+              {/* Why it helps this case */}
+              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: '#15803d', letterSpacing: 1 }}>WHY IT HELPS THIS CASE</span>
+                  {c.citation && (
+                    <a href={getIndianKanoonUrl(c.citation)} target="_blank" rel="noreferrer" style={{ fontSize: 10.5, fontWeight: 700, color: '#d97706', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                      🔍 Indian Kanoon
+                    </a>
+                  )}
+                </div>
+                <p style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: '#14532d', whiteSpace: 'pre-line' }}>{c.whyRelevantToThisCase || '—'}</p>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

@@ -101,11 +101,11 @@ public class AiController(IAiService aiService) : ControllerBase
         }
     }
 
-    // ✅ Returns { message: "..." } — matches frontend aiApi.getWhatsApp()
+    // ✅ Returns { message: "<JSON: { subject, body, actionRequired }>" } — shared WhatsApp/Email client-update drafter
     [HttpPost("whatsapp/{caseId:guid}")]
-    public async Task<IActionResult> WhatsApp(Guid caseId, [FromBody] WhatsAppRequestDto request, CancellationToken cancellationToken)
+    public async Task<IActionResult> WhatsApp(Guid caseId, [FromBody] ClientUpdateRequestDto request, CancellationToken cancellationToken)
     {
-        var result = await aiService.DraftWhatsAppAsync(caseId, request, cancellationToken);
+        var result = await aiService.DraftClientUpdateAsync(caseId, request, cancellationToken);
         return Ok(new { message = result });
     }
 
@@ -123,6 +123,22 @@ public class AiController(IAiService aiService) : ControllerBase
     {
         var result = await aiService.AssessReadinessAsync(caseId, cancellationToken);
         return Ok(new { readiness = result });
+    }
+
+    // ✅ Returns { risks: "<JSON string: { risks:[{risk,category,severity,cause,mitigation}] }>" } — matches frontend aiApi.getRisks()
+    [HttpPost("risks/{caseId:guid}")]
+    public async Task<IActionResult> Risks(Guid caseId, CancellationToken cancellationToken)
+    {
+        var result = await aiService.AssessCaseRisksAsync(caseId, cancellationToken);
+        return Ok(new { risks = result });
+    }
+
+    // ✅ Returns { recommendations: "<JSON string: { recommendations:[{recommendation,addressesRisk,reasoning}] }>" } — matches frontend aiApi.getRecommendations()
+    [HttpPost("recommendations/{caseId:guid}")]
+    public async Task<IActionResult> Recommendations(Guid caseId, CancellationToken cancellationToken)
+    {
+        var result = await aiService.GenerateCaseRecommendationsAsync(caseId, cancellationToken);
+        return Ok(new { recommendations = result });
     }
 
     // ✅ Returns { response: "..." } — matches frontend aiApi.getEmergency()
@@ -143,9 +159,9 @@ public class AiController(IAiService aiService) : ControllerBase
 
     // ✅ Returns { intelligence: "..." } — matches frontend aiApi.getWitness()
     [HttpPost("witness/{caseId:guid}")]
-    public async Task<IActionResult> Witness(Guid caseId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Witness(Guid caseId, [FromBody] WitnessPrepRequestDto request, CancellationToken cancellationToken)
     {
-        var result = await aiService.PrepWitnessAsync(caseId, cancellationToken);
+        var result = await aiService.PrepWitnessAsync(caseId, request, cancellationToken);
         return Ok(new { intelligence = result });
     }
 

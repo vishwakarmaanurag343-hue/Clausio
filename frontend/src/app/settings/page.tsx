@@ -1,11 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import ProfileSettings      from '@/components/settings/ProfileSettings'
 import SecuritySettings     from '@/components/settings/SecuritySettings'
 import AISettings           from '@/components/settings/AISettings'
 import LegalSettings        from '@/components/settings/LegalSettings'
 import AboutClausio         from '@/components/settings/AboutClausio'
+import IntegrationsSettings from '@/components/settings/IntegrationsSettings'
 
 const SECTIONS = [
   {
@@ -18,8 +21,9 @@ const SECTIONS = [
   {
     group: 'Preferences — Live',
     items: [
-      { name: 'AI',         icon: 'ti-brain',       live: true  },
-      { name: 'Legal',      icon: 'ti-scale',       live: true  },
+      { name: 'AI',           icon: 'ti-brain',       live: true  },
+      { name: 'Legal',        icon: 'ti-scale',       live: true  },
+      { name: 'Integrations', icon: 'ti-plug',        live: true  },
     ],
   },
   {
@@ -39,18 +43,33 @@ const SECTIONS = [
 ]
 
 export default function SettingsPage() {
+
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [active, setActive] = useState('Profile')
+
+  // Deep-link / post-OAuth-return support: ?section=Integrations or the
+  // localStorage marker left by the Connect flow.
+  useEffect(() => {
+    let target: string | null = searchParams.get('section')
+    if (!target) { try { target = localStorage.getItem('clausio_settings_section') } catch {} }
+    if (!target) { try { localStorage.removeItem('clausio_settings_section') } catch {} }
+    if (target && SECTIONS.flatMap(s => s.items).some(i => i.name === target)) setActive(target)
+    try { localStorage.removeItem('clausio_settings_section') } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function renderContent() {
     const section = SECTIONS.flatMap(s => s.items).find(i => i.name === active)
     if (section && !section.live) return <ComingSoon name={active} />
     switch (active) {
-      case 'Profile':  return <ProfileSettings />
-      case 'Security': return <SecuritySettings />
-      case 'AI':       return <AISettings />
-      case 'Legal':    return <LegalSettings />
-      case 'About':    return <AboutClausio />
-      default:         return <ProfileSettings />
+      case 'Profile':      return <ProfileSettings />
+      case 'Security':     return <SecuritySettings />
+      case 'AI':           return <AISettings />
+      case 'Legal':        return <LegalSettings />
+      case 'Integrations': return <Suspense><IntegrationsSettings /></Suspense>
+      case 'About':        return <AboutClausio />
+      default:             return <ProfileSettings />
     }
   }
 
@@ -59,9 +78,14 @@ export default function SettingsPage() {
 
       {/* ── DESKTOP SETTINGS VIEW ── */}
       <div className="desktop-settings-view" style={{ display: 'flex', flexDirection: 'column' }}>
-        <div style={{ marginBottom: 28 }}>
-          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px' }}>Settings</h1>
-          <p style={{ marginTop: 6, fontSize: 14, color: '#64748b' }}>Manage your account and preferences.</p>
+        <div style={{ marginBottom: 28, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 26, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px' }}>Settings</h1>
+            <p style={{ marginTop: 6, fontSize: 14, color: '#64748b' }}>Manage your account and preferences.</p>
+          </div>
+          <button onClick={() => router.push('/dashboard')} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 7, background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: '#475569', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
+            <i className="ti ti-arrow-left" style={{ fontSize: 15 }} /> Back to Dashboard
+          </button>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 24, alignItems: 'start' }}>
@@ -98,6 +122,11 @@ export default function SettingsPage() {
 
       {/* ── MOBILE SETTINGS VIEW (Matching Prototype) ── */}
       <div className="mobile-settings-view" style={{ display: 'none', flexDirection: 'column', gap: 16 }}>
+        {/* Back to dashboard */}
+        <button onClick={() => router.push('/dashboard')} style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 6, background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 30, padding: '7px 14px', fontSize: 12.5, fontWeight: 600, color: '#475569', cursor: 'pointer', fontFamily: 'inherit' }}>
+          <i className="ti ti-arrow-left" style={{ fontSize: 14 }} /> Dashboard
+        </button>
+
         {/* Top Pill Tabs Bar */}
         <div
           style={{

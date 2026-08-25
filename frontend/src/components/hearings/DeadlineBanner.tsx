@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useCaseStore } from '@/lib/store'
 import { hearingsApi } from '@/lib/api'
+import AddToCalButton from '@/components/calendar/AddToCalButton'
 
 export default function DeadlineBanner() {
   const { selectedCaseId } = useCaseStore()
@@ -37,8 +38,11 @@ export default function DeadlineBanner() {
           <i className="ti ti-alert-triangle" style={{ fontSize: 18, color: '#dc2626' }} />
         </div>
         <div>
-          <div style={{ fontWeight: 700, color: '#991b1b', fontSize: 14 }}>
+          <div style={{ fontWeight: 700, color: '#991b1b', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
             {overdueOrders.length} Overdue {overdueOrders.length === 1 ? 'Deadline' : 'Deadlines'}
+            {selectedCaseId && overdueOrders[0] && (
+              <AddToCalButton kind="order" caseId={selectedCaseId} id={overdueOrders[0].id} title="Add most urgent deadline to Google Calendar" />
+            )}
           </div>
           <div style={{ marginTop: 2, fontSize: 13, color: '#7f1d1d' }}>
             {deadlineText}

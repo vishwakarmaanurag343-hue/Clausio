@@ -164,6 +164,12 @@ builder.Services.AddScoped<IActionPlanService, ActionPlanService>();
 builder.Services.AddScoped<IContradictionService, ContradictionService>();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<IHearingService, HearingService>();
+builder.Services.AddScoped<IWitnessService, WitnessService>();
+builder.Services.AddScoped<INoteService, NoteService>();
+builder.Services.AddScoped<ICalendarSyncService, CalendarSyncService>();
+
+// Google Calendar REST client
+builder.Services.AddHttpClient<Clausio.Legal.Infrastructure.Google.GoogleCalendarClient>();
 builder.Services.AddScoped<ILegalResearchService, LegalResearchService>();
 builder.Services.AddScoped<ITimelineService, TimelineService>();
 builder.Services.AddScoped<IReadinessService, ReadinessService>();

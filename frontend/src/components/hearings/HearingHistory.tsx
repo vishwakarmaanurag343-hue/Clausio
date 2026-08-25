@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useCaseStore } from '@/lib/store'
 import { hearingsApi, aiApi } from '@/lib/api'
+import PrepBriefCard, { parsePrepBrief, type PrepBrief } from './PrepBriefCard'
+import AddToCalButton from '@/components/calendar/AddToCalButton'
 
 interface Props {
   refresh?: number
@@ -18,7 +20,8 @@ export default function HearingHistory({ refresh }: Props) {
   const [editHearing, setEditHearing] = useState<any | null>(null)
   const [editLoading, setEditLoading] = useState(false)
   const [aiLoading,   setAiLoading]   = useState(false)
-  const [aiResult,    setAiResult]    = useState('')
+  const [aiBrief,     setAiBrief]     = useState<PrepBrief | null>(null)
+  const [aiError,     setAiError]     = useState('')
   const [aiHearingId, setAiHearingId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
@@ -72,21 +75,20 @@ export default function HearingHistory({ refresh }: Props) {
     if (!selectedCaseId) return
     setAiHearingId(hearingId)
     setAiLoading(true)
-    setAiResult('')
+    setAiBrief(null)
+    setAiError('')
     try {
       const res = await aiApi.getPrep(selectedCaseId)
-      const raw = res.brief ?? res.result ?? ''
-      try {
-        const parsed = JSON.parse(raw)
-        setAiResult(
-          `Objective: ${parsed.todayObjective ?? ''}\n\n` +
-          `Key Arguments:\n${(parsed.keyArguments ?? []).map((a: string) => `• ${a}`).join('\n')}\n\n` +
-          `Documents Required:\n${(parsed.documentsRequired ?? []).map((d: string) => `• ${d}`).join('\n')}\n\n` +
-          `Opening Statement:\n${parsed.openingStatement ?? ''}`
-        )
-      } catch { setAiResult(raw) }
-    } catch { setAiResult('Failed to generate prep brief.') }
-    finally { setAiLoading(false) }
+      const brief = parsePrepBrief(res.brief ?? res.result)
+      if (brief) setAiBrief(brief)
+      else {
+        setAiError('AI did not return the expected structured format.')
+        console.error('[AI Prep] Unparseable payload:', res.brief ?? res.result)
+      }
+    } catch (err: any) {
+      setAiError(err.message || 'Could not reach the AI service.')
+      console.error('[AI Prep] Request failed:', err)
+    } finally { setAiLoading(false) }
   }
 
   const overdueCount = hearings.flatMap(h => h.orders ?? []).filter((o: any) => !o.done && o.deadline && new Date(o.deadline) < new Date()).length
@@ -147,6 +149,9 @@ export default function HearingHistory({ refresh }: Props) {
                       {/* Action buttons */}
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                         {index === 0 && <span style={{ background: 'rgba(59,130,246,0.1)', color: '#1d4ed8', padding: '3px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700 }}>LATEST</span>}
+
+                        {/* Add to Google Calendar */}
+                        <AddToCalButton kind="hearing" caseId={selectedCaseId ?? ''} id={hearing.id} title="Add hearing to Google Calendar" />
 
                         {/* AI Prep button */}
                         <button
@@ -212,6 +217,9 @@ export default function HearingHistory({ refresh }: Props) {
                                     {markingId === order.id ? '...' : '✓ Done'}
                                   </button>
                                 )}
+                                {order.deadline && (
+                                  <AddToCalButton kind="order" caseId={selectedCaseId ?? ''} id={order.id} title="Add deadline to Google Calendar" />
+                                )}
                               </div>
                             </div>
                           )
@@ -224,12 +232,16 @@ export default function HearingHistory({ refresh }: Props) {
                       <div style={{ marginTop: 10, background: '#f5f3ff', border: '1px solid #c4b5fd', borderRadius: 8, padding: 12 }}>
                         <div style={{ fontSize: 11, fontWeight: 700, color: '#7c3aed', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
                           <i className="ti ti-sparkles" /> AI Hearing Prep
-                          <button onClick={() => { setAiHearingId(null); setAiResult('') }} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#7c3aed', fontSize: 14 }}>✕</button>
+                          <button onClick={() => { setAiHearingId(null); setAiBrief(null); setAiError('') }} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#7c3aed', fontSize: 14 }}>✕</button>
                         </div>
                         {aiLoading ? (
                           <div style={{ fontSize: 12, color: '#7c3aed' }}>Generating prep brief...</div>
+                        ) : aiBrief ? (
+                          <PrepBriefCard brief={aiBrief} />
                         ) : (
-                          <pre style={{ fontSize: 12, color: '#334155', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>{aiResult}</pre>
+                          <div style={{ fontSize: 12, color: '#dc2626', padding: '6px 0' }}>
+                            {aiError || 'AI returned an unreadable response.'} Tap <strong>✨ AI Prep</strong> again to retry.
+                          </div>
                         )}
                       </div>
                     )}

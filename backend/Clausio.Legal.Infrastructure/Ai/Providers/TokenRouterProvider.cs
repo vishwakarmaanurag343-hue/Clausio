@@ -47,18 +47,20 @@ public class TokenRouterProvider : ILLMProvider
     {
         _logger.LogInformation("TokenRouter StreamCompleteAsync called for model {Model}", model);
 
-        var requestBody = new
+        var requestBody = new Dictionary<string, object>
         {
-            model = model,
-            max_tokens = 2048,
-            temperature = 0.1,
-            stream = true,
-            messages = new[]
+            ["model"] = model,
+            ["max_tokens"] = 4096,
+            ["temperature"] = 0.1,
+            ["stream"] = true,
+            ["messages"] = new[]
             {
                 new { role = "system", content = systemPrompt },
                 new { role = "user", content = userPrompt }
             }
         };
+        // Reasoning models burn the completion budget deliberating — cap it per family
+        requestBody["reasoning_effort"] = model.Contains("gpt-oss", StringComparison.OrdinalIgnoreCase) ? "low" : "none";
 
         var json = JsonSerializer.Serialize(requestBody);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -105,18 +107,20 @@ public class TokenRouterProvider : ILLMProvider
 
     private async Task<string> CallApiAsync(string model, string systemPrompt, string userPrompt, bool stream, CancellationToken cancellationToken)
     {
-        var requestBody = new
+        var requestBody = new Dictionary<string, object>
         {
-            model = model,
-            max_tokens = 2048,
-            temperature = 0.1,
-            stream = stream,
-            messages = new[]
+            ["model"] = model,
+            ["max_tokens"] = 4096,
+            ["temperature"] = 0.1,
+            ["stream"] = true,
+            ["messages"] = new[]
             {
                 new { role = "system", content = systemPrompt },
                 new { role = "user", content = userPrompt }
             }
         };
+        // Reasoning models burn the completion budget deliberating — cap it per family
+        requestBody["reasoning_effort"] = model.Contains("gpt-oss", StringComparison.OrdinalIgnoreCase) ? "low" : "none";
 
         var json = JsonSerializer.Serialize(requestBody);
         var content = new StringContent(json, Encoding.UTF8, "application/json");

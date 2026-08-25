@@ -1,9 +1,9 @@
 import AIResponseFormatter from '@/components/common/AIResponseFormatter'
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useCaseStore } from '@/lib/store'
-import { aiApi } from '@/lib/api'
+import { aiApi, witnessesApi, integrationsApi } from '@/lib/api'
 
 import HearingForm     from '@/components/hearings/HearingForm'
 import HearingHistory  from '@/components/hearings/HearingHistory'
@@ -11,6 +11,7 @@ import AddHearingModal from '@/components/hearings/AddHearingModal'
 import HearingTabs     from '@/components/hearings/HearingTabs'
 import DeadlineBanner  from '@/components/hearings/DeadlineBanner'
 import CaseTypeBadge   from '@/components/ui/CaseTypeBadge'
+import WitnessCard, { parseWitnessBrief, type WitnessBrief } from '@/components/hearings/WitnessCard'
 
 export default function HearingsPage() {
   const { selectedCaseId } = useCaseStore()
@@ -18,60 +19,70 @@ export default function HearingsPage() {
   const [activeTab,    setActiveTab]    = useState('Hearing Diary')
   const [refreshCount, setRefreshCount] = useState(0)
 
-  // Prep Brief state
-  const [prepData,    setPrepData]    = useState<any>(null)
-  const [prepLoading, setPrepLoading] = useState(false)
-  const [prepError,   setPrepError]   = useState('')
-
-  // Witness Intelligence state
-  const [witnessData,    setWitnessData]    = useState<any>(null)
-  const [witnessLoading, setWitnessLoading] = useState(false)
-  const [witnessError,   setWitnessError]   = useState('')
-
   function handleSaved() { setRefreshCount(c => c + 1) }
 
-  // Load prep brief when tab opens
-  const loadPrep = useCallback(async () => {
-    if (!selectedCaseId) return
-    setPrepLoading(true)
-    setPrepError('')
-    setPrepData(null)
-    try {
-      const res = await aiApi.getPrep(selectedCaseId)
-      const raw = res.brief ?? res.result ?? ''
-      try { setPrepData(JSON.parse(raw)) }
-      catch { setPrepData({ openingStatement: raw }) }
-    } catch (err: any) {
-      setPrepError(err.message || 'Failed to generate prep brief.')
-    } finally { setPrepLoading(false) }
-  }, [selectedCaseId])
+  // ── Witness Intelligence: stored witnesses + per-witness AI briefs ──
+  const [witnesses,     setWitnesses]     = useState<any[]>([])
+  const [witnessBriefs, setWitnessBriefs] = useState<Record<string, WitnessBrief | null>>({})
+  const [witnessErrors, setWitnessErrors] = useState<Record<string, string>>({})
+  const [analysingId,   setAnalysingId]   = useState<string | null>(null)
+  const [wListError,    setWListError]    = useState('')
+  const [showWForm,     setShowWForm]     = useState(false)
+  const [wSaving,       setWSaving]       = useState(false)
+  const [wForm,         setWForm]         = useState({ name: '', type: 'Independent', side: 'Ours', statement: '' })
 
-  // Load witness intelligence when tab opens
-  const loadWitness = useCallback(async () => {
-    if (!selectedCaseId) return
-    setWitnessLoading(true)
-    setWitnessError('')
-    setWitnessData(null)
-    try {
-      const res = await aiApi.getWitness(selectedCaseId)
-      const raw = res.intelligence ?? res.result ?? ''
-      try { setWitnessData(JSON.parse(raw)) }
-      catch { setWitnessData({ raw }) }
-    } catch (err: any) {
-      setWitnessError(err.message || 'Failed to generate witness intelligence.')
-    } finally { setWitnessLoading(false) }
-  }, [selectedCaseId])
+  function loadWitnesses() {
+    if (!selectedCaseId) { setWitnesses([]); return }
+    setWListError('')
+    witnessesApi.getByCaseId(selectedCaseId)
+      .then(d => setWitnesses(Array.isArray(d) ? d : []))
+      .catch(err => setWListError(err.message || 'Failed to load witnesses'))
+  }
+
+  useEffect(() => { setWitnesses([]); setWitnessBriefs({}); setWitnessErrors({}); setWListError(''); setShowWForm(false) }, [selectedCaseId])
 
   useEffect(() => {
-    if (activeTab === 'Prep Brief'          && !prepData    && !prepLoading)    loadPrep()
-    if (activeTab === 'Witness Intelligence' && !witnessData && !witnessLoading) loadWitness()
+    if (activeTab === 'Witness Intelligence') loadWitnesses()
   }, [activeTab, selectedCaseId])
 
-  // Reset when case changes
-  useEffect(() => {
-    setPrepData(null)
-    setWitnessData(null)
-  }, [selectedCaseId])
+  async function addWitness() {
+    if (!selectedCaseId || !wForm.name.trim()) return
+    setWSaving(true)
+    try {
+      await witnessesApi.create(selectedCaseId, {
+        name: wForm.name.trim(), type: wForm.type, side: wForm.side, statement: wForm.statement.trim(),
+      })
+      setWForm({ name: '', type: 'Independent', side: 'Ours', statement: '' })
+      setShowWForm(false)
+      loadWitnesses()
+    } catch (err: any) { alert(err.message || 'Failed to add witness') }
+    finally { setWSaving(false) }
+  }
+
+  async function deleteWitness(id: string) {
+    if (!selectedCaseId) return
+    try { await witnessesApi.remove(selectedCaseId, id); loadWitnesses() } catch {}
+  }
+
+  async function analyseWitness(w: any) {
+    if (!selectedCaseId) return
+    setAnalysingId(w.id)
+    setWitnessErrors(prev => ({ ...prev, [w.id]: '' }))
+    try {
+      const res = await aiApi.getWitness(selectedCaseId, {
+        witnessId: w.id, name: w.name, type: w.type, side: w.side, statement: w.statement,
+      })
+      const brief = parseWitnessBrief(res.intelligence ?? res.result)   // null ⇒ error card, never raw dump
+      setWitnessBriefs(prev => ({ ...prev, [w.id]: brief }))
+      if (!brief) {
+        setWitnessErrors(prev => ({ ...prev, [w.id]: 'AI did not return the expected structured format.' }))
+        console.error('[Witness AI] Unparseable payload:', res.intelligence ?? res.result)
+      }
+    } catch (err: any) {
+      setWitnessErrors(prev => ({ ...prev, [w.id]: err.message || 'Could not reach the AI service.' }))
+      console.error('[Witness AI] Request failed:', err)
+    } finally { setAnalysingId(null) }
+  }
 
   return (
     <>
@@ -89,9 +100,12 @@ export default function HearingsPage() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <CaseTypeBadge />
-              <button className="glass-button" onClick={() => setShowAddModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 16px', height: 38, border: 'none', borderRadius: 10, cursor: 'pointer', background: '#3b82f6', color: '#fff', fontWeight: 600, fontSize: 13, boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}>
-                <i className="ti ti-plus" /> Add Hearing
-              </button>
+              <CalendarStatusPill />
+              {activeTab === 'Hearing Diary' && (
+                <button className="glass-button" onClick={() => setShowAddModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 16px', height: 38, border: 'none', borderRadius: 10, cursor: 'pointer', background: '#3b82f6', color: '#fff', fontWeight: 600, fontSize: 13, boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}>
+                  <i className="ti ti-plus" /> Add Hearing
+                </button>
+              )}
             </div>
           </div>
 
@@ -111,206 +125,122 @@ export default function HearingsPage() {
               </div>
             )}
 
-            {/* ── PREP BRIEF TAB — NOW REAL AI ── */}
-            {activeTab === 'Prep Brief' && (
-              <div className="glass-card" style={{ padding: 24 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                  <div>
-                    <h2 style={{ margin: 0, fontSize: 18, color: '#0f172a', fontWeight: 700 }}>Hearing Preparation Brief</h2>
-                    <p style={{ color: '#64748b', marginTop: 4, fontSize: 13 }}>AI-generated preparation notes for the next hearing.</p>
-                  </div>
-                  <button
-                    onClick={loadPrep}
-                    disabled={prepLoading}
-                    className="glass-button"
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 16px', height: 38, border: 'none', borderRadius: 10, cursor: prepLoading ? 'not-allowed' : 'pointer', background: '#7c3aed', color: '#fff', fontWeight: 600, fontSize: 13, opacity: prepLoading ? 0.7 : 1 }}
-                  >
-                    <i className="ti ti-sparkles" />
-                    {prepLoading ? 'Generating...' : prepData ? 'Regenerate' : 'Generate Brief'}
-                  </button>
-                </div>
-
-                {!selectedCaseId && (
-                  <EmptyBox icon="ti-folder-open" message="Select a case to generate prep brief." />
-                )}
-
-                {selectedCaseId && prepLoading && (
-                  <LoadingBox message="AI is preparing your hearing brief..." />
-                )}
-
-                {selectedCaseId && prepError && !prepLoading && (
-                  <div style={{ padding: '12px 16px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, fontSize: 13, color: '#dc2626', marginBottom: 16 }}>
-                    {prepError}
-                    <button onClick={loadPrep} style={{ marginLeft: 12, fontWeight: 700, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Retry</button>
-                  </div>
-                )}
-
-                {selectedCaseId && !prepLoading && !prepData && !prepError && (
-                  <EmptyBox icon="ti-sparkles" message="Click Generate Brief to get AI-powered hearing preparation notes." />
-                )}
-
-                {prepData && !prepLoading && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-
-                    {/* Today's Objective */}
-                    {prepData.todayObjective && (
-                      <AICard color="#1d4ed8" bg="rgba(59,130,246,0.05)" border="rgba(59,130,246,0.15)" title="Today's Objective" icon="ti-target">
-                        <p style={{ fontSize: 13, color: '#334155', margin: 0, lineHeight: 1.6 }}>{prepData.todayObjective}</p>
-                      </AICard>
-                    )}
-
-                    {/* Judge Notes */}
-                    {prepData.judgeNotes && (
-                      <AICard color="#a16207" bg="rgba(234,179,8,0.05)" border="rgba(234,179,8,0.15)" title="Judge Notes" icon="ti-gavel">
-                        <p style={{ fontSize: 13, color: '#334155', margin: 0, lineHeight: 1.6 }}>{prepData.judgeNotes}</p>
-                      </AICard>
-                    )}
-
-                    {/* Key Arguments */}
-                    {prepData.keyArguments?.length > 0 && (
-                      <AICard color="#15803d" bg="rgba(34,197,94,0.05)" border="rgba(34,197,94,0.15)" title="Key Arguments" icon="ti-scale">
-                        <ul style={{ fontSize: 13, color: '#334155', margin: 0, paddingLeft: 20, lineHeight: 1.8 }}>
-                          {prepData.keyArguments.map((a: string, i: number) => <li key={i}>{a}</li>)}
-                        </ul>
-                      </AICard>
-                    )}
-
-                    {/* Documents Required */}
-                    {prepData.documentsRequired?.length > 0 && (
-                      <AICard color="#b91c1c" bg="rgba(239,68,68,0.05)" border="rgba(239,68,68,0.15)" title="Documents Required" icon="ti-files">
-                        <ul style={{ fontSize: 13, color: '#334155', margin: 0, paddingLeft: 20, lineHeight: 1.8 }}>
-                          {prepData.documentsRequired.map((d: string, i: number) => <li key={i}>{d}</li>)}
-                        </ul>
-                      </AICard>
-                    )}
-
-                    {/* Anticipated Defence */}
-                    {prepData.anticipatedDefence?.length > 0 && (
-                      <AICard color="#6d28d9" bg="rgba(124,58,237,0.05)" border="rgba(124,58,237,0.15)" title="Anticipated Defence" icon="ti-shield">
-                        <ul style={{ fontSize: 13, color: '#334155', margin: 0, paddingLeft: 20, lineHeight: 1.8 }}>
-                          {prepData.anticipatedDefence.map((d: string, i: number) => <li key={i}>{d}</li>)}
-                        </ul>
-                      </AICard>
-                    )}
-
-                    {/* Opening Statement */}
-                    {prepData.openingStatement && (
-                      <div style={{ gridColumn: '1 / -1', background: 'linear-gradient(135deg,rgba(30,58,138,0.06),rgba(59,130,246,0.04))', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 12, padding: 20 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: '#1e40af', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <i className="ti ti-message-2" /> Suggested Opening Statement
-                        </div>
-                        <p style={{ fontSize: 13, color: '#1e3a8a', fontStyle: 'italic', margin: 0, lineHeight: 1.8, fontWeight: 500 }}>
-                          "{prepData.openingStatement}"
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ── WITNESS INTELLIGENCE TAB — NOW REAL AI ── */}
+            {/* ── WITNESS INTELLIGENCE TAB ── */}
             {activeTab === 'Witness Intelligence' && (
               <div className="glass-card" style={{ padding: 24 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                   <div>
-                    <h2 style={{ margin: 0, fontSize: 18, color: '#0f172a', fontWeight: 700 }}>Witness Intelligence</h2>
-                    <p style={{ color: '#64748b', marginTop: 4, fontSize: 13 }}>AI analysis of witness credibility and cross-examination strategy.</p>
+                    <h2 style={{ margin: 0, fontSize: 18, color: '#0f172a', fontWeight: 700 }}>Witnesses</h2>
+                    <p style={{ color: '#64748b', marginTop: 4, fontSize: 13 }}>Add each witness, then run AI intelligence on them individually.</p>
                   </div>
-                  <button
-                    onClick={loadWitness}
-                    disabled={witnessLoading}
-                    className="glass-button"
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 16px', height: 38, border: 'none', borderRadius: 10, cursor: witnessLoading ? 'not-allowed' : 'pointer', background: '#7c3aed', color: '#fff', fontWeight: 600, fontSize: 13, opacity: witnessLoading ? 0.7 : 1 }}
-                  >
-                    <i className="ti ti-sparkles" />
-                    {witnessLoading ? 'Analysing...' : witnessData ? 'Re-analyse' : 'Analyse Witnesses'}
-                  </button>
+                  {selectedCaseId && (
+                    <button
+                      onClick={() => setShowWForm(!showWForm)}
+                      className="glass-button"
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 16px', height: 38, border: 'none', borderRadius: 10, cursor: 'pointer', background: '#7c3aed', color: '#fff', fontWeight: 600, fontSize: 13 }}
+                    >
+                      <i className="ti ti-plus" /> Add Witness
+                    </button>
+                  )}
                 </div>
+                {!selectedCaseId && <EmptyBox icon="ti-folder-open" message="Select a case to manage witnesses." />}
 
-                {!selectedCaseId && <EmptyBox icon="ti-folder-open" message="Select a case to analyse witnesses." />}
-                {selectedCaseId && witnessLoading && <LoadingBox message="AI is analysing witnesses..." />}
-                {selectedCaseId && witnessError && !witnessLoading && (
-                  <div style={{ padding: '12px 16px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, fontSize: 13, color: '#dc2626' }}>
-                    {witnessError}
-                    <button onClick={loadWitness} style={{ marginLeft: 12, fontWeight: 700, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Retry</button>
+                {selectedCaseId && wListError && (
+                  <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12, color: '#dc2626', marginBottom: 12 }}>
+                    {wListError}
                   </div>
                 )}
-                {selectedCaseId && !witnessLoading && !witnessData && !witnessError && (
-                  <EmptyBox icon="ti-users" message="Click Analyse Witnesses to get AI-powered witness strategy." />
+
+                {/* Add-witness form */}
+                {selectedCaseId && showWForm && (
+                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: 16, marginBottom: 16 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+                      <input value={wForm.name} onChange={(e) => setWForm({ ...wForm, name: e.target.value })} placeholder="Witness name *" style={{ padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                      <select value={wForm.type} onChange={(e) => setWForm({ ...wForm, type: e.target.value })} style={{ padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                        {['Petitioner', 'Respondent', 'Independent', 'Expert'].map(t => <option key={t}>{t}</option>)}
+                      </select>
+                      <select value={wForm.side} onChange={(e) => setWForm({ ...wForm, side: e.target.value })} style={{ padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                        <option>Ours</option>
+                        <option>Opposing</option>
+                      </select>
+                    </div>
+                    <textarea
+                      rows={3}
+                      value={wForm.statement}
+                      onChange={(e) => setWForm({ ...wForm, statement: e.target.value })}
+                      placeholder="Their statement / summary of what they will say..."
+                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', outline: 'none', boxSizing: 'border-box', marginBottom: 12 }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                      <button onClick={() => setShowWForm(false)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', color: '#475569', cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>Cancel</button>
+                      <button onClick={addWitness} disabled={wSaving || !wForm.name.trim()} className="glass-button" style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: wSaving || !wForm.name.trim() ? '#93c5fd' : '#2563eb', color: '#fff', cursor: wSaving || !wForm.name.trim() ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: 12 }}>
+                        {wSaving ? 'Saving...' : 'Save Witness'}
+                      </button>
+                    </div>
+                  </div>
                 )}
 
-                {witnessData && !witnessLoading && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-                    {/* Witness cards */}
-                    {witnessData.witnesses?.length > 0 && (
-                      <div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Our Witnesses</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                          {witnessData.witnesses.map((w: any, i: number) => (
-                            <div key={i} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: 16 }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                                <div>
-                                  <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>{w.name}</div>
-                                  <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{w.role}</div>
-                                </div>
-                                {w.credibilityScore && (
-                                  <div style={{ textAlign: 'right' }}>
-                                    <div style={{ fontSize: 18, fontWeight: 800, color: w.credibilityScore >= 70 ? '#15803d' : '#d97706' }}>{w.credibilityScore}%</div>
-                                    <div style={{ fontSize: 10, color: '#64748b' }}>Credibility</div>
-                                  </div>
-                                )}
-                              </div>
-                              {w.keyTestimony && <p style={{ fontSize: 12, color: '#475569', margin: '0 0 8px', lineHeight: 1.5 }}>{w.keyTestimony}</p>}
-                              {w.crossExamRisks?.length > 0 && (
-                                <div style={{ background: '#fef2f2', borderRadius: 6, padding: '6px 10px' }}>
-                                  <div style={{ fontSize: 10, fontWeight: 700, color: '#dc2626', marginBottom: 4 }}>Cross-exam risks</div>
-                                  {w.crossExamRisks.map((r: string, j: number) => (
-                                    <div key={j} style={{ fontSize: 11, color: '#7f1d1d' }}>• {r}</div>
-                                  ))}
-                                </div>
-                              )}
-                              {w.preparation && (
-                                <div style={{ marginTop: 8, fontSize: 11, color: '#15803d', background: '#f0fdf4', borderRadius: 6, padding: '6px 10px', fontWeight: 500 }}>
-                                  💡 {w.preparation}
-                                </div>
-                              )}
-                            </div>
-                          ))}
+                {/* Witness list */}
+                {selectedCaseId && witnesses.length === 0 && !showWForm && (
+                  <EmptyBox icon="ti-users" message="No witnesses added yet. Click + Add Witness to add your first witness." />
+                )}
+                {selectedCaseId && witnesses.map((w: any) => {
+                  const ours = w.side === 'Ours'
+                  return (
+                    <div key={w.id} style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 16, marginBottom: 14, background: '#ffffff' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>{w.name}</span>
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: ours ? '#f0fdf4' : '#fef2f2', color: ours ? '#15803d' : '#dc2626' }}>{w.side}</span>
+                          <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: '#f1f5f9', color: '#64748b' }}>{w.type}</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button
+                            onClick={() => analyseWitness(w)}
+                            disabled={analysingId === w.id}
+                            className="glass-button"
+                            style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, padding: '5px 12px', borderRadius: 7, border: 'none', background: '#7c3aed', color: '#fff', cursor: analysingId === w.id ? 'wait' : 'pointer', fontWeight: 600 }}
+                          >
+                            <i className="ti ti-sparkles" style={{ fontSize: 12 }} />
+                            {analysingId === w.id ? 'Analysing...' : witnessBriefs[w.id] ? 'Re-analyse' : 'AI Analyse'}
+                          </button>
+                          <button
+                            onClick={() => deleteWitness(w.id)}
+                            title="Delete witness"
+                            style={{ fontSize: 11, padding: '5px 10px', borderRadius: 7, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', color: '#dc2626', cursor: 'pointer', fontWeight: 600 }}
+                          >
+                            🗑
+                          </button>
                         </div>
                       </div>
-                    )}
 
-                    {/* Cross examination questions */}
-                    {witnessData.crossExaminationQuestions?.length > 0 && (
-                      <AICard color="#1d4ed8" bg="rgba(59,130,246,0.04)" border="rgba(59,130,246,0.15)" title="Cross-Examination Questions for Opposing Witnesses" icon="ti-question-mark">
-                        <ol style={{ fontSize: 13, color: '#334155', margin: 0, paddingLeft: 20, lineHeight: 2 }}>
-                          {witnessData.crossExaminationQuestions.map((q: string, i: number) => <li key={i}>{q}</li>)}
-                        </ol>
-                      </AICard>
-                    )}
+                      {w.statement && (
+                        <p style={{ margin: '0 0 10px', fontSize: 12, color: '#475569', lineHeight: 1.5, fontStyle: 'italic' }}>
+                          &ldquo;{w.statement.length > 220 ? w.statement.slice(0, 220) + '…' : w.statement}&rdquo;
+                        </p>
+                      )}
 
-                    {/* Raw fallback */}
-                    {witnessData.raw && (
-                      <div style={{ background: '#f8fafc', borderRadius: 12, padding: 16 }}>
-                        <pre style={{ fontSize: 13, color: '#334155', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
-                          {witnessData.raw}
-                        </pre>
-                      </div>
-                    )}
-                  </div>
-                )}
+                      {analysingId === w.id && (
+                        <LoadingBox message={'AI is analysing ' + w.name + '...'} />
+                      )}
+                      {!analysingId && witnessErrors[w.id] && (
+                        <div style={{ padding: '10px 12px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12, color: '#dc2626', marginBottom: 10 }}>
+                          {witnessErrors[w.id]} Tap <strong>AI Analyse</strong> again to retry.
+                        </div>
+                      )}
+                      {!analysingId && !!witnessBriefs[w.id] && <WitnessCard brief={witnessBriefs[w.id]!} />}
+                    </div>
+                  )
+                })}
               </div>
             )}
-
           </div>
         </div>
 
         {/* ── MOBILE HEARINGS VIEW (Matching Mobile Prototype) ── */}
         <div className="mobile-hearings-view" style={{ display: 'none', flexDirection: 'column', gap: 16 }}>
           
-          {/* Floating Pill Tabs Bar: Hearing Diary, Prep Brief, Witness Intelligence */}
+          {/* Floating Pill Tabs Bar: Hearing Diary, Witness Intelligence */}
           <div
             style={{
               display: 'flex',
@@ -323,7 +253,7 @@ export default function HearingsPage() {
               justifyContent: 'space-between',
             }}
           >
-            {['Hearing Diary', 'Prep Brief', 'Witness Intelligence'].map((tab) => {
+            {['Hearing Diary', 'Witness Intelligence'].map((tab) => {
               const isSelected = activeTab === tab
               return (
                 <button
@@ -504,223 +434,103 @@ export default function HearingsPage() {
               </>
             )}
 
-            {/* ── TAB 2: PREP BRIEF (MOBILE) ── */}
-            {activeTab === 'Prep Brief' && (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <div>
-                    <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.3px' }}>
-                      Hearing Preparation
-                    </h2>
-                    <p style={{ margin: '2px 0 0', fontSize: 11, fontWeight: 600, color: '#475569' }}>
-                      AI Strategic Preparation Brief
-                    </p>
-                  </div>
-                  <button
-                    onClick={loadPrep}
-                    disabled={prepLoading}
-                    style={{
-                      padding: '8px 14px',
-                      borderRadius: 20,
-                      background: '#0f172a',
-                      color: '#ffffff',
-                      border: 'none',
-                      fontSize: 11,
-                      fontWeight: 700,
-                      cursor: prepLoading ? 'not-allowed' : 'pointer',
-                      fontFamily: 'inherit',
-                    }}
-                  >
-                    {prepLoading ? 'Generating...' : prepData ? 'Regenerate' : 'Generate Brief'}
-                  </button>
-                </div>
-
-                {/* 3 Metric Cards for Prep Brief */}
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: 10,
-                    marginBottom: 14,
-                  }}
-                >
-                  {[
-                    { title: 'Arguments', count: prepData?.keyArguments?.length ?? '0' },
-                    { title: 'Documents', count: prepData?.documentsRequired?.length ?? '0' },
-                    { title: 'Defences', count: prepData?.anticipatedDefence?.length ?? '0' },
-                  ].map((item, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        background: '#e2e8f0',
-                        borderRadius: 22,
-                        padding: '16px 8px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        textAlign: 'center',
-                        minHeight: 100,
-                      }}
-                    >
-                      <span style={{ fontSize: 24, fontWeight: 700, color: '#0f172a', lineHeight: 1.1 }}>{item.count}</span>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: '#475569', marginTop: 4 }}>{item.title}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Main Content Card for Prep Brief */}
-                <div
-                  style={{
-                    background: '#e2e8f0',
-                    borderRadius: 24,
-                    padding: '16px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 14,
-                  }}
-                >
-                  {!selectedCaseId && <EmptyBox icon="ti-folder-open" message="Select a case to generate prep brief." />}
-                  {selectedCaseId && prepLoading && <LoadingBox message="AI is preparing your hearing brief..." />}
-                  {selectedCaseId && prepError && !prepLoading && (
-                    <div style={{ padding: '12px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 14, fontSize: 12, color: '#dc2626' }}>
-                      {prepError}
-                      <button onClick={loadPrep} style={{ marginLeft: 8, fontWeight: 700, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Retry</button>
-                    </div>
-                  )}
-                  {selectedCaseId && !prepLoading && !prepData && !prepError && (
-                    <EmptyBox icon="ti-sparkles" message="Tap 'Generate Brief' to generate AI notes for your next hearing." />
-                  )}
-
-                  {prepData && !prepLoading && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      {prepData.todayObjective && (
-                        <div style={{ background: '#ffffff', borderRadius: 16, padding: '14px' }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: '#1d4ed8', display: 'block', marginBottom: 4 }}>🎯 Today's Objective</span>
-                          <p style={{ fontSize: 12, color: '#334155', margin: 0, lineHeight: 1.5 }}>{prepData.todayObjective}</p>
-                        </div>
-                      )}
-                      {prepData.judgeNotes && (
-                        <div style={{ background: '#ffffff', borderRadius: 16, padding: '14px' }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: '#a16207', display: 'block', marginBottom: 4 }}>⚖️ Judge Notes</span>
-                          <p style={{ fontSize: 12, color: '#334155', margin: 0, lineHeight: 1.5 }}>{prepData.judgeNotes}</p>
-                        </div>
-                      )}
-                      {prepData.keyArguments?.length > 0 && (
-                        <div style={{ background: '#ffffff', borderRadius: 16, padding: '14px' }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: '#15803d', display: 'block', marginBottom: 6 }}>⚖️ Key Arguments</span>
-                          <ul style={{ fontSize: 12, color: '#334155', margin: 0, paddingLeft: 18, lineHeight: 1.6 }}>
-                            {prepData.keyArguments.map((a: string, i: number) => <li key={i}>{a}</li>)}
-                          </ul>
-                        </div>
-                      )}
-                      {prepData.documentsRequired?.length > 0 && (
-                        <div style={{ background: '#ffffff', borderRadius: 16, padding: '14px' }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: '#b91c1c', display: 'block', marginBottom: 6 }}>📁 Required Documents</span>
-                          <ul style={{ fontSize: 12, color: '#334155', margin: 0, paddingLeft: 18, lineHeight: 1.6 }}>
-                            {prepData.documentsRequired.map((d: string, i: number) => <li key={i}>{d}</li>)}
-                          </ul>
-                        </div>
-                      )}
-                      {prepData.openingStatement && (
-                        <div style={{ background: '#ffffff', borderRadius: 16, padding: '14px', borderLeft: '4px solid #3b82f6' }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: '#1e40af', display: 'block', marginBottom: 4 }}>💬 Suggested Opening</span>
-                          <p style={{ fontSize: 12, color: '#1e3a8a', fontStyle: 'italic', margin: 0, lineHeight: 1.6 }}>
-                            "{prepData.openingStatement}"
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* ── TAB 3: WITNESS INTELLIGENCE (MOBILE) ── */}
+            {/* ── WITNESS INTELLIGENCE (MOBILE) ── */}
             {activeTab === 'Witness Intelligence' && (
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <div>
-                    <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.3px' }}>
-                      Witness Intelligence
-                    </h2>
-                    <p style={{ margin: '2px 0 0', fontSize: 11, fontWeight: 600, color: '#475569' }}>
-                      Credibility & Cross-Examination Strategy
-                    </p>
+                    <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.3px' }}>Witnesses</h2>
+                    <p style={{ margin: '2px 0 0', fontSize: 11, fontWeight: 600, color: '#475569' }}>Per-witness AI preparation</p>
                   </div>
-                  <button
-                    onClick={loadWitness}
-                    disabled={witnessLoading}
-                    style={{
-                      padding: '8px 14px',
-                      borderRadius: 20,
-                      background: '#0f172a',
-                      color: '#ffffff',
-                      border: 'none',
-                      fontSize: 11,
-                      fontWeight: 700,
-                      cursor: witnessLoading ? 'not-allowed' : 'pointer',
-                      fontFamily: 'inherit',
-                    }}
-                  >
-                    {witnessLoading ? 'Analysing...' : witnessData ? 'Re-analyse' : 'Analyse Witnesses'}
-                  </button>
+                  {selectedCaseId && (
+                    <button
+                      onClick={() => setShowWForm(!showWForm)}
+                      style={{ padding: '8px 14px', borderRadius: 20, background: '#0f172a', color: '#ffffff', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      + Add
+                    </button>
+                  )}
                 </div>
 
-                <div
-                  style={{
-                    background: '#e2e8f0',
-                    borderRadius: 24,
-                    padding: '16px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 12,
-                  }}
-                >
-                  {!selectedCaseId && <EmptyBox icon="ti-folder-open" message="Select a case to analyse witnesses." />}
-                  {selectedCaseId && witnessLoading && <LoadingBox message="AI is analysing witnesses..." />}
-                  {selectedCaseId && witnessError && !witnessLoading && (
-                    <div style={{ padding: '12px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 14, fontSize: 12, color: '#dc2626' }}>
-                      {witnessError}
-                      <button onClick={loadWitness} style={{ marginLeft: 8, fontWeight: 700, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Retry</button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {!selectedCaseId && <EmptyBox icon="ti-folder-open" message="Select a case to manage witnesses." />}
+
+                  {selectedCaseId && wListError && (
+                    <div style={{ padding: '8px 10px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, fontSize: 11, color: '#dc2626' }}>
+                      {wListError}
                     </div>
-                  )}
-                  {selectedCaseId && !witnessLoading && !witnessData && !witnessError && (
-                    <EmptyBox icon="ti-users" message="Tap 'Analyse Witnesses' to get AI witness strategy." />
                   )}
 
-                  {witnessData && !witnessLoading && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      {witnessData.witnesses?.map((w: any, idx: number) => (
-                        <div key={idx} style={{ background: '#ffffff', borderRadius: 16, padding: '14px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                            <div>
-                              <span style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>{w.name}</span>
-                              <span style={{ fontSize: 11, color: '#64748b', display: 'block' }}>{w.role}</span>
-                            </div>
-                            {w.credibilityScore && (
-                              <span style={{ fontSize: 12, fontWeight: 800, padding: '2px 8px', borderRadius: 10, background: w.credibilityScore >= 70 ? '#ecfdf5' : '#fef3c7', color: w.credibilityScore >= 70 ? '#15803d' : '#d97706' }}>
-                                {w.credibilityScore}%
-                              </span>
-                            )}
-                          </div>
-                          {w.keyTestimony && <p style={{ fontSize: 11, color: '#475569', margin: '0 0 6px', lineHeight: 1.4 }}>{w.keyTestimony}</p>}
-                          {w.crossExamRisks?.length > 0 && (
-                            <div style={{ background: '#fef2f2', borderRadius: 10, padding: '6px 10px', marginTop: 4 }}>
-                              <span style={{ fontSize: 10, fontWeight: 700, color: '#dc2626' }}>Risks:</span>
-                              {w.crossExamRisks.map((r: string, j: number) => (
-                                <div key={j} style={{ fontSize: 10, color: '#7f1d1d' }}>• {r}</div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                  {selectedCaseId && showWForm && (
+                    <div style={{ background: '#ffffff', borderRadius: 16, padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <input value={wForm.name} onChange={(e) => setWForm({ ...wForm, name: e.target.value })} placeholder="Witness name *" style={{ padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 10, fontSize: 12, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                        <select value={wForm.type} onChange={(e) => setWForm({ ...wForm, type: e.target.value })} style={{ padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 10, fontSize: 12, fontFamily: 'inherit', background: '#fff' }}>
+                          {['Petitioner', 'Respondent', 'Independent', 'Expert'].map(t => <option key={t}>{t}</option>)}
+                        </select>
+                        <select value={wForm.side} onChange={(e) => setWForm({ ...wForm, side: e.target.value })} style={{ padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 10, fontSize: 12, fontFamily: 'inherit', background: '#fff' }}>
+                          <option>Ours</option>
+                          <option>Opposing</option>
+                        </select>
+                      </div>
+                      <textarea
+                        rows={3}
+                        value={wForm.statement}
+                        onChange={(e) => setWForm({ ...wForm, statement: e.target.value })}
+                        placeholder="Their statement..."
+                        style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 10, fontSize: 12, fontFamily: 'inherit', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }}
+                      />
+                      <button onClick={addWitness} disabled={wSaving || !wForm.name.trim()} style={{ padding: '10px', borderRadius: 20, border: 'none', background: wSaving || !wForm.name.trim() ? '#93c5fd' : '#2563eb', color: '#fff', fontSize: 12, fontWeight: 700, cursor: wSaving || !wForm.name.trim() ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
+                        {wSaving ? 'Saving...' : 'Save Witness'}
+                      </button>
                     </div>
                   )}
+
+                  {selectedCaseId && witnesses.length === 0 && !showWForm && (
+                    <EmptyBox icon="ti-users" message="No witnesses yet. Tap + Add to add your first witness." />
+                  )}
+
+                  {witnesses.map((w: any) => {
+                    const ours = w.side === 'Ours'
+                    return (
+                      <div key={w.id} style={{ background: '#ffffff', borderRadius: 16, padding: 14 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                          <div>
+                            <span style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>{w.name}</span>
+                            <div style={{ display: 'flex', gap: 6, marginTop: 3 }}>
+                              <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 7px', borderRadius: 8, background: ours ? '#f0fdf4' : '#fef2f2', color: ours ? '#15803d' : '#dc2626' }}>{w.side}</span>
+                              <span style={{ fontSize: 9, fontWeight: 600, padding: '1px 7px', borderRadius: 8, background: '#f1f5f9', color: '#64748b' }}>{w.type}</span>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => analyseWitness(w)}
+                            disabled={analysingId === w.id}
+                            style={{ padding: '6px 12px', borderRadius: 16, border: 'none', background: '#7c3aed', color: '#fff', fontSize: 10, fontWeight: 700, cursor: analysingId === w.id ? 'wait' : 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
+                          >
+                            {analysingId === w.id ? '...' : witnessBriefs[w.id] ? 'Re-run' : 'AI'}
+                          </button>
+                        </div>
+
+                        {w.statement && (
+                          <p style={{ fontSize: 11, color: '#475569', margin: '0 0 8px', lineHeight: 1.4, fontStyle: 'italic' }}>
+                            &ldquo;{w.statement.length > 140 ? w.statement.slice(0, 140) + '…' : w.statement}&rdquo;
+                          </p>
+                        )}
+
+                        {analysingId === w.id && <LoadingBox message={'Analysing ' + w.name + '...'} />}
+
+                        {!analysingId && witnessErrors[w.id] && (
+                          <div style={{ padding: '8px 10px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, fontSize: 11, color: '#dc2626' }}>
+                            {witnessErrors[w.id]}
+                          </div>
+                        )}
+                        {!analysingId && !!witnessBriefs[w.id] && <WitnessCard brief={witnessBriefs[w.id]!} />}
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )}
-
           </div>
 
         </div>
@@ -744,6 +554,46 @@ function AICard({ title, icon, color, bg, border, children }: { title: string; i
       </div>
       {children}
     </div>
+  )
+}
+
+// ── Google Calendar sync-status pill (click → Settings → Integrations) ──
+function CalendarStatusPill() {
+  const [status, setStatus] = useState<any>(null)
+
+  useEffect(() => {
+    integrationsApi.getStatus()
+      .then((s: any) => setStatus(s))
+      .catch(() => setStatus(null))
+  }, [])
+
+  const connected = !!status?.connected
+  const errored = connected && !!status?.lastSyncError
+
+  function tip() {
+    if (!status) return 'Google Calendar — check your connection'
+    if (!connected) return 'Google Calendar not connected — click to connect'
+    if (errored) return `Google Calendar sync error: ${status.lastSyncError}`
+    return status.lastSyncedAt
+      ? `Google Calendar synced ${new Date(status.lastSyncedAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}`
+      : 'Google Calendar connected'
+  }
+
+  return (
+    <button
+      onClick={() => window.location.assign('/settings?section=Integrations')}
+      title={tip()}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 12px',
+        borderRadius: 20, cursor: 'pointer', fontFamily: 'inherit',
+        border: `1px solid ${connected ? (errored ? '#fca5a5' : '#a7f3d0') : '#e2e8f0'}`,
+        background: connected ? (errored ? '#fef2f2' : '#f0fdf4') : '#f8fafc',
+      }}
+    >
+      <i className="ti ti-brand-google" style={{ fontSize: 14, color: connected ? (errored ? '#dc2626' : '#059669') : '#94a3b8' }} />
+      <span style={{ width: 7, height: 7, borderRadius: '50%', background: connected ? (errored ? '#ef4444' : '#10b981') : '#cbd5e1' }} />
+      <span style={{ fontSize: 11, fontWeight: 600, color: connected ? (errored ? '#b91c1c' : '#047857') : '#64748b' }}>Cal</span>
+    </button>
   )
 }
 

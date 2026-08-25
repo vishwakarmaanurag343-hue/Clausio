@@ -8,6 +8,11 @@
     "start": "next start"
   },
   "dependencies": {
+    "@fullcalendar/core": "^6.1.21",
+    "@fullcalendar/daygrid": "^6.1.21",
+    "@fullcalendar/interaction": "^6.1.21",
+    "@fullcalendar/react": "^6.1.21",
+    "@fullcalendar/timegrid": "^6.1.21",
     "@xyflow/react": "^12.11.3",
     "clsx": "^2.1.0",
     "framer-motion": "^12.42.2",

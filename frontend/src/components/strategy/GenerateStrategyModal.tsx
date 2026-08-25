@@ -79,36 +79,46 @@ export default function GenerateStrategyModal({ caseType = '', court = '', onClo
       const contradictionsRes = await aiApi.getContradictions(selectedCaseId)
       setProgress('Saving to database...')
 
-      const actionItems    = parseAiJson<any[]>(actionPlanRes.actionPlan    ?? actionPlanRes.result    ?? '') ?? []
-      const judgments      = parseAiJson<any[]>(researchRes.judgments       ?? researchRes.result      ?? '') ?? []
+      const planObj        = parseAiJson<any>(actionPlanRes.actionPlan ?? actionPlanRes.result ?? '')
+      const actionItems    = Array.isArray(planObj) ? planObj : planObj?.tasks ?? []
+
+      const researchObj    = parseAiJson<any>(researchRes.judgments ?? researchRes.result ?? '')
+      const judgments      = Array.isArray(researchObj) ? researchObj : researchObj?.similarCases ?? []
       const contradictions = parseAiJson<any[]>(contradictionsRes.contradictions ?? contradictionsRes.result ?? '') ?? []
 
       // Save to DB
       await Promise.all([
         ...actionItems.slice(0, 10).map((item: any) => actionPlansApi.create(selectedCaseId, {
-          title:       item.title       ?? 'Action',
-          description: item.description ?? item.title ?? '',
-          priority:    item.priority    ?? 'Medium',
+          title:       item.task       ?? item.title       ?? 'Action',
+          description: item.reason     ?? item.description ?? '',
+          priority:    item.priority   ?? 'Medium',
           dueBy:       item.dueBy,
-          assignedTo:  item.assignedTo  ?? 'Lawyer',
+          assignedTo:  item.owner      ?? item.assignedTo  ?? 'Lawyer',
         })),
         ...judgments.slice(0, 5).map((j: any) => researchApi.create(selectedCaseId, {
           citation:       j.citation       ?? '',
-          court:          j.court          ?? '',
-          year:           j.year           ?? new Date().getFullYear(),
-          ratioDecidendi: j.ratioDecidendi ?? j.ratio ?? '',
-          relevance:      j.relevance      ?? '',
+          court:          j.courtAndYear   ?? j.court ?? '',
+          year:           j.year           ?? Number(j.courtAndYear?.match(/\d{4}/)?.[0]) ?? new Date().getFullYear(),
+          ratioDecidendi: j.orderSummary   ?? j.ratioDecidendi ?? j.ratio ?? '',
+          relevance:      j.whyRelevantToThisCase ?? j.relevance ?? '',
           howToUse:       j.howToUse       ?? '',
           strength:       j.strength       ?? 'Medium',
         })),
-        ...contradictions.slice(0, 5).map((c: any) => contradictionsApi.create(selectedCaseId, {
-          claim:          c.claim          ?? '',
-          claimSource:    c.claimSource    ?? '',
-          evidence:       c.evidence       ?? '',
-          evidenceSource: c.evidenceSource ?? '',
-          courtArgument:  c.courtArgument  ?? '',
-          strength:       c.strength       ?? 'Medium',
-        })),
+        ...contradictions.slice(0, 8).map((c: any) => {
+          const a = c.statementA ?? {}
+          const b = c.statementB ?? {}
+          return contradictionsApi.create(selectedCaseId, {
+            claim:          a.text ?? c.claim ?? '',
+            claimSource:    [a.sourceDocument ?? c.claimSource, a.date].filter(Boolean).join(' · '),
+            evidence:       b.text ?? c.evidence ?? '',
+            evidenceSource: [b.sourceDocument ?? c.evidenceSource, b.date].filter(Boolean).join(' · '),
+            courtArgument:  [
+              c.natureOfContradiction ?? c.courtArgument ?? '',
+              c.suggestedCrossExamQuestion ? `Cross-examine: ${c.suggestedCrossExamQuestion}` : '',
+            ].filter(Boolean).join('\n\n'),
+            strength:       c.severity ?? c.strength ?? 'Medium',
+          })
+        }),
       ])
 
       setProgress('')

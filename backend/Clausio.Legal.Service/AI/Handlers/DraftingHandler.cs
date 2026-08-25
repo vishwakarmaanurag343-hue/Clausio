@@ -30,14 +30,4 @@ public class DraftingHandler : IDraftingHandler
 
         return await _aiRouter.CompleteAsync(systemPrompt, request.Instructions ?? "Draft the document based on the context.", "LegalDraft", cancellationToken);
     }
-
-    public async Task<string> HandleWhatsAppAsync(Guid caseId, WhatsAppRequestDto request, CancellationToken cancellationToken = default)
-    {
-        var contextXml = await _contextEngine.BuildDraftingContextAsync(caseId, "WhatsApp Update", request.Tone ?? "", cancellationToken);
-        
-        var systemPrompt = _promptBuilder.BuildSystemPrompt("GeneralChat"); // We could have a WhatsApp template later
-        systemPrompt += $"\n\nContext:\n{contextXml}\n\nInstruction: Draft a professional WhatsApp update for the client.";
-
-        return await _aiRouter.CompleteAsync(systemPrompt, request.Tone ?? "", "Drafting", cancellationToken);
-    }
 }

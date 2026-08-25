@@ -5,14 +5,10 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useUIStore, useCaseStore } from '@/lib/store'
 import { authApi, casesApi } from '@/lib/api'
 
-const LANGUAGES: Record<string, string> = {
-  en: 'English', hi: 'हिंदी', mr: 'मराठी', gu: 'ગુજરાતી', ta: 'தமிழ்', te: 'తెలుగు',
-}
-
 export default function Header() {
   const router = useRouter()
   const pathname = usePathname()
-  const { sidebarExpanded, caseListVisible, aiPanelVisible, language, toggleSidebar, toggleCaseList, toggleAIPanel, setLanguage } = useUIStore()
+  const { sidebarExpanded, caseListVisible, aiPanelVisible, toggleSidebar, toggleCaseList, toggleAIPanel } = useUIStore()
   const { setSelectedCase } = useCaseStore()
 
   const [user,        setUser]        = useState<any>(null)
@@ -99,6 +95,20 @@ export default function Header() {
   return (
     <header className={`glass-panel app-header-panel ${isChat ? 'header-theme-chat' : ''} ${isDashboard ? 'header-theme-dashboard' : ''}`} style={{ height: 60, display: 'flex', alignItems: 'center', padding: '0 24px', gap: 16, flexShrink: 0, margin: '16px 16px 0 16px', position: 'relative', zIndex: 100 }}>
 
+      {/* Back button — present on every page */}
+      <button
+        onClick={() => {
+          if (typeof window !== 'undefined' && window.history.length > 1) router.back()
+          else router.push('/dashboard')
+        }}
+        className="glass-button"
+        title="Back"
+        aria-label="Go back"
+        style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', cursor: 'pointer', flexShrink: 0, marginRight: -4 }}
+      >
+        <i className="ti ti-arrow-left" style={{ fontSize: 18 }} />
+      </button>
+
       {/* Mobile Hamburger Button (< 768px) */}
       <button
         onClick={toggleSidebar}
@@ -111,11 +121,12 @@ export default function Header() {
       {/* Logo */}
       <span className="desktop-logo" style={{ fontFamily: 'Inter, sans-serif', fontSize: 18, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px' }}>Clausio</span>
 
-      {/* Panel toggles (Desktop only) */}
+      {/* Sidebar toggle — works on every page (expands/collapses the nav rail) */}
+      {/* Cases + AI toggles — dashboard-only, since CaseList + AI panel only render there */}
       <div className="desktop-panel-toggles" style={{ display: 'flex', gap: 8, marginLeft: 16 }}>
-        {pill(sidebarExpanded, 'ti-layout-sidebar', 'Sidebar',  toggleSidebar)}
-        {pill(caseListVisible,  'ti-list',           'Cases',    toggleCaseList)}
-        {pill(aiPanelVisible,   'ti-brain',          'AI',       toggleAIPanel)}
+        {pill(sidebarExpanded, 'ti-layout-sidebar', 'Sidebar', toggleSidebar)}
+        {isDashboard && pill(caseListVisible, 'ti-list',  'Cases',   toggleCaseList)}
+        {isDashboard && pill(aiPanelVisible,  'ti-brain', 'AI',      toggleAIPanel)}
       </div>
 
       {/* ✅ Search bar — now fully functional */}
@@ -183,25 +194,6 @@ export default function Header() {
 
       {/* Right side */}
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <select
-          value={language}
-          onChange={e => setLanguage(e.target.value)}
-          className="glass-pill desktop-header-item"
-          style={{ fontSize: 12, color: '#0f172a', fontWeight: 600, padding: '6px 10px', border: '1px solid rgba(0,0,0,0.05)', background: 'rgba(255,255,255,0.6)', borderRadius: 20, cursor: 'pointer' }}
-        >
-          {Object.entries(LANGUAGES).map(([code, label]) => (
-            <option key={code} value={code}>{label}</option>
-          ))}
-        </select>
-
-        <button onClick={() => router.push('/settings')} className="glass-button desktop-header-item" style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', cursor: 'pointer' }}>
-          <i className="ti ti-bell" style={{ fontSize: 18 }} />
-        </button>
-
-        <button onClick={() => router.push('/settings')} className="glass-button desktop-header-item" style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', cursor: 'pointer' }}>
-          <i className="ti ti-settings" style={{ fontSize: 18 }} />
-        </button>
-
         {/* User Pill (Matches Prototype exactly) */}
         <div
           onClick={() => router.push('/settings')}

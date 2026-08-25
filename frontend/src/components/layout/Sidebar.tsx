@@ -31,6 +31,11 @@ const NAV = [
         badge: 2,
       },
       {
+        href: '/calendar',
+        icon: 'ti-calendar',
+        label: 'Calendar',
+      },
+      {
         href: '/strategy',
         icon: 'ti-target',
         label: 'Strategy',

@@ -99,20 +99,54 @@ public class AIPipeline : IAIPipeline
         var tokenizedUserInput = await _piiTokenService.TokenizeAsync(userInput, caseId, cancellationToken);
 
         // === STEP 2.8: RAG — Search 136K SC Judgments ===
-        var judgmentChunks = await _judgmentSearch.SearchAsync(userInput, topK: 2, cancellationToken);
+        var ragTopK = taskType == "LegalResearch" ? 4 : 2; // Precedent work needs more corpus than chat/analysis
+        string ragQuery;
+        string? caseCategory = null;
+        if (taskType == "LegalResearch")
+        {
+            // Keyword retrieval must run on the case's own substance — every non-tag
+            // line of the built context. The memory summary alone is often too thin
+            // (sometimes just the title echoed back) to extract legal terms from.
+            var substance = string.Join("\n", contextXml.Split('\n')
+                .Where(line => !line.TrimStart().StartsWith("<"))
+                .Select(line => line.Trim()));
+            ragQuery = substance.Length > 4000 ? substance[..4000] : substance;
+
+            // Map the case type onto the judgment corpus's own category labels so the
+            // topical backfill can rescue thin keyword sets with relevant material
+            var typeLine = contextXml.Split('\n')
+                .FirstOrDefault(l => l.TrimStart().StartsWith("Type:"))?.Trim() ?? "";
+            caseCategory = MapToCorpusCategory(typeLine);
+        }
+        else
+        {
+            ragQuery = userInput;
+        }
+        var judgmentChunks = await _judgmentSearch.SearchAsync(ragQuery, ragTopK, caseCategory, cancellationToken);
         var judgmentContext = "";
         if (judgmentChunks.Any())
         {
+            // Precedent work needs the body of each judgment (holdings sit past the header
+            // boilerplate); sized so system prompt stays under the LLM provider's TPM ceiling
+            var chunkWords = taskType == "LegalResearch" ? 350 : 300;
             judgmentContext = "\n\n=== RELEVANT SUPREME COURT JUDGMENTS (Verified) ===\n" +
-                string.Join("\n---\n", judgmentChunks.Select(c => string.Join(" ", c.Split(" ").Take(300)))) +
+                string.Join("\n---\n", judgmentChunks.Select(c => string.Join(" ", c.Split(" ").Take(chunkWords)))) +
                 "\n=== END OF JUDGMENTS ===";
             _logger.LogInformation("[Pipeline] RAG found {Count} judgment chunks", judgmentChunks.Count);
+            foreach (var c in judgmentChunks)
+                _logger.LogInformation("[Pipeline] RAG chunk: {Head}", c.Length > 160 ? c[..160] : c);
         }
         else
         {
             _logger.LogInformation("[Pipeline] RAG found no judgments — using direct AI");
         }
-        var enrichedContext = tokenizedContextXml + judgmentContext;
+
+        // Research prompts must fit the LLM provider's TPM ceiling: cap the case-file
+        // portion so the widened judgment excerpts stay inside the budget
+        var caseContext = taskType == "LegalResearch" && tokenizedContextXml.Length > 8000
+            ? tokenizedContextXml[..8000]
+            : tokenizedContextXml;
+        var enrichedContext = caseContext + judgmentContext;
         context.CaseMemoryXml = enrichedContext;
         _logger.LogInformation("[Pipeline] Context assembled and PII tokenized. Size={Chars} chars", context.CaseMemoryXml.Length);
 
@@ -136,6 +170,9 @@ public class AIPipeline : IAIPipeline
             context.ModelUsed = context.Complexity == "High" ? "DEEP" : "FAST";
             response = await _router.CompleteAsync(context.SystemPrompt, context.FinalUserPrompt, taskType, cancellationToken);
         }
+
+        // === STEP 4.5: Strip model reasoning blocks (qwen emits <think>…</think>) ===
+        response = StripReasoningBlocks(response);
 
         // === STEP 5: Citation Verification ===
         response = await _citationVerifier.VerifyCitationsAsync(response, cancellationToken);
@@ -240,6 +277,43 @@ public class AIPipeline : IAIPipeline
 
     // ===================== Helpers =====================
 
+    /// <summary>
+    /// Reasoning models (qwen3.x) prepend a &lt;think&gt;…&lt;/think&gt; deliberation block.
+    /// Strip closed blocks; an UNCLOSED block means the model burned its whole completion
+    /// budget thinking and produced nothing usable — return empty so callers fail cleanly.
+    /// </summary>
+    private static string StripReasoningBlocks(string response)
+    {
+        if (string.IsNullOrWhiteSpace(response)) return response;
+
+        var closeIdx = response.LastIndexOf("</think>", StringComparison.OrdinalIgnoreCase);
+        if (closeIdx >= 0)
+            return response[(closeIdx + "</think>".Length)..].TrimStart();
+
+        if (response.IndexOf("<think>", StringComparison.OrdinalIgnoreCase) >= 0)
+            return string.Empty; // truncated mid-thought — no usable content followed
+
+        return response;
+    }
+
+    /// <summary>
+    /// Map a free-form case type ("Family Law", "Criminal Appeal — 482 CrPC") onto the
+    /// judgment corpus's CaseType labels, so category backfill can find topical chunks.
+    /// </summary>
+    private static string? MapToCorpusCategory(string typeLine)
+    {
+        var t = typeLine.ToLowerInvariant();
+        if (t.Contains("family") || t.Contains("matrimonial") || t.Contains("divorce") || t.Contains("custody")) return "Family";
+        if (t.Contains("criminal")) return "Criminal";
+        if (t.Contains("property") || t.Contains("civil")) return "Property";
+        if (t.Contains("constitution") || t.Contains("writ")) return "Constitutional";
+        if (t.Contains("tax") || t.Contains("gst")) return "Tax";
+        if (t.Contains("ni act") || t.Contains("negotiable") || t.Contains("cheque")) return "NI Act";
+        if (t.Contains("labour")) return "Labour";
+        if (t.Contains("consumer")) return "Consumer";
+        return null;
+    }
+
     private async Task<string> BuildContextAsync(Guid caseId, string taskType, string userInput, Dictionary<string, object>? parameters, CancellationToken cancellationToken)
     {
         if (taskType == "LegalDraft")
@@ -247,7 +321,7 @@ public class AIPipeline : IAIPipeline
             var docType = parameters != null && parameters.ContainsKey("DocumentType") ? parameters["DocumentType"]?.ToString() : "Document";
             return await _contextEngine.BuildDraftingContextAsync(caseId, docType ?? "Document", userInput, cancellationToken);
         }
-        else if (taskType == "Analysis" || taskType == "Summarization" || taskType == "ActionPlan")
+        else if (taskType == "Analysis" || taskType == "Summarization" || taskType == "ActionPlan" || taskType == "RiskAssessment" || taskType == "Recommendation" || taskType == "LegalResearch" || taskType == "Contradiction")
         {
             return await _contextEngine.BuildAnalysisContextAsync(caseId, taskType, cancellationToken);
         }
@@ -262,7 +336,7 @@ public class AIPipeline : IAIPipeline
         int score = 0;
         var lowerTask = taskType.ToLowerInvariant();
         if (lowerTask.Contains("draft") || lowerTask.Contains("research") || lowerTask.Contains("actionplan") || lowerTask.Contains("contradiction")) score += 50;
-        else if (lowerTask.Contains("analysis") || lowerTask.Contains("summarization")) score += 30;
+        else if (lowerTask.Contains("analysis") || lowerTask.Contains("summarization") || lowerTask.Contains("hearingprep") || lowerTask.Contains("witnessprep") || lowerTask.Contains("riskassessment") || lowerTask.Contains("recommendation")) score += 30;
 
         if (userInput.Length > 2500) score += 35;
         else if (userInput.Length > 800) score += 15;
@@ -299,10 +373,40 @@ public class AIPipeline : IAIPipeline
         {
             return "Analysis/LegalReasoning";
         }
-        
+
+        if (taskType == "RiskAssessment")
+        {
+            return "RiskAssessment"; // Dedicated Strategy-tab risk template (distinct from Analysis/RiskAssessment, which serves ActionPlan)
+        }
+
+        if (taskType == "Recommendation")
+        {
+            return "Recommendation"; // Dedicated Strategy-tab recommendations template
+        }
+
+        if (taskType == "LegalResearch")
+        {
+            return "LegalResearch"; // Dedicated Strategy-tab precedent-retrieval template
+        }
+
+        if (taskType == "Contradiction")
+        {
+            return "ContradictionAnalysis"; // Dedicated Strategy-tab contradiction template (was Analysis/LegalReasoning)
+        }
+
+        if (taskType == "HearingPrep")
+        {
+            return "HearingPrep";
+        }
+
+        if (taskType == "WitnessPrep")
+        {
+            return "WitnessPrep";
+        }
+
         if (taskType == "ActionPlan")
         {
-            return "Analysis/RiskAssessment"; // Specialized action plan
+            return "ActionPlan"; // Dedicated working-plan template (was Analysis/RiskAssessment)
         }
 
         return taskType switch

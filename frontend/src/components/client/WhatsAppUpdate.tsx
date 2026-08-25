@@ -2,12 +2,15 @@
 
 import { useState } from 'react'
 
+export type UpdateChannel = 'whatsapp' | 'email'
+
 interface Props {
   onGenerate: (tone: string, language: string) => void
   generating: boolean
+  channel: UpdateChannel
 }
 
-export default function WhatsAppUpdate({ onGenerate, generating }: Props) {
+export default function WhatsAppUpdate({ onGenerate, generating, channel }: Props) {
   const [language, setLanguage] = useState('Hinglish (Hindi + English)')
   const [tone, setTone] = useState('Reassuring')
 
@@ -15,6 +18,8 @@ export default function WhatsAppUpdate({ onGenerate, generating }: Props) {
   const [includeNextDate, setIncludeNextDate] = useState(true)
   const [includeActionItem, setIncludeActionItem] = useState(false)
   const [includeFeeReminder, setIncludeFeeReminder] = useState(false)
+
+  const isEmail = channel === 'email'
 
   return (
     <div
@@ -39,7 +44,7 @@ export default function WhatsAppUpdate({ onGenerate, generating }: Props) {
             color: '#0f172a',
           }}
         >
-          WhatsApp Update
+          Client Update
         </h2>
 
         <p
@@ -134,15 +139,17 @@ export default function WhatsAppUpdate({ onGenerate, generating }: Props) {
           padding: '14px',
           border: 'none',
           borderRadius: 12,
-          background: generating ? '#86efac' : '#22c55e',
+          background: generating ? '#93c5fd' : isEmail ? '#2563eb' : '#22c55e',
           color: '#ffffff',
           fontWeight: 700,
           fontSize: 15,
           cursor: generating ? 'not-allowed' : 'pointer',
-          boxShadow: '0 10px 25px rgba(34,197,94,.25)',
+          boxShadow: isEmail
+            ? '0 10px 25px rgba(37,99,235,.25)'
+            : '0 10px 25px rgba(34,197,94,.25)',
         }}
       >
-        {generating ? 'Generating...' : 'Generate for WhatsApp'}
+        {generating ? 'Generating...' : isEmail ? 'Generate for Email' : 'Generate for WhatsApp'}
       </button>
     </div>
   )

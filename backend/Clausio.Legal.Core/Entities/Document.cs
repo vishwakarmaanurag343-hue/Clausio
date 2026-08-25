@@ -14,6 +14,12 @@ public class Document : BaseEntity
     public int     CategoryConfidence  { get; set; } = 0;
     public string? CategoryDescription { get; set; }
 
+    // Court-filing lifecycle: "Filed" | "Not Filed" (default for existing + new rows).
+    public string FilingStatus { get; set; } = "Not Filed";
+    public DateTime? FiledDate { get; set; }
+    public Guid? FiledAtHearingId { get; set; }
+    public Hearing? FiledAtHearing { get; set; }
+
     public Guid CaseId { get; set; }
     public Case? Case { get; set; }
 }

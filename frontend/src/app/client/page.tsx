@@ -4,13 +4,14 @@ import { useState, useEffect, useCallback } from 'react'
 import { useCaseStore } from '@/lib/store'
 import { casesApi, aiApi } from '@/lib/api'
 
-import WhatsAppUpdate from '@/components/client/WhatsAppUpdate'
+import WhatsAppUpdate, { type UpdateChannel } from '@/components/client/WhatsAppUpdate'
 import WhatsAppPreview from '@/components/client/WhatsAppPreview'
 import GenerateUpdateModal from '@/components/client/GenerateUpdateModal'
 
 export default function ClientPage() {
   const { selectedCaseId } = useCaseStore()
-  const [activeTab, setActiveTab] = useState<'update' | 'fees'>('update')
+  const [activeTab, setActiveTab] = useState<'update'>('update')
+  const [channel, setChannel]     = useState<UpdateChannel>('whatsapp')
   const [showModal, setShowModal] = useState(false)
 
   const [caseData,  setCaseData]  = useState<any>(null)
@@ -30,14 +31,15 @@ export default function ClientPage() {
     setGenerating(true)
     setError('')
     try {
-      const res = await aiApi.getWhatsApp(selectedCaseId, { tone, language })
+      // Channel rides along — backend persona is shared, only the format changes.
+      const res = await aiApi.getWhatsApp(selectedCaseId, { tone, language, channel })
         setMessage(res.message ?? res.result ?? '')
     } catch (err: any) {
-      setError(err.message || 'Failed to generate WhatsApp update')
+      setError(err.message || 'Failed to generate client update')
     } finally {
       setGenerating(false)
     }
-  }, [selectedCaseId])
+  }, [selectedCaseId, channel])
 
   const clientName = caseData?.client
     ? `${caseData.client.firstName ?? ''} ${caseData.client.lastName ?? ''}`.trim()
@@ -93,15 +95,24 @@ export default function ClientPage() {
               active={activeTab === 'update'}
               onClick={() => setActiveTab('update')}
             >
-              WhatsApp Update
+              Client Update
             </TabButton>
 
-            <TabButton
-              active={activeTab === 'fees'}
-              onClick={() => setActiveTab('fees')}
-            >
-              Fee Tracker
-            </TabButton>
+            {/* Channel picker — same persona, different format */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 4 }}>
+              <select
+                value={channel}
+                onChange={(e) => setChannel(e.target.value as UpdateChannel)}
+                style={{
+                  padding: '9px 14px', borderRadius: 10, border: '1px solid #e2e8f0',
+                  background: '#fff', color: '#334155', fontSize: 13, fontWeight: 600,
+                  fontFamily: 'inherit', cursor: 'pointer', outline: 'none',
+                }}
+              >
+                <option value="whatsapp">🟢 WhatsApp</option>
+                <option value="email">✉ Email</option>
+              </select>
+            </div>
           </div>
 
           {/* ================= CONTENT ================= */}
@@ -121,24 +132,9 @@ export default function ClientPage() {
                 gap: 24,
               }}
             >
-              <WhatsAppUpdate onGenerate={generate} generating={generating} />
+              <WhatsAppUpdate onGenerate={generate} generating={generating} channel={channel} />
 
-              <WhatsAppPreview message={message} generating={generating} onRegenerate={generate} />
-            </div>
-          )}
-
-          {activeTab === 'fees' && (
-            <div
-              style={{
-                background: '#ffffff',
-                borderRadius: 16,
-                padding: 32,
-                border: '1px solid #e2e8f0',
-                textAlign: 'center',
-                color: '#64748b',
-              }}
-            >
-              Fee Tracker will be built next.
+              <WhatsAppPreview message={message} generating={generating} onRegenerate={generate} channel={channel} />
             </div>
           )}
         </div>
@@ -164,36 +160,37 @@ export default function ClientPage() {
                 flex: 1,
                 padding: '8px 12px',
                 borderRadius: 20,
-                background: activeTab === 'update' ? '#cbd5e1' : 'transparent',
+                background: '#cbd5e1',
                 color: '#0f172a',
                 border: 'none',
                 fontSize: 11,
-                fontWeight: activeTab === 'update' ? 700 : 600,
+                fontWeight: 700,
                 cursor: 'pointer',
                 textAlign: 'center',
                 fontFamily: 'inherit',
               }}
             >
-              WhatsApp Update
+              Client Update
             </button>
-            <button
-              onClick={() => setActiveTab('fees')}
+            <select
+              value={channel}
+              onChange={(e) => setChannel(e.target.value as UpdateChannel)}
               style={{
-                flex: 1,
-                padding: '8px 12px',
+                padding: '8px 10px',
                 borderRadius: 20,
-                background: activeTab === 'fees' ? '#cbd5e1' : 'transparent',
-                color: '#0f172a',
                 border: 'none',
+                background: '#e2e8f0',
+                color: '#0f172a',
                 fontSize: 11,
-                fontWeight: activeTab === 'fees' ? 700 : 600,
-                cursor: 'pointer',
-                textAlign: 'center',
+                fontWeight: 700,
                 fontFamily: 'inherit',
+                cursor: 'pointer',
+                outline: 'none',
               }}
             >
-              Fee Tracker
-            </button>
+              <option value="whatsapp">🟢 WhatsApp</option>
+              <option value="email">✉ Email</option>
+            </select>
           </div>
 
           {/* Main Solid Grey Section */}
@@ -279,16 +276,9 @@ export default function ClientPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {activeTab === 'update' && (
                 <>
-                  <WhatsAppUpdate onGenerate={generate} generating={generating} />
-                  <WhatsAppPreview message={message} generating={generating} onRegenerate={generate} />
+                  <WhatsAppUpdate onGenerate={generate} generating={generating} channel={channel} />
+                  <WhatsAppPreview message={message} generating={generating} onRegenerate={generate} channel={channel} />
                 </>
-              )}
-              {activeTab === 'fees' && (
-                <div style={{ background: '#e2e8f0', borderRadius: 24, padding: '32px 16px', textAlign: 'center', color: '#64748b' }}>
-                  <i className="ti ti-receipt" style={{ fontSize: 36, display: 'block', marginBottom: 8, opacity: 0.5 }} />
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Fee Tracker</div>
-                  <p style={{ fontSize: 12, margin: '4px 0 0' }}>Client fee tracker is coming soon.</p>
-                </div>
               )}
             </div>
 

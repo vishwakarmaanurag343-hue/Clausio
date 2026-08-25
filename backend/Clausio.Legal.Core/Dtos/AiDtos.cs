@@ -28,8 +28,11 @@ public class TranslateRequest
     public string? Text { get; set; }
 }
 
-public class WhatsAppRequestDto
+/// <summary>Request for the shared client-update drafter (WhatsApp + Email channels).</summary>
+public class ClientUpdateRequestDto
 {
+    /// <summary>"whatsapp" (default) | "email" — controls format, not substance.</summary>
+    public string? Channel { get; set; } = "whatsapp";
     public string? Tone { get; set; }
     public string? Language { get; set; }
 }

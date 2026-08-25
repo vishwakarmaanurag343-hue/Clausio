@@ -2,9 +2,46 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useCaseStore } from '@/lib/store'
-import { actionPlansApi } from '@/lib/api'
+import { actionPlansApi, aiApi, parseAiJson } from '@/lib/api'
 
 interface Props { fullView?: boolean }
+
+interface PlanTask {
+  task?:                string
+  dueRelativeToHearing?: string
+  owner?:               string
+  priority?:            string
+  reason?:              string
+}
+
+const OWNER_STYLE: Record<string, { bg: string; fg: string; bd: string }> = {
+  Advocate: { bg: '#eff6ff', fg: '#1d4ed8', bd: '#bfdbfe' },
+  Client:   { bg: '#f0fdf4', fg: '#15803d', bd: '#bbf7d0' },
+  Clerk:    { bg: '#f1f5f9', fg: '#475569', bd: '#e2e8f0' },
+}
+const PRIORITY_STYLE: Record<string, { bg: string; fg: string; bd: string }> = {
+  High:   { bg: '#fef2f2', fg: '#dc2626', bd: '#fecaca' },
+  Medium: { bg: '#fffbeb', fg: '#b45309', bd: '#fde68a' },
+  Low:    { bg: '#f0fdf4', fg: '#15803d', bd: '#bbf7d0' },
+}
+function ownerOf(o?: string)    { return OWNER_STYLE[o ?? ''] ? o! : 'Advocate' }
+function priorityOf(p?: string) { return PRIORITY_STYLE[p ?? ''] ? p! : 'Medium' }
+
+/** Extract the tasks array + next hearing date. Returns null on ANY failure — callers must never render raw text. */
+function extractPlan(raw: unknown): { nextHearingDate: string | null; tasks: PlanTask[] } | null {
+  let parsed: any = raw
+  if (typeof raw === 'string') {
+    if (!raw.trim()) return null
+    parsed = parseAiJson<any>(raw.trim())
+  }
+  const tasks = Array.isArray(parsed) ? parsed : parsed && Array.isArray(parsed.tasks) ? parsed.tasks : null
+  if (!tasks) return null
+  const clean = tasks.filter((t: any) => t && typeof t === 'object')
+  return {
+    nextHearingDate: !Array.isArray(parsed) && typeof parsed?.nextHearingDate === 'string' ? parsed.nextHearingDate : null,
+    tasks: clean,
+  }
+}
 
 export default function ActionPlan({ fullView = false }: Props) {
   const { selectedCaseId } = useCaseStore()
@@ -14,6 +51,12 @@ export default function ActionPlan({ fullView = false }: Props) {
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [showAdd,    setShowAdd]    = useState(false)
   const [filter,     setFilter]     = useState<'all'|'pending'|'done'>('pending')
+
+  // AI working plan (flashcards) — separate from the saved checklist below
+  const [plan,       setPlan]       = useState<{ nextHearingDate: string | null; tasks: PlanTask[] } | null>(null)
+  const [generating, setGenerating] = useState(false)
+  const [genError,   setGenError]   = useState('')
+  const [savedCount, setSavedCount] = useState<number | null>(null)
 
   // Add form
   const [newTitle,    setNewTitle]    = useState('')
@@ -32,6 +75,33 @@ export default function ActionPlan({ fullView = false }: Props) {
   }, [selectedCaseId])
 
   useEffect(() => { load() }, [load])
+
+  function generate() {
+    if (!selectedCaseId || generating) return
+    setGenerating(true); setGenError(''); setSavedCount(null)
+    aiApi.getActionPlan(selectedCaseId)
+      .then(res => {
+        const parsed = extractPlan(res.actionPlan ?? res.result ?? res)
+        if (parsed) setPlan(parsed)
+        else setGenError('The AI response could not be read as plan cards. Please retry.')
+      })
+      .catch(err => setGenError(err.message || 'Failed to generate the working plan'))
+      .finally(() => setGenerating(false))
+  }
+
+  async function saveAllToMyPlan() {
+    if (!selectedCaseId || !plan?.tasks.length) return
+    try {
+      await Promise.all(plan.tasks.map(t => actionPlansApi.create(selectedCaseId, {
+        title:       t.task ?? 'Action',
+        description: t.reason ?? '',
+        priority:    priorityOf(t.priority),
+        assignedTo:  ownerOf(t.owner) === 'Clerk' ? 'Clerk' : ownerOf(t.owner),
+      })))
+      setSavedCount(plan.tasks.length)
+      load()
+    } catch { setGenError('Failed to save tasks to your plan.') }
+  }
 
   async function markComplete(id: string) {
     if (!selectedCaseId) return
@@ -80,13 +150,13 @@ export default function ActionPlan({ fullView = false }: Props) {
   const completePct  = actions.length > 0 ? Math.round((doneCount / actions.length) * 100) : 0
 
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 22, boxShadow: '0 2px 8px rgba(15,23,42,.04)', height: fullView ? 'auto' : '100%' }}>
+    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 22, boxShadow: '0 2px 8px rgba(15,23,42,.04)', height: fullView ? 'auto' : '100%', overflowY: fullView ? 'visible' : 'auto' }}>
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#0f172a' }}>30-Day Action Plan</h2>
-          <p style={{ marginTop: 4, color: '#64748b', fontSize: 13 }}>AI-generated tasks for this case.</p>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#0f172a' }}>Working Action Plan</h2>
+          <p style={{ marginTop: 4, color: '#64748b', fontSize: 13 }}>AI-built chamber plan for this case — Advocate / Client / Clerk tasks.</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {actions.length > 0 && (
@@ -99,6 +169,84 @@ export default function ActionPlan({ fullView = false }: Props) {
           </button>
         </div>
       </div>
+
+      {/* ===================== AI WORKING PLAN (flashcards) ===================== */}
+      {!plan && !generating && !genError && (
+        <div style={{ textAlign: 'center', padding: 26, background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 12, marginBottom: 20 }}>
+          <i className="ti ti-gavel" style={{ fontSize: 28, display: 'block', marginBottom: 8, color: '#94a3b8' }} />
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#475569', marginBottom: 6 }}>No AI plan generated yet</div>
+          <div style={{ fontSize: 12.5, color: '#94a3b8', marginBottom: 14 }}>Builds a working plan against the real next hearing date.</div>
+          <button onClick={generate} disabled={!selectedCaseId} style={{ padding: '9px 18px', background: selectedCaseId ? '#2563eb' : '#93c5fd', color: '#fff', border: 'none', borderRadius: 10, cursor: selectedCaseId ? 'pointer' : 'not-allowed', fontWeight: 600, fontSize: 13, fontFamily: 'inherit' }}>
+            <i className="ti ti-sparkles" style={{ marginRight: 6 }} />Generate with AI
+          </button>
+        </div>
+      )}
+
+      {generating && (
+        <div style={{ textAlign: 'center', padding: 26, color: '#7c3aed', marginBottom: 20 }}>
+          <i className="ti ti-loader-2" style={{ fontSize: 26, display: 'block', marginBottom: 8, animation: 'spin 1s linear infinite' }} />
+          <div style={{ fontSize: 13, fontWeight: 500 }}>AI is building your working plan...</div>
+          <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>This reads the full case file — usually under a minute</div>
+        </div>
+      )}
+
+      {genError && (
+        <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626', marginBottom: 16 }}>
+          {genError} <button onClick={generate} style={{ marginLeft: 8, fontWeight: 700, textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontFamily: 'inherit' }}>Retry</button>
+        </div>
+      )}
+
+      {plan && !generating && (
+        <div style={{ marginBottom: 22 }}>
+          {/* Next hearing strip + save all */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+            {plan.nextHearingDate && (
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#1d4ed8', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 20, padding: '4px 12px' }}>
+                📅 Next hearing: {plan.nextHearingDate}
+              </span>
+            )}
+            <span style={{ flex: 1 }} />
+            <button onClick={saveAllToMyPlan} style={{ height: 30, padding: '0 12px', border: '1px solid #86efac', borderRadius: 8, background: '#f0fdf4', cursor: 'pointer', fontSize: 11.5, fontWeight: 700, color: '#15803d', fontFamily: 'inherit' }}>
+              <i className="ti ti-download" style={{ fontSize: 12, marginRight: 4 }} />{savedCount !== null ? `Saved ${savedCount} ✓` : 'Save all to My Plan'}
+            </button>
+          </div>
+
+          {plan.tasks.map((t, i) => {
+            const own = OWNER_STYLE[ownerOf(t.owner)]
+            const pri = PRIORITY_STYLE[priorityOf(t.priority)]
+            return (
+              <div key={i} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 14, marginBottom: 10 }}>
+                {/* Card header */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, minWidth: 0 }}>
+                    <span style={{ width: 24, height: 24, borderRadius: 7, background: '#eff6ff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 12, fontWeight: 800, color: '#2563eb', marginTop: 1 }}>{i + 1}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', color: '#0f172a', lineHeight: 1.6 }}>{t.task || 'Untitled task'}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexShrink: 0, gap: 6 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 10px', borderRadius: 10, background: own.bg, border: `1px solid ${own.bd}`, color: own.fg }}>{ownerOf(t.owner)}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 10px', borderRadius: 10, background: pri.bg, border: `1px solid ${pri.bd}`, color: pri.fg }}>{priorityOf(t.priority)}</span>
+                  </div>
+                </div>
+
+                {/* Due chip */}
+                {t.dueRelativeToHearing && (
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '4px 10px', marginBottom: 8 }}>
+                    <i className="ti ti-calendar-time" style={{ fontSize: 12 }} />⏳ {t.dueRelativeToHearing}
+                  </div>
+                )}
+
+                {/* Why this matters now */}
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 12px' }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: '#475569', letterSpacing: 1, marginBottom: 4 }}>WHY THIS MATTERS NOW</div>
+                  <p style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: '#334155', whiteSpace: 'pre-line' }}>{t.reason || '—'}</p>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ===================== SAVED CHECKLIST (unchanged behaviour) ===================== */}
 
       {/* Progress bar */}
       {actions.length > 0 && (
@@ -152,8 +300,8 @@ export default function ActionPlan({ fullView = false }: Props) {
       {!loading && actions.length === 0 && (
         <div style={{ textAlign: 'center', padding: 30, color: '#94a3b8' }}>
           <i className="ti ti-list-check" style={{ fontSize: 36, display: 'block', marginBottom: 8, opacity: 0.4 }} />
-          <div style={{ fontSize: 14, fontWeight: 600, color: '#64748b', marginBottom: 6 }}>No Tasks Yet</div>
-          <div style={{ fontSize: 13 }}>Click Run AI Strategy to generate tasks, or add manually above.</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#64748b', marginBottom: 6 }}>No Saved Tasks Yet</div>
+          <div style={{ fontSize: 13 }}>Generate an AI plan above and “Save all to My Plan”, or add one manually.</div>
         </div>
       )}
 

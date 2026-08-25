@@ -22,6 +22,11 @@ public class ClausioDbContext(DbContextOptions<ClausioDbContext> options) : DbCo
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<Hearing> Hearings => Set<Hearing>();
     public DbSet<HearingOrder> HearingOrders => Set<HearingOrder>();
+    public DbSet<Witness> Witnesses => Set<Witness>();
+    public DbSet<Note> Notes => Set<Note>();
+    public DbSet<CalendarIntegration> CalendarIntegrations => Set<CalendarIntegration>();
+    public DbSet<CalendarEventLink> CalendarEventLinks => Set<CalendarEventLink>();
+    public DbSet<ClientMeeting> ClientMeetings => Set<ClientMeeting>();
     public DbSet<LegalResearch> LegalResearches => Set<LegalResearch>();
     public DbSet<TimelineEvent> TimelineEvents => Set<TimelineEvent>();
     public DbSet<Readiness> Readinesses => Set<Readiness>();
@@ -41,7 +46,13 @@ public class ClausioDbContext(DbContextOptions<ClausioDbContext> options) : DbCo
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasPostgresExtension("vector");
-        
+
+        modelBuilder.Entity<CalendarEventLink>(e =>
+            e.HasIndex(x => new { x.IntegrationId, x.EventType, x.SourceId }).IsUnique());
+
+        modelBuilder.Entity<CalendarIntegration>(e =>
+            e.HasIndex(x => x.UserId).IsUnique());
+
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ClausioDbContext).Assembly);
         base.OnModelCreating(modelBuilder);
     }

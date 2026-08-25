@@ -91,6 +91,7 @@ public class DraftEngine : IDraftEngine
             var t when t.Contains("reply") => "Drafts/WrittenStatement",
             var t when t.Contains("risk") => "Analysis/RiskAssessment",
             var t when t.Contains("clause") => "Analysis/ClauseAnalysis",
+            var t when t.Contains("client update") => "ClientUpdate",
             _ => "LegalDraft"
         };
     }

@@ -15,8 +15,15 @@ export const BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5123')
 export function parseAiJson<T = any>(raw: string | undefined | null): T | null {
   if (!raw) return null
 
-  // Step 1 — Clean markdown code blocks
+  // Step 0 — Strip reasoning-model <think> blocks. An UNCLOSED block means the
+  // model was cut off mid-deliberation and emitted nothing usable.
   let cleaned = raw.trim()
+  if (/<think>/i.test(cleaned)) {
+    if (!/<\/think>/i.test(cleaned)) return null
+    cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '').trim()
+  }
+
+  // Step 1 — Clean markdown code blocks
   cleaned = cleaned.replace(/^```json\s*/i, '')
   cleaned = cleaned.replace(/^```\s*/i, '')
   cleaned = cleaned.replace(/```\s*$/i, '')
@@ -115,7 +122,7 @@ async function handle(res: Response, fallbackMessage: string) {
     let message = fallbackMessage
     try {
       const data = await res.json()
-      message = data.message || data.title || fallbackMessage
+      message = data.error || data.message || data.title || fallbackMessage
     } catch {
       // response had no JSON body
     }
@@ -215,6 +222,48 @@ export const hearingsApi = {
     send('PUT', `/cases/${caseId}/hearings/${hearingId}/orders/${orderId}/done`, undefined, 'Failed to mark order done'),
 }
 
+export const witnessesApi = {
+  getByCaseId: (caseId: string) => get(`/cases/${caseId}/witnesses`, 'Failed to fetch witnesses'),
+  create:      (caseId: string, data: any) => send('POST', `/cases/${caseId}/witnesses`, data, 'Failed to add witness'),
+  remove:      (caseId: string, id: string) => del(`/cases/${caseId}/witnesses/${id}`, 'Failed to delete witness'),
+}
+
+export const notesApi = {
+  getByCaseId: (caseId: string) => get(`/cases/${caseId}/notes`, 'Failed to fetch notes'),
+  create:      (caseId: string, data: any) => send('POST', `/cases/${caseId}/notes`, data, 'Failed to save note'),
+  update:      (caseId: string, id: string, data: any) => send('PUT', `/cases/${caseId}/notes/${id}`, data, 'Failed to update note'),
+  remove:      (caseId: string, id: string) => del(`/cases/${caseId}/notes/${id}`, 'Failed to delete note'),
+}
+
+export const integrationsApi = {
+  getStatus: () => get(`/integrations/google/status`, 'Failed to fetch calendar status') as Promise<any>,
+  getAuthUrl: () => get(`/integrations/google/auth-url`, 'Failed to start Google connection'),
+  resync:    () => send('POST', `/integrations/google/sync`, undefined, 'Calendar re-sync failed'),
+  disconnect:() => del(`/integrations/google`, 'Failed to disconnect Google Calendar'),
+}
+
+export const calendarApi = {
+  pushHearing: (caseId: string, hearingId: string) =>
+    send('POST', `/cases/${caseId}/calendar/hearings/${hearingId}`, undefined, 'Could not add hearing to calendar'),
+  pushOrder: (caseId: string, orderId: string) =>
+    send('POST', `/cases/${caseId}/calendar/orders/${orderId}`, undefined, 'Could not add deadline to calendar'),
+}
+
+// In-app Calendar tab — proxy over the lawyer's real Google Calendar.
+export const userCalendarApi = {
+  events: (startIso: string, endIso: string) =>
+    get(`/calendar/events?start=${encodeURIComponent(startIso)}&end=${encodeURIComponent(endIso)}`, 'Failed to load calendar events') as Promise<any[]>,
+  create: (data: any) => send('POST', '/calendar/events', data, 'Failed to create event'),
+  update: (eventId: string, data: any) => send('PUT', `/calendar/events/${encodeURIComponent(eventId)}`, data, 'Failed to update event'),
+  remove: (eventId: string) => del(`/calendar/events/${encodeURIComponent(eventId)}`, 'Failed to delete event'),
+}
+
+export const meetingsApi = {
+  getByCaseId: (caseId: string) => get(`/cases/${caseId}/meetings`, 'Failed to fetch meetings'),
+  create:      (caseId: string, data: any) => send('POST', `/cases/${caseId}/meetings`, data, 'Failed to schedule meeting'),
+  remove:      (caseId: string, id: string) => del(`/cases/${caseId}/meetings/${id}`, 'Failed to delete meeting'),
+}
+
 export const documentsApi = {
   getByCaseId: (caseId: string) => get(`/cases/${caseId}/documents`, 'Failed to fetch documents'),
 
@@ -234,6 +283,9 @@ export const documentsApi = {
   },
 
   remove: (caseId: string, id: string) => del(`/cases/${caseId}/documents/${id}`, 'Failed to delete document'),
+
+  setFilingStatus: (caseId: string, id: string, data: { filingStatus: 'Filed' | 'Not Filed'; filedDate?: string; filedAtHearingId?: string }) =>
+    send('PUT', `/cases/${caseId}/documents/${id}/filing-status`, data, 'Failed to update filing status'),
 }
 
 export const timelineApi = {
@@ -286,6 +338,8 @@ export const statsApi = {
 
 export const aiApi = {
   getSummary: (caseId: string) => send('POST', `/ai/summary/${caseId}`, undefined, 'Failed to generate summary'),
+  getRisks: (caseId: string) => send('POST', `/ai/risks/${caseId}`, undefined, 'Failed to assess case risks'),
+  getRecommendations: (caseId: string) => send('POST', `/ai/recommendations/${caseId}`, undefined, 'Failed to generate recommendations'),
   getChronology: (caseId: string) => send('POST', `/ai/chronology/${caseId}`, undefined, 'Failed to generate chronology'),
   getContradictions: (caseId: string) => send('POST', `/ai/contradictions/${caseId}`, undefined, 'Failed to find contradictions'),
   getEvidence: (documentId: string) => send('POST', `/ai/evidence/${documentId}`, undefined, 'Failed to analyse evidence'),
@@ -296,7 +350,7 @@ export const aiApi = {
   getReadiness: (caseId: string) => send('POST', `/ai/readiness/${caseId}`, undefined, 'Failed to generate readiness report'),
   getEmergency: (caseId: string, data: any) => send('POST', `/ai/emergency/${caseId}`, data, 'Failed to generate emergency response'),
   getPrep: (caseId: string) => send('POST', `/ai/prep/${caseId}`, undefined, 'Failed to generate prep notes'),
-  getWitness: (caseId: string) => send('POST', `/ai/witness/${caseId}`, undefined, 'Failed to generate cross-examination questions'),
+  getWitness: (caseId: string, data: any) => send('POST', `/ai/witness/${caseId}`, data, 'Failed to generate witness intelligence'),
   translate: (data: any) => send('POST', '/ai/translate', data, 'Failed to translate'),
   getDraft: (caseId: string, data: any) => send('POST', `/ai/draft/${caseId}`, data, 'Failed to generate draft'),
   getCaseType: (data: any) => send('POST', '/ai/casetype', data, 'Failed to detect case type'),
