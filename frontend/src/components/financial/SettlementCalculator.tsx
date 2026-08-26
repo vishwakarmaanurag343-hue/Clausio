@@ -1,17 +1,29 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { aiApi } from '@/lib/api'
 
-interface Props { caseId: string | null }
+interface Props { caseId: string | null; initialValues?: Record<string, number | null | undefined> }
 
-export default function SettlementCalculator({ caseId }: Props) {
+const numOrNull = (v: any) => (typeof v === 'number' && isFinite(v) && v > 0 ? v : null)
+
+export default function SettlementCalculator({ caseId, initialValues }: Props) {
   const [monthly,     setMonthly]     = useState(50000)
   const [years,       setYears]       = useState(10)
   const [inflation,   setInflation]   = useState(5)
   const [legalCost,   setLegalCost]   = useState(400000)
   const [litigYears,  setLitigYears]  = useState(3)
   const [calculated,  setCalculated]  = useState(false)
+
+  // Auto-fill from the AI financial profile — every field stays editable so the lawyer
+  // can override any auto-filled value.
+  const [autoFilled, setAutoFilled] = useState<string[]>([])
+  useEffect(() => {
+    if (!initialValues) return
+    const applied: string[] = []
+    if (numOrNull(initialValues.monthly)) { setMonthly(numOrNull(initialValues.monthly)!); applied.push('Monthly Maintenance') }
+    setAutoFilled(applied)
+  }, [initialValues])
 
   const [result, setResult] = useState({ lifetime: 0, settlement: 0, savings: 0, annualEquiv: 0 })
 
@@ -56,7 +68,13 @@ export default function SettlementCalculator({ caseId }: Props) {
       {/* Left — Input */}
       <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(15,23,42,.04)' }}>
         <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#0f172a' }}>Settlement Calculator</h2>
-        <p style={{ margin: '0 0 24px', color: '#64748b', fontSize: 13 }}>Compare long-term maintenance cost vs. one-time settlement amount.</p>
+        <p style={{ margin: '0 0 16px', color: '#64748b', fontSize: 13 }}>Compare long-term maintenance cost vs. one-time settlement amount.</p>
+
+        {autoFilled.length > 0 && (
+          <div style={{ marginBottom: 18, padding: '9px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, fontSize: 11.5, color: '#1d4ed8', lineHeight: 1.5 }}>
+            <i className="ti ti-bolt" /> <strong>{autoFilled.length} value{autoFilled.length > 1 ? 's' : ''} auto-filled</strong> from AI document analysis ({autoFilled.join(', ')}). Edit any field to override.
+          </div>
+        )}
 
         {[
           { label: 'Monthly Maintenance (₹)',     val: monthly,    set: setMonthly    },

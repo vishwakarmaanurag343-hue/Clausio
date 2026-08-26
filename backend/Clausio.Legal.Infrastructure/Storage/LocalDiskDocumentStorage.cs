@@ -21,4 +21,7 @@ public class LocalDiskDocumentStorage(string rootPath) : IDocumentStorage
             File.Delete(storagePath);
         }
     }
+
+    public Task<Stream?> OpenAsync(string storagePath, CancellationToken cancellationToken = default)
+        => Task.FromResult<Stream?>(File.Exists(storagePath) ? File.OpenRead(storagePath) : null);
 }

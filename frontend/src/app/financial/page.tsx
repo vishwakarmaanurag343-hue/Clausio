@@ -4,31 +4,49 @@ import { useState, useEffect, useCallback } from 'react'
 import { useCaseStore } from '@/lib/store'
 import { aiApi, casesApi, parseAiJson } from '@/lib/api'
 
-import IncomeReality         from '@/components/financial/IncomeReality'
-import MaintenanceRange      from '@/components/financial/MaintenanceRange'
+import FinancialProfileCards from '@/components/financial/FinancialProfileCards'
 import MaintenanceCalculator from '@/components/financial/MaintenanceCalculator'
 import SettlementCalculator  from '@/components/financial/SettlementCalculator'
 import TaxDemandCalculator   from '@/components/financial/TaxDemandCalculator'
 import PreDepositCalculator  from '@/components/financial/PreDepositCalculator'
-import BailCalculator        from '@/components/financial/BailCalculator'
 import NiActCalculator       from '@/components/financial/NiActCalculator'
 import CourtFeeCalculator    from '@/components/financial/CourtFeeCalculator'
 import DamagesCalculator     from '@/components/financial/DamagesCalculator'
 import AnalyzeFinancialModal from '@/components/financial/AnalyzeFinancialModal'
 
+// Compoundable offences that carry a real financial component (compensation/fine in lieu
+// of punishment). A Criminal case shows the Fine & Compensation Calculator only when its
+// subtype or name matches one of these; otherwise the Financial page has nothing to
+// compute for that case and the tab set is empty.
+const COMPOUNDABLE_FINANCIAL = [
+  '498a', '406', '420', 'cheat', 'cheating', 'defamation', '500', '499',
+  '323', '324', '337', '338', 'hurt', '447', '426', '427', 'mischief',
+  'trespass', '506', '138', 'dishonour', 'dishonor', 'breach of trust', 'compoundable',
+]
+
+function isCompoundableFinancialCriminal(name: string, subType: string) {
+  const hay = `${subType} ${name}`.toLowerCase()
+  return COMPOUNDABLE_FINANCIAL.some(k => hay.includes(k))
+}
+
 // Tabs per case type
-function getTabsForCaseType(ct: string): string[] {
+function getTabsForCaseType(ct: string, subType = '', caseName = ''): string[] {
   const t = ct.toLowerCase()
-  if (t.includes('family'))              return ['AI Analysis', 'Maintenance Calculator', 'Settlement Calculator']
-  if (t.includes('gst'))                 return ['AI Analysis', 'Tax Demand Calculator', 'Pre-deposit Calculator']
-  if (t.includes('income tax'))          return ['AI Analysis', 'Tax Demand Calculator', 'Interest Calculator']
-  if (t.includes('ni act'))              return ['AI Analysis', 'NI Act Calculator', 'Court Fee Calculator']
-  if (t.includes('criminal'))            return ['AI Analysis', 'Bail Calculator', 'Fine Estimator']
-  if (t.includes('civil'))               return ['AI Analysis', 'Court Fee Calculator', 'Damages Calculator']
-  if (t.includes('consumer'))            return ['AI Analysis', 'Damages Calculator', 'Court Fee Calculator']
-  if (t.includes('labour'))              return ['AI Analysis', 'Damages Calculator', 'Court Fee Calculator']
-  if (t.includes('corporate') || t.includes('arbitration') || t.includes('rera')) return ['AI Analysis', 'Damages Calculator', 'Court Fee Calculator']
-  return ['AI Analysis'] // fallback
+  const family      = t.includes('family') || t.includes('matrimonial') || t.includes('divorce')
+  const civilFamily = t.includes('civil') || t.includes('property') || t.includes('commercial')
+                   || t.includes('consumer') || t.includes('labour') || t.includes('arbitration')
+                   || t.includes('rera') || t.includes('corporate')
+
+  if (family)      return ['AI Analysis', 'Maintenance Calculator', 'Settlement Calculator']
+  if (t.includes('gst') || t.includes('income tax')) return ['AI Analysis', 'Tax Demand Calculator', 'Pre-deposit Calculator']
+  if (t.includes('ni act')) return ['AI Analysis', 'NI Act Calculator', 'Court Fee Calculator']
+  if (t.includes('criminal')) {
+    return isCompoundableFinancialCriminal(caseName, subType)
+      ? ['AI Analysis', 'Fine & Compensation Calculator']
+      : [] // Non-compoundable offence with no financial component — no calculator applies
+  }
+  if (civilFamily) return ['AI Analysis', 'Damages & Interest Calculator', 'Court Fee Calculator']
+  return ['AI Analysis'] // unknown type — analysis still works, calculators withheld
 }
 
 export default function FinancialPage() {
@@ -42,6 +60,7 @@ export default function FinancialPage() {
   const [caseType,   setCaseType]   = useState('')
   const [caseName,   setCaseName]   = useState('')
   const [tabs,       setTabs]       = useState(['AI Analysis'])
+  const [profile,    setProfile]    = useState<any>(null)
 
   // Load case type when case changes
   useEffect(() => {
@@ -51,60 +70,102 @@ export default function FinancialPage() {
         const ct = c.caseType ?? c.type ?? ''
         setCaseType(ct)
         setCaseName(c.name ?? '')
-        const newTabs = getTabsForCaseType(ct)
+        const newTabs = getTabsForCaseType(ct, c.subType ?? '', c.name ?? '')
         setTabs(newTabs)
-        setActiveTab(newTabs[0])
+        setActiveTab(newTabs[0] ?? 'AI Analysis')
         // Reset analysis when case changes
         setAnalysis(null)
+        setProfile(null)
         setRawText('')
       })
       .catch(() => {})
   }, [selectedCaseId])
 
-  const analyse = useCallback(async () => {
+  const analyse = useCallback(async (options?: any) => {
     if (!selectedCaseId) { setError('Select a case first.'); return }
     setLoading(true); setError('')
     try {
-      const res    = await aiApi.getFinancial(selectedCaseId)
+      const res    = await aiApi.getFinancial(selectedCaseId, options)
       const raw    = res.analysis ?? res.result ?? ''
       const parsed = parseAiJson<any>(raw)
-      setAnalysis(parsed); setRawText(parsed ? '' : raw)
+      setAnalysis(parsed)
+      setProfile(parsed?.financialProfile ?? null)
+      setRawText(parsed ? '' : raw)
     } catch (err: any) {
       setError(err.message || 'Failed to analyse financials.')
     } finally { setLoading(false) }
   }, [selectedCaseId])
 
+  // Map the AI-extracted profile onto each calculator's input fields. Only real numbers
+  // land — the calculators ignore nulls and keep their editable defaults.
+  function autoFillFor(tab: string): Record<string, number | null | undefined> | undefined {
+    if (!profile) return undefined
+    const e = profile.monthlyExpenses ?? {}
+    switch (tab) {
+      case 'Maintenance Calculator':
+        return { husbandIncome: profile.monthlyIncome, rent: e.rent, education: e.education, medical: e.medical, otherExpense: e.other }
+      case 'Settlement Calculator':
+        return { monthly: profile.monthlyIncome }
+      case 'Damages & Interest Calculator':
+      case 'Fine & Compensation Calculator':
+        return { actualLoss: profile.claimAmount ?? profile.suitValuation }
+      case 'Court Fee Calculator':
+        return { claimAmount: profile.claimAmount ?? profile.suitValuation }
+      default:
+        return undefined
+    }
+  }
+
   function renderTab() {
-    const t  = activeTab
-    const ct = caseType.toLowerCase()
+    const t = activeTab
 
     if (t === 'AI Analysis') {
+      // Non-compoundable criminal case — no calculator applies to it at all
+      if (tabs.length === 0) {
+        return (
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
+            <i className="ti ti-ban" style={{ fontSize: 48, display: 'block', marginBottom: 12, opacity: 0.4 }} />
+            <div style={{ fontSize: 16, fontWeight: 600, color: '#64748b', marginBottom: 6 }}>No financial tools for this case</div>
+            <div style={{ fontSize: 13, maxWidth: 480, margin: '0 auto', lineHeight: 1.7 }}>
+              This criminal case does not appear to involve a compoundable offence with a financial component,
+              so fine/compensation calculation does not apply. Document analysis remains available above.
+            </div>
+          </div>
+        )
+      }
       return (
-        <div style={{ display: 'grid', gridTemplateColumns: '42% 58%', gap: 24 }}>
-          <IncomeReality    analysis={analysis} rawText={rawText} loading={loading} onAnalyse={analyse} caseType={caseType} />
-          <MaintenanceRange analysis={analysis} rawText={rawText} loading={loading} caseId={selectedCaseId} caseType={caseType} />
-        </div>
+        <FinancialProfileCards
+          analysis={analysis}
+          rawText={rawText}
+          loading={loading}
+          caseType={caseType}
+          suggestedTab={tabs.find(x => x !== 'AI Analysis')}
+          onOpenTab={(tab) => setActiveTab(tab)}
+          onAnalyse={() => analyse()}
+          canAnalyse={!!selectedCaseId}
+        />
       )
     }
 
     // Family
-    if (t === 'Maintenance Calculator') return <MaintenanceCalculator caseId={selectedCaseId} />
-    if (t === 'Settlement Calculator')  return <SettlementCalculator  caseId={selectedCaseId} />
+    if (t === 'Maintenance Calculator') return <MaintenanceCalculator caseId={selectedCaseId} initialValues={autoFillFor(t)} />
+    if (t === 'Settlement Calculator')  return <SettlementCalculator  caseId={selectedCaseId} initialValues={autoFillFor(t)} />
 
     // GST / Income Tax
     if (t === 'Tax Demand Calculator')  return <TaxDemandCalculator  caseType={caseType} caseId={selectedCaseId} />
     if (t === 'Pre-deposit Calculator' || t === 'Interest Calculator') return <PreDepositCalculator caseType={caseType} caseId={selectedCaseId} />
 
-    // Criminal
-    if (t === 'Bail Calculator')        return <BailCalculator  caseId={selectedCaseId} />
-    if (t === 'Fine Estimator')         return <DamagesCalculator label="Fine & Compensation Estimator" caseId={selectedCaseId} caseType={caseType} />
+    // Criminal (compoundable with financial component only)
+    if (t === 'Fine & Compensation Calculator')
+      return <DamagesCalculator label="Fine & Compensation Calculator" caseId={selectedCaseId} caseType={caseType} initialValues={autoFillFor(t)} />
 
     // NI Act
     if (t === 'NI Act Calculator')      return <NiActCalculator caseId={selectedCaseId} />
 
-    // Civil / Consumer / Labour / Corporate
-    if (t === 'Court Fee Calculator')   return <CourtFeeCalculator caseId={selectedCaseId} caseType={caseType} />
-    if (t === 'Damages Calculator')     return <DamagesCalculator  label="Damages & Compensation Calculator" caseId={selectedCaseId} caseType={caseType} />
+    // Civil / Property / Commercial / Consumer / Labour / Corporate / RERA / Arbitration
+    if (t === 'Court Fee Calculator')   return <CourtFeeCalculator caseId={selectedCaseId} caseType={caseType} initialValues={autoFillFor(t)} />
+    if (t === 'Damages & Interest Calculator')
+      return <DamagesCalculator label="Damages & Interest Calculator" caseId={selectedCaseId} caseType={caseType} initialValues={autoFillFor(t)} />
 
     return null
   }
@@ -136,7 +197,7 @@ export default function FinancialPage() {
             </div>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
               {activeTab === 'AI Analysis' && (
-                <button onClick={analyse} disabled={loading || !selectedCaseId}
+                <button onClick={() => analyse()} disabled={loading || !selectedCaseId}
                   style={{ padding: '0 16px', height: 38, borderRadius: 10, border: 'none', background: loading ? '#93c5fd' : '#7c3aed', color: '#fff', cursor: loading || !selectedCaseId ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, opacity: !selectedCaseId ? 0.5 : 1, fontFamily: 'inherit' }}>
                   <i className="ti ti-sparkles" />{loading ? 'Analysing...' : analysis ? 'Re-analyse' : 'Run AI Analysis'}
                 </button>
@@ -173,7 +234,7 @@ export default function FinancialPage() {
               {error && (
                 <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626', marginBottom: 20, display: 'flex', justifyContent: 'space-between' }}>
                   <span>{error}</span>
-                  <button onClick={analyse} style={{ fontWeight: 700, textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontFamily: 'inherit' }}>Retry</button>
+                  <button onClick={() => analyse()} style={{ fontWeight: 700, textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontFamily: 'inherit' }}>Retry</button>
                 </div>
               )}
 
@@ -255,7 +316,7 @@ export default function FinancialPage() {
                 </p>
               </div>
               <button
-                onClick={analyse}
+                onClick={() => analyse()}
                 disabled={loading || !selectedCaseId}
                 style={{
                   padding: '8px 14px',
@@ -284,9 +345,21 @@ export default function FinancialPage() {
               }}
             >
               {[
-                { title: 'Est. Income', value: analysis?.affidavitAnalysis?.declaredIncome ? `₹${(analysis.affidavitAnalysis.declaredIncome / 1000).toFixed(0)}k` : '₹85k', sub: 'Monthly' },
-                { title: 'Demands', value: '₹2.4L', sub: 'Aggregate' },
-                { title: 'Risk Tier', value: 'Med', sub: 'Exposure' },
+                {
+                  title: 'Est. Income',
+                  value: profile?.monthlyIncome ? `₹${(profile.monthlyIncome / 1000).toFixed(0)}k` : '—',
+                  sub:   'Monthly',
+                },
+                {
+                  title: 'Claim',
+                  value: (profile?.claimAmount || profile?.suitValuation) ? `₹${(((profile.claimAmount ?? 0) || (profile.suitValuation ?? 0)) / 100000).toFixed(1)}L` : '—',
+                  sub:   'Valuation',
+                },
+                {
+                  title: 'Flags',
+                  value: String(Array.isArray(analysis?.flaggedDiscrepancies) ? analysis.flaggedDiscrepancies.length : 0),
+                  sub:   'Discrepancies',
+                },
               ].map((item, idx) => (
                 <div
                   key={idx}
@@ -329,7 +402,7 @@ export default function FinancialPage() {
       {showModal && (
         <AnalyzeFinancialModal
           onClose={() => setShowModal(false)}
-          onAnalyse={async () => { await analyse(); setShowModal(false) }}
+          onAnalyse={async (options) => { await analyse(options); setShowModal(false) }}
         />
       )}
     </>

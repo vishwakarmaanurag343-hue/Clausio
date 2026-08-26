@@ -268,4 +268,58 @@ public class ContextEngine : IContextEngine
 
         return await _contextRanker.ScoreRankAndCompressAsync(sb.ToString(), 2000);
     }
+
+    /// <summary>
+    /// Financial-extraction context: the case header plus ONLY documents whose name,
+    /// type, category or text-head look financial (bank statements, ITRs, salary slips,
+    /// invoices…). Everything else is noise for a money-claim profile and would invite
+    /// the model to mix unrelated figures in.
+    /// </summary>
+    public async Task<string> BuildFinancialContextAsync(Guid caseId, CancellationToken cancellationToken = default)
+    {
+        var sb = new StringBuilder();
+
+        var basicCaseInfo = _db.Cases.FirstOrDefault(c => c.Id == caseId);
+        if (basicCaseInfo != null)
+        {
+            sb.AppendLine("<case_context>");
+            sb.AppendLine($"Title: {basicCaseInfo.Name}");
+            sb.AppendLine($"Type: {basicCaseInfo.CaseType}");
+            sb.AppendLine($"SubType: {basicCaseInfo.SubType ?? ""}");
+            sb.AppendLine($"Stage: {basicCaseInfo.Stage}");
+            sb.AppendLine("</case_context>");
+        }
+
+        var keywords = new[] { "bank", "statement", "itr", "income tax return", "salary", "payslip", "pay slip",
+                               "invoice", "form 16", "form16", "balance sheet", "financial", "account", "wages", "annexure" };
+        var financialDocs = _db.Documents
+            .Where(d => d.CaseId == caseId && !string.IsNullOrWhiteSpace(d.ExtractedText) && !d.ExtractedText.StartsWith("Error") && !d.ExtractedText.StartsWith("--- MOCK"))
+            .AsEnumerable()
+            .Where(d =>
+            {
+                var head = d.ExtractedText![..Math.Min(300, d.ExtractedText.Length)];
+                var hay = $"{d.FileName} {d.DocumentType} {d.Category} {head}".ToLowerInvariant();
+                return keywords.Any(hay.Contains);
+            })
+            .OrderByDescending(d => d.CreatedAt)
+            .DistinctBy(d => d.ExtractedText!.Trim())
+            .Take(8)
+            .ToList();
+
+        if (financialDocs.Any())
+        {
+            sb.AppendLine("<uploaded_financial_documents>");
+            foreach (var doc in financialDocs)
+                // Cap each document so eight statements stay inside the provider's TPM budget
+                sb.AppendLine($"[Document: {doc.FileName}{(string.IsNullOrWhiteSpace(doc.DocumentType) ? "" : $" | Type: {doc.DocumentType}")}] "
+                              + doc.ExtractedText![..Math.Min(1600, doc.ExtractedText.Length)]);
+            sb.AppendLine("</uploaded_financial_documents>");
+        }
+        else
+        {
+            sb.AppendLine("<uploaded_financial_documents>NONE — no recognisable financial documents are uploaded for this case.</uploaded_financial_documents>");
+        }
+
+        return await _contextRanker.ScoreRankAndCompressAsync(sb.ToString(), 6000);
+    }
 }

@@ -45,6 +45,14 @@ public class AiController(IAiService aiService) : ControllerBase
         return Ok(new { result = result });
     }
 
+    // ✅ Returns { result: "..." } — case-level Evidence Intelligence for the Analysis page
+    [HttpPost("case-evidence/{caseId:guid}")]
+    public async Task<IActionResult> CaseEvidence(Guid caseId, CancellationToken cancellationToken)
+    {
+        var result = await aiService.AnalyzeCaseEvidenceAsync(caseId, cancellationToken);
+        return Ok(new { result = result });
+    }
+
     // ✅ Returns { judgments: "..." } — matches frontend aiApi.getLegalResearch()
     [HttpPost("research/{caseId:guid}")]
     public async Task<IActionResult> Research(Guid caseId, CancellationToken cancellationToken)
@@ -109,11 +117,11 @@ public class AiController(IAiService aiService) : ControllerBase
         return Ok(new { message = result });
     }
 
-    // ✅ Returns { analysis: "..." } — matches frontend aiApi.getFinancial()
+    // ✅ Returns { analysis: "<JSON: { financialProfile, flaggedDiscrepancies[], summary }>" } — matches frontend aiApi.getFinancial()
     [HttpPost("financial/{caseId:guid}")]
-    public async Task<IActionResult> Financial(Guid caseId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Financial(Guid caseId, [FromBody] System.Text.Json.JsonElement? options, CancellationToken cancellationToken)
     {
-        var result = await aiService.AnalyzeFinancialsAsync(caseId, cancellationToken);
+        var result = await aiService.AnalyzeFinancialsAsync(caseId, options, cancellationToken);
         return Ok(new { analysis = result });
     }
 
@@ -121,7 +129,7 @@ public class AiController(IAiService aiService) : ControllerBase
     [HttpPost("readiness/{caseId:guid}")]
     public async Task<IActionResult> Readiness(Guid caseId, CancellationToken cancellationToken)
     {
-        var result = await aiService.AssessReadinessAsync(caseId, cancellationToken);
+        var result = await aiService.AssessReadinessAsync(caseId, cancellationToken: cancellationToken);
         return Ok(new { readiness = result });
     }
 
@@ -145,7 +153,7 @@ public class AiController(IAiService aiService) : ControllerBase
     [HttpPost("emergency/{caseId:guid}")]
     public async Task<IActionResult> Emergency(Guid caseId, [FromBody] EmergencyRequestDto request, CancellationToken cancellationToken)
     {
-        var result = await aiService.EmergencyTriageAsync(request, cancellationToken);
+        var result = await aiService.EmergencyTriageAsync(caseId, request, cancellationToken);
         return Ok(new { response = result });
     }
 

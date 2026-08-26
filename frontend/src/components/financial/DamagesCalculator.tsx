@@ -1,12 +1,14 @@
 import AIResponseFormatter from '@/components/common/AIResponseFormatter'
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { aiApi } from '@/lib/api'
 
-interface Props { caseId: string | null; caseType: string; label?: string }
+interface Props { caseId: string | null; caseType: string; label?: string; initialValues?: Record<string, number | null | undefined> }
 
-export default function DamagesCalculator({ caseId, caseType, label = 'Damages Calculator' }: Props) {
+const numOrNull = (v: any) => (typeof v === 'number' && isFinite(v) && v > 0 ? v : null)
+
+export default function DamagesCalculator({ caseId, caseType, label = 'Damages Calculator', initialValues }: Props) {
   const ct = caseType.toLowerCase()
 
   const [actualLoss,   setActualLoss]   = useState(500000)
@@ -20,6 +22,16 @@ export default function DamagesCalculator({ caseId, caseType, label = 'Damages C
   const [draft,        setDraft]        = useState('')
   const [drafting,     setDrafting]     = useState(false)
   const [copied,       setCopied]       = useState(false)
+
+  // Auto-fill from the AI financial profile — every field stays editable so the lawyer
+  // can override any auto-filled value.
+  const [autoFilled, setAutoFilled] = useState<string[]>([])
+  useEffect(() => {
+    if (!initialValues) return
+    const applied: string[] = []
+    if (numOrNull(initialValues.actualLoss)) { setActualLoss(numOrNull(initialValues.actualLoss)!); applied.push('Actual / Quantified Loss') }
+    setAutoFilled(applied)
+  }, [initialValues])
 
   const fmt = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`
 
@@ -64,7 +76,13 @@ export default function DamagesCalculator({ caseId, caseType, label = 'Damages C
     <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: 24 }}>
       <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 24 }}>
         <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#0f172a' }}>{label}</h2>
-        <p style={{ margin: '0 0 20px', color: '#64748b', fontSize: 13 }}>Calculate total compensation and damages for {caseType} matter.</p>
+        <p style={{ margin: '0 0 14px', color: '#64748b', fontSize: 13 }}>Calculate total compensation and damages for {caseType} matter.</p>
+
+        {autoFilled.length > 0 && (
+          <div style={{ marginBottom: 18, padding: '9px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, fontSize: 11.5, color: '#1d4ed8', lineHeight: 1.5 }}>
+            <i className="ti ti-bolt" /> <strong>{autoFilled.length} value{autoFilled.length > 1 ? 's' : ''} auto-filled</strong> from AI document analysis ({autoFilled.join(', ')}). Edit any field to override.
+          </div>
+        )}
 
         <Field label="Actual / Quantified Loss (₹)">
           <input type="number" value={actualLoss} onChange={e => { setActualLoss(Number(e.target.value)); setCalculated(false) }} style={inputSt} />
@@ -140,7 +158,7 @@ export default function DamagesCalculator({ caseId, caseType, label = 'Damages C
                       <i className={`ti ${copied ? 'ti-check' : 'ti-copy'}`} />{copied ? 'Copied!' : 'Copy'}
                     </button>
                   </div>
-                  <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.7, lineHeight: 1.7, maxHeight: 300, overflowY: 'auto' }}>{draft}</div>
+                  <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.7, maxHeight: 300, overflowY: 'auto' }}>{draft}</div>
                 </div>
               )}
 

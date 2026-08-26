@@ -5,9 +5,10 @@ import { motion, type Variants } from 'framer-motion'
 import { MotionButton } from '@/components/ui/Motion'
 import { MotionCard } from '@/components/ui/Motion'
 import { useCaseStore } from '@/lib/store'
-import { aiApi, casesApi, parseAiJson } from '@/lib/api'
+import { aiApi, casesApi, parseAiJson, draftsApi } from '@/lib/api'
 import CaseTypeBadge from '@/components/ui/CaseTypeBadge'
 import { getDraftTypesForCase, type DraftType } from '@/lib/draftTypes'
+import { diffLines } from '@/lib/diffLines'
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -17,6 +18,36 @@ const containerVariants: Variants = {
 const itemVariants: Variants = {
   hidden: { opacity: 0, y: 15, scale: 0.98 },
   show: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 24 } }
+}
+
+// ── Draft version control (persisted via /api/drafts) ────────
+interface DraftVersionRow {
+  id: string
+  versionNumber: number
+  content: string
+  editedByName: string
+  editedAt: string
+  status: string   // "Draft" | "Final"
+}
+
+interface SavedDraftSummary {
+  id: string
+  title: string
+  draftType: string
+  currentVersionNumber: number
+  isFinal: boolean
+  updatedAt: string
+}
+
+interface SavedDraftFull extends SavedDraftSummary {
+  caseId: string
+  createdAt: string
+  versions?: DraftVersionRow[]
+}
+
+function formatVersionTime(iso: string): string {
+  const d = new Date(iso)
+  return isNaN(d.getTime()) ? '' : d.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 function formatLegalDraftText(raw: any): string {
@@ -337,6 +368,17 @@ export default function DraftsTab() {
   const [error,           setError]           = useState('')
   const [showTypeMenu,    setShowTypeMenu]    = useState(false)
 
+  // ── Version control state ──
+  const [savedDraft,        setSavedDraft]        = useState<SavedDraftFull | null>(null) // currently-open persisted draft
+  const [savedDraftsList,   setSavedDraftsList]   = useState<SavedDraftSummary[]>([])     // this case's saved drafts
+  const [versions,          setVersions]          = useState<DraftVersionRow[]>([])       // open draft's history, most recent first
+  const [savingDraft,       setSavingDraft]       = useState(false)
+  const [viewingVersion,    setViewingVersion]    = useState<number | null>(null)         // previewing an old version (read-only)
+  const [diffSelection,     setDiffSelection]     = useState<number[]>([])                // up to two versions ticked for compare
+  const [showDiff,          setShowDiff]          = useState(false)
+  const [editingAfterFinal, setEditingAfterFinal] = useState(false)                       // editor unlocked via "Create New Version"
+  const [actionError,       setActionError]       = useState('')
+
   // ✅ Load case type & auto-select first case if none selected
   useEffect(() => {
     if (!selectedCaseId) {
@@ -373,8 +415,32 @@ export default function DraftsTab() {
       })
   }, [selectedCaseId])
 
+  // ✅ Load this case's saved drafts (version-controlled) whenever the case changes
+  useEffect(() => {
+    if (!selectedCaseId) { setSavedDraftsList([]); return }
+    draftsApi.getByCaseId(selectedCaseId)
+      .then((list: SavedDraftSummary[]) => setSavedDraftsList(list ?? []))
+      .catch(() => {})
+  }, [selectedCaseId])
+
   const selectedDraftInfo = draftTypes.find(t => t.label === draftType)
-  const activeText = customDraftText !== null ? customDraftText : (draft ? formatLegalDraftText(draft) : '')
+
+  // ── What the preview/editor shows. Live edits (customDraftText) ALWAYS win —
+  // otherwise the textarea would be pinned to stored content and appear frozen.
+  // Stored content is only the base when no edits are in flight. ──
+  const isFinal = savedDraft?.isFinal ?? false
+  const editingDisabled = isFinal && !editingAfterFinal
+  const storedBase = savedDraft
+    ? (viewingVersion === null
+        ? (versions[0]?.content ?? '')
+        : (versions.find(v => v.versionNumber === viewingVersion)?.content ?? ''))
+    : null
+  const activeText = customDraftText !== null
+    ? customDraftText
+    : storedBase !== null ? storedBase : (draft ? formatLegalDraftText(draft) : '')
+  const hasUnsavedChanges = savedDraft
+    ? activeText.trim() !== '' && activeText !== (versions[0]?.content ?? '')
+    : !!activeText
 
   async function handleGenerate() {
     let targetCaseId = selectedCaseId
@@ -402,11 +468,191 @@ export default function DraftsTab() {
       const res = await aiApi.getDraft(targetCaseId, { draftType: draftType || 'Bail Application', instructions })
       const rawContent = res?.draft ?? res?.result ?? res
       setDraft(typeof rawContent === 'object' ? JSON.stringify(rawContent) : String(rawContent))
+      // Fresh generation starts unsaved — "Save Draft" creates Version 1
+      setSavedDraft(null)
+      setVersions([])
+      setViewingVersion(null)
+      setDiffSelection([])
+      setEditingAfterFinal(false)
+      setActionError('')
     } catch (err: any) {
       setError(err.message || 'Failed to generate draft. Please try again.')
     } finally {
       setGenerating(false)
     }
+  }
+
+  // ── Version control actions ──
+
+  async function refreshSavedDrafts() {
+    if (!selectedCaseId) return
+    try {
+      const list = await draftsApi.getByCaseId(selectedCaseId)
+      setSavedDraftsList(list ?? [])
+    } catch {}
+  }
+
+  // First save of a generated draft → creates Version 1
+  async function handleSaveDraft() {
+    if (!selectedCaseId || !activeText.trim()) return
+    setSavingDraft(true)
+    setActionError('')
+    try {
+      const saved: SavedDraftFull = await draftsApi.create({
+        caseId: selectedCaseId,
+        draftType: draftType || 'Legal Draft',
+        title: draftType || 'Legal Draft',
+        content: activeText,
+      })
+      setSavedDraft(saved)
+      setVersions(saved.versions ?? [])
+      setViewingVersion(null)
+      setIsEditing(false)
+      setCustomDraftText(null)
+      setDraft('')
+      refreshSavedDrafts()
+    } catch (e: any) {
+      setActionError(e.message || 'Failed to save draft')
+    } finally {
+      setSavingDraft(false)
+    }
+  }
+
+  // Every subsequent manual edit appends an immutable version (numbered server-side)
+  async function handleSaveNewVersion() {
+    if (!savedDraft || !activeText.trim()) return
+    setSavingDraft(true)
+    setActionError('')
+    try {
+      const updated: SavedDraftFull = await draftsApi.addVersion(savedDraft.id, activeText)
+      setSavedDraft(updated)
+      setVersions(updated.versions ?? [])
+      setViewingVersion(null)
+      setIsEditing(false)
+      setEditingAfterFinal(false)
+      setCustomDraftText(null)
+    } catch (e: any) {
+      setActionError(e.message || 'Failed to save new version')
+    } finally {
+      setSavingDraft(false)
+    }
+  }
+
+  async function handleFinalize() {
+    if (!savedDraft) return
+    if (!window.confirm('Mark the latest version as Final? The draft becomes ready-to-file and read-only.')) return
+    setActionError('')
+    try {
+      const updated: SavedDraftFull = await draftsApi.finalize(savedDraft.id)
+      setSavedDraft(updated)
+      setVersions(updated.versions ?? [])
+      setIsEditing(false)
+      setEditingAfterFinal(false)
+      setViewingVersion(null)
+    } catch (e: any) {
+      setActionError(e.message || 'Failed to finalise draft')
+    }
+  }
+
+  // Post-Final path: explicitly branch a new editable version from the locked one.
+  // The Final version itself is never mutated — saving creates v(n+1).
+  function handleCreateNewVersionFromFinal() {
+    setViewingVersion(null)
+    setCustomDraftText(versions[0]?.content ?? '')
+    setEditingAfterFinal(true)
+    setIsEditing(true)
+  }
+
+  async function openSavedDraft(id: string) {
+    setActionError('')
+    try {
+      const d: SavedDraftFull = await draftsApi.get(id)
+      setSavedDraft(d)
+      setVersions(d.versions ?? [])
+      setDraft('')
+      setCustomDraftText(null)
+      setIsEditing(false)
+      setEditingAfterFinal(false)
+      setViewingVersion(null)
+      setDiffSelection([])
+      setDraftType(d.draftType)
+    } catch (e: any) {
+      setActionError(e.message || 'Failed to open draft')
+    }
+  }
+
+  async function handleDeleteDraft(id: string, title: string) {
+    if (!window.confirm(`Delete "${title}" and all of its versions?\nThis cannot be undone.`)) return
+    setActionError('')
+    try {
+      await draftsApi.remove(id)
+      // If the deleted draft is the one currently open, reset the editor cleanly
+      if (savedDraft?.id === id) {
+        setSavedDraft(null)
+        setVersions([])
+        setViewingVersion(null)
+        setDiffSelection([])
+        setIsEditing(false)
+        setCustomDraftText(null)
+        setDraft('')
+        setEditingAfterFinal(false)
+      }
+      refreshSavedDrafts()
+    } catch (e: any) {
+      setActionError(e.message || 'Failed to delete draft')
+    }
+  }
+
+  async function handleDeleteVersion(versionNumber: number) {
+    if (!savedDraft) return
+    const v = versions.find(x => x.versionNumber === versionNumber)
+    const extra = v?.status?.toLowerCase() === 'final'
+      ? '\nThis is the FINAL version — deleting it will unlock the draft again.'
+      : ''
+    if (!window.confirm(`Delete Version ${versionNumber}?${extra}\nThis cannot be undone.`)) return
+    setActionError('')
+    try {
+      const updated: SavedDraftFull = await draftsApi.removeVersion(savedDraft.id, versionNumber)
+      setSavedDraft(updated)
+      setVersions(updated.versions ?? [])
+      if (viewingVersion === versionNumber) setViewingVersion(null)
+      setDiffSelection(prev => prev.filter(n => n !== versionNumber))
+      refreshSavedDrafts()
+    } catch (e: any) {
+      setActionError(e.message || 'Failed to delete version')
+    }
+  }
+
+  // One reliable save action: first save creates Version 1, later saves append immutable versions
+  async function handleSaveDocument() {
+    if (!activeText.trim()) return
+    if (savedDraft) {
+      if (hasUnsavedChanges) await handleSaveNewVersion()
+    } else {
+      await handleSaveDraft()
+    }
+  }
+
+  // ⌘S / Ctrl+S saves instead of opening the browser dialog
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        if (!activeText.trim()) return
+        if (savedDraft && !hasUnsavedChanges) return
+        if (isFinal && !editingAfterFinal) return
+        e.preventDefault()
+        handleSaveDocument()
+      }
+    }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  })
+
+  // Keep at most two versions ticked for the diff view
+  function toggleDiffSelection(versionNumber: number) {
+    setDiffSelection(prev => prev.includes(versionNumber)
+      ? prev.filter(v => v !== versionNumber)
+      : [...prev.slice(-1), versionNumber])
   }
 
   function handleCopy() {
@@ -508,7 +754,7 @@ export default function DraftsTab() {
       variants={containerVariants}
       initial="hidden"
       animate="show"
-      style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 600 }}
+      style={{ display: 'flex', flexDirection: 'column', minHeight: 600 }}
     >
       {/* Top Bar */}
       <motion.div variants={itemVariants} style={{ display: 'flex', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid rgba(0,0,0,0.05)', background: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>
@@ -601,14 +847,14 @@ export default function DraftsTab() {
       </motion.div>
 
       {/* Error */}
-      {error && (
+      {(error || actionError) && (
         <div style={{ margin: '12px 24px 0', padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12, color: '#dc2626' }}>
-          {error}
+          {error || actionError}
         </div>
       )}
 
       {/* Main Content */}
-      <div style={{ display: 'grid', gridTemplateColumns: '35% 1fr', gap: 20, padding: '24px', flex: 1, overflow: 'hidden' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '35% 1fr', gap: 20, padding: '24px', alignItems: 'start' }}>
 
         {/* Left — Editor */}
         <motion.div variants={itemVariants} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -654,14 +900,140 @@ export default function DraftsTab() {
               <div key={i} style={{ fontSize: 11, color: '#475569', marginBottom: 4 }}>• {tip}</div>
             ))}
           </div>
+
+          {/* Saved drafts for this case */}
+          {savedDraftsList.length > 0 && (
+            <div style={{ background: 'rgba(255,255,255,0.6)', borderRadius: 16, padding: 16, border: '1px solid rgba(0,0,0,0.05)' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
+                📁 Saved drafts ({savedDraftsList.length})
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 220, overflowY: 'auto' }}>
+                {savedDraftsList.map(d => (
+                  <div
+                    key={d.id}
+                    onClick={() => openSavedDraft(d.id)}
+                    style={{
+                      padding: '8px 10px', borderRadius: 10, cursor: 'pointer',
+                      background: savedDraft?.id === d.id ? '#eff6ff' : '#f8fafc',
+                      border: `1px solid ${savedDraft?.id === d.id ? '#bfdbfe' : '#e2e8f0'}`,
+                      transition: 'background 0.15s',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: savedDraft?.id === d.id ? '#1e40af' : '#0f172a', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {d.title || d.draftType}
+                      </span>
+                      <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 10, background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0' }}>
+                        v{d.currentVersionNumber}
+                      </span>
+                      {d.isFinal && (
+                        <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 10, background: '#f0fdf4', color: '#15803d', border: '1px solid #86efac' }}>
+                          FINAL
+                        </span>
+                      )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDeleteDraft(d.id, d.title || d.draftType) }}
+                        title="Delete this draft"
+                        style={{ marginLeft: 2, width: 20, height: 20, borderRadius: 6, border: 'none', background: 'transparent', color: '#cbd5e1', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.background = '#fef2f2' }}
+                        onMouseLeave={e => { e.currentTarget.style.color = '#cbd5e1'; e.currentTarget.style.background = 'transparent' }}
+                      >
+                        <i className="ti ti-trash" style={{ fontSize: 13 }} />
+                      </button>
+                    </div>
+                    <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 3 }}>{formatVersionTime(d.updatedAt)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Version history of the currently-open draft */}
+          {savedDraft && versions.length > 0 && (
+            <div style={{ background: 'rgba(255,255,255,0.6)', borderRadius: 16, padding: 16, border: '1px solid rgba(0,0,0,0.05)' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>
+                🕘 Version history
+              </div>
+              <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 10 }}>Tick any two versions to compare</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 300, overflowY: 'auto' }}>
+                {versions.map(v => {
+                  const vIsFinal = v.status?.toLowerCase() === 'final'
+                  const isSelected = viewingVersion === v.versionNumber
+                  const ticked = diffSelection.includes(v.versionNumber)
+                  return (
+                    <div
+                      key={v.id}
+                      style={{
+                        padding: '8px 10px', borderRadius: 10,
+                        background: isSelected ? '#eff6ff' : '#f8fafc',
+                        border: `1px solid ${isSelected ? '#bfdbfe' : '#e2e8f0'}`,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <input
+                          type="checkbox"
+                          checked={ticked}
+                          onChange={() => toggleDiffSelection(v.versionNumber)}
+                          title="Select for diff"
+                          style={{ width: 13, height: 13, accentColor: '#2563eb', cursor: 'pointer', flexShrink: 0 }}
+                        />
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>Version {v.versionNumber}</span>
+                        <span style={{
+                          fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 10,
+                          background: vIsFinal ? '#f0fdf4' : '#f1f5f9',
+                          color: vIsFinal ? '#15803d' : '#475569',
+                          border: `1px solid ${vIsFinal ? '#86efac' : '#e2e8f0'}`,
+                        }}>
+                          {vIsFinal ? 'FINAL' : 'DRAFT'}
+                        </span>
+                        <button
+                          onClick={() => setViewingVersion(isSelected ? null : v.versionNumber)}
+                          style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
+                        >
+                          {isSelected ? 'Close' : 'View'}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteVersion(v.versionNumber)}
+                          title={`Delete Version ${v.versionNumber}`}
+                          style={{ width: 22, height: 22, borderRadius: 6, border: 'none', background: 'transparent', color: '#cbd5e1', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                          onMouseEnter={e => { e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.background = '#fef2f2' }}
+                          onMouseLeave={e => { e.currentTarget.style.color = '#cbd5e1'; e.currentTarget.style.background = 'transparent' }}
+                        >
+                          <i className="ti ti-trash" style={{ fontSize: 12 }} />
+                        </button>
+                      </div>
+                      <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 4, paddingLeft: 20 }}>
+                        ✍️ {v.editedByName} · {formatVersionTime(v.editedAt)}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <MotionButton
+                onClick={() => setShowDiff(true)}
+                disabled={diffSelection.length !== 2}
+                whileTap={{ scale: diffSelection.length === 2 ? 0.97 : 1 }}
+                style={{
+                  marginTop: 10, width: '100%', padding: '8px 12px', borderRadius: 10,
+                  fontSize: 11, fontWeight: 700, cursor: diffSelection.length === 2 ? 'pointer' : 'not-allowed',
+                  border: '1px solid #cbd5e1', background: diffSelection.length === 2 ? '#ffffff' : '#f8fafc',
+                  color: diffSelection.length === 2 ? '#1e293b' : '#94a3b8', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                }}
+              >
+                <i className="ti ti-arrows-diff" style={{ fontSize: 14 }} />
+                View Diff{diffSelection.length === 2 ? ` (v${Math.min(...diffSelection)} → v${Math.max(...diffSelection)})` : ' — select 2 versions'}
+              </MotionButton>
+            </div>
+          )}
         </motion.div>
 
         {/* Right — Preview */}
-        <motion.div variants={itemVariants} style={{ height: '100%', minHeight: 0 }}>
-          <MotionCard 
+        <motion.div variants={itemVariants} style={{ minWidth: 0 }}>
+          <MotionCard
             whileHover={{ y: 0, scale: 1 }}
             whileTap={{ scale: 1 }}
-            style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100%', background: 'rgba(255,255,255,0.4)', borderRadius: 24, border: '1px solid rgba(0,0,0,0.05)' }}
+            style={{ display: 'flex', flexDirection: 'column', overflow: 'visible', background: 'rgba(255,255,255,0.4)', borderRadius: 24, border: '1px solid rgba(0,0,0,0.05)' }}
           >
             <div style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid rgba(0,0,0,0.05)', background: 'rgba(255,255,255,0.3)' }}>
               <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
@@ -672,17 +1044,45 @@ export default function DraftsTab() {
               </span>
               {(draft || activeText) && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {isFinal && (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', background: '#f0fdf4', border: '1px solid #86efac', color: '#15803d', fontSize: 11, fontWeight: 700, borderRadius: 8, whiteSpace: 'nowrap' }}>
+                      <i className="ti ti-lock" style={{ fontSize: 12 }} /> Final — ready to file
+                    </span>
+                  )}
+                  {!isFinal && (
+                    <MotionButton
+                      onClick={handleSaveDocument}
+                      disabled={savingDraft || (!!savedDraft && !hasUnsavedChanges)}
+                      whileTap={{ scale: savingDraft || (!!savedDraft && !hasUnsavedChanges) ? 1 : 0.95 }}
+                      title={savedDraft ? 'Save these edits as a new version (⌘S)' : 'Save this draft to start its version history (⌘S)'}
+                      style={{
+                        padding: '6px 14px', fontSize: 11, fontWeight: 700, borderRadius: 8,
+                        border: '1px solid #2563eb',
+                        background: savingDraft || (!!savedDraft && !hasUnsavedChanges) ? '#f8fafc' : '#2563eb',
+                        cursor: savingDraft || (!!savedDraft && !hasUnsavedChanges) ? 'not-allowed' : 'pointer',
+                        color: savingDraft || (!!savedDraft && !hasUnsavedChanges) ? '#94a3b8' : '#ffffff',
+                        fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4,
+                        boxShadow: savingDraft || (!!savedDraft && !hasUnsavedChanges) ? 'none' : '0 2px 6px rgba(37,99,235,0.25)',
+                      }}
+                    >
+                      <i className={savingDraft ? 'ti ti-loader animate-spin' : 'ti ti-device-floppy'} style={{ fontSize: 13 }} />
+                      {savingDraft ? 'Saving…' : savedDraft && !hasUnsavedChanges ? 'Saved' : 'Save Document'}
+                    </MotionButton>
+                  )}
                   <MotionButton
                     onClick={() => setIsEditing(!isEditing)}
-                    whileTap={{ scale: 0.95 }}
+                    disabled={editingDisabled || viewingVersion !== null}
+                    whileTap={{ scale: editingDisabled ? 1 : 0.95 }}
+                    title={editingDisabled ? 'Final version is read-only — use "Create New Version"' : viewingVersion !== null ? 'Close the viewed version to edit' : undefined}
                     style={{
                       padding: '6px 12px',
                       fontSize: 11,
                       fontWeight: 600,
                       borderRadius: 8,
                       border: '1px solid #cbd5e1',
-                      background: isEditing ? '#eff6ff' : '#ffffff',
-                      cursor: 'pointer',
+                      background: isEditing && !editingDisabled ? '#eff6ff' : '#ffffff',
+                      cursor: editingDisabled || viewingVersion !== null ? 'not-allowed' : 'pointer',
+                      opacity: editingDisabled || viewingVersion !== null ? 0.55 : 1,
                       color: isEditing ? '#1d4ed8' : '#1e293b',
                       fontFamily: 'inherit',
                       display: 'flex',
@@ -691,9 +1091,38 @@ export default function DraftsTab() {
                       boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
                     }}
                   >
-                    <i className={isEditing ? "ti ti-check" : "ti ti-edit"} style={{ fontSize: 13 }} />
-                    {isEditing ? 'Done Editing' : 'Edit Draft'}
+                    <i className={isEditing ? "ti ti-check" : editingDisabled ? "ti ti-lock" : "ti ti-edit"} style={{ fontSize: 13 }} />
+                    {isEditing ? 'Done Editing' : editingDisabled ? 'Locked' : 'Edit Draft'}
                   </MotionButton>
+                  {savedDraft && isFinal && !editingAfterFinal && (
+                    <MotionButton
+                      onClick={handleCreateNewVersionFromFinal}
+                      whileTap={{ scale: 0.95 }}
+                      title="Branch a new editable version from the final one — the final version stays untouched"
+                      style={{
+                        padding: '6px 12px', fontSize: 11, fontWeight: 600, borderRadius: 8,
+                        border: '1px solid #f59e0b', background: '#fffbeb', cursor: 'pointer',
+                        color: '#b45309', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4,
+                      }}
+                    >
+                      <i className="ti ti-git-branch" style={{ fontSize: 13 }} /> Create New Version
+                    </MotionButton>
+                  )}
+                  {savedDraft && !isFinal && (
+                    <MotionButton
+                      onClick={handleFinalize}
+                      whileTap={{ scale: 0.95 }}
+                      title="Mark the latest version as Final — the draft becomes read-only"
+                      style={{
+                        padding: '6px 12px', fontSize: 11, fontWeight: 700, borderRadius: 8,
+                        border: '1px solid #15803d', background: '#16a34a', cursor: 'pointer',
+                        color: '#ffffff', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4,
+                        boxShadow: '0 2px 6px rgba(22,163,74,0.25)'
+                      }}
+                    >
+                      <i className="ti ti-rosette-discount-check" style={{ fontSize: 13 }} /> Mark as Final
+                    </MotionButton>
+                  )}
 
                   <MotionButton 
                     onClick={handleCopy} 
@@ -716,7 +1145,7 @@ export default function DraftsTab() {
               )}
             </div>
 
-            <div style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
+            <div style={{ padding: '24px' }}>
               {generating && (
                 <DraftingProgressIndicator draftType={draftType} />
               )}
@@ -737,12 +1166,89 @@ export default function DraftsTab() {
               )}
 
               {!generating && activeText && (
-                renderA4LegalDocument(activeText, isEditing, (newVal) => setCustomDraftText(newVal))
+                <>
+                  {viewingVersion !== null && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 12px', padding: '8px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, fontSize: 12, color: '#1e40af' }}>
+                      <i className="ti ti-eye" style={{ fontSize: 14 }} />
+                      Viewing Version {viewingVersion} (read-only)
+                      <button
+                        onClick={() => setViewingVersion(null)}
+                        style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                      >
+                        Back to latest
+                      </button>
+                    </div>
+                  )}
+                  {renderA4LegalDocument(
+                    activeText,
+                    isEditing && !editingDisabled && viewingVersion === null,
+                    (newVal) => setCustomDraftText(newVal),
+                  )}
+                </>
               )}
             </div>
           </MotionCard>
         </motion.div>
       </div>
+
+      {/* Version diff modal */}
+      {showDiff && (() => {
+        const nums = [...diffSelection].sort((a, b) => a - b)
+        const older = versions.find(v => v.versionNumber === nums[0])
+        const newer = versions.find(v => v.versionNumber === nums[1])
+        if (!older || !newer) return null
+        const lines = diffLines(older.content, newer.content)
+        const addedCount = lines.filter(l => l.type === 'added').length
+        const removedCount = lines.filter(l => l.type === 'removed').length
+        return (
+          <div
+            onClick={() => setShowDiff(false)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{ background: '#ffffff', borderRadius: 16, width: '100%', maxWidth: 900, maxHeight: '82vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 24px 64px rgba(0,0,0,0.25)' }}
+            >
+              <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <i className="ti ti-arrows-diff" style={{ fontSize: 18, color: '#2563eb' }} />
+                <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+                  Version {nums[0]} → Version {nums[1]}
+                </span>
+                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 10, background: '#f0fdf4', color: '#15803d', border: '1px solid #86efac' }}>
+                  +{addedCount} additions
+                </span>
+                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 10, background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' }}>
+                  −{removedCount} deletions
+                </span>
+                <button
+                  onClick={() => setShowDiff(false)}
+                  style={{ marginLeft: 'auto', width: 28, height: 28, borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}
+                >
+                  <i className="ti ti-x" style={{ fontSize: 14 }} />
+                </button>
+              </div>
+              <div style={{ flex: 1, overflowY: 'auto', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, lineHeight: 1.55, padding: '10px 0' }}>
+                {lines.map((l, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      whiteSpace: 'pre-wrap', wordBreak: 'break-word', padding: '1px 16px',
+                      background: l.type === 'removed' ? '#fef2f2' : l.type === 'added' ? '#f0fdf4' : '#ffffff',
+                      color: l.type === 'removed' ? '#b91c1c' : l.type === 'added' ? '#15803d' : '#334155',
+                    }}
+                  >
+                    {l.type === 'added' ? '+ ' : l.type === 'removed' ? '− ' : '  '}{l.text}
+                  </div>
+                ))}
+              </div>
+              <div style={{ padding: '10px 20px', borderTop: '1px solid #e2e8f0', fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <i className="ti ti-info-circle" style={{ fontSize: 13 }} />
+                Green lines were added in Version {nums[1]}; red lines were removed since Version {nums[0]}.
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </motion.div>
   )
 }

@@ -7,8 +7,8 @@ import { readinessApi, casesApi } from '@/lib/api'
 import ReadinessTabs          from '@/components/readiness/ReadinessTabs'
 import EmergencyResponse      from '@/components/readiness/EmergencyResponse'
 import ReadinessScore         from '@/components/readiness/ReadinessScore'
-import GapAnalysis            from '@/components/readiness/GapAnalysis'
-import StrengthAnalysis       from '@/components/readiness/StrengthAnalysis'
+import ChecklistBoard         from '@/components/readiness/ChecklistBoard'
+import StrengthsGaps          from '@/components/readiness/StrengthsGaps'
 import GenerateReadinessModal from '@/components/readiness/GenerateReadinessModal'
 
 function ComingSoonCard({ icon, title, description }: { icon: string; title: string; description: string }) {
@@ -108,13 +108,16 @@ export default function ReadinessPage() {
 
               {activeTab === 'Overview' && (
                 <>
-                  <EmergencyResponse />
-                  <div style={{ display: 'grid', gridTemplateColumns: '40% 60%', gap: 24, marginTop: 24 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '38% 1fr', gap: 24, marginTop: 24, alignItems: 'start' }}>
                     <ReadinessScore readiness={readiness} loading={loading} />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                      <GapAnalysis      readiness={readiness} loading={loading} />
-                      <StrengthAnalysis readiness={readiness} loading={loading} />
-                    </div>
+                    <ChecklistBoard readiness={readiness} loading={loading} />
+                  </div>
+                  <div style={{ marginTop: 24 }}>
+                    <StrengthsGaps readiness={readiness} loading={loading} />
+                  </div>
+                  {/* Emergency triage stays available below the readiness report */}
+                  <div style={{ marginTop: 24 }}>
+                    <EmergencyResponse />
                   </div>
                 </>
               )}
@@ -234,11 +237,16 @@ export default function ReadinessPage() {
                 marginBottom: 12,
               }}
             >
-              {[
-                { title: 'Score', value: readiness?.overallScore ? `${readiness.overallScore}%` : '85%', sub: 'Overall' },
-                { title: 'Gaps', value: readiness?.gaps?.length ?? '2', sub: 'Identified' },
-                { title: 'Strengths', value: readiness?.strengths?.length ?? '4', sub: 'Key Points' },
-              ].map((item, idx) => (
+              {(() => {
+                const checklist: any[] = Array.isArray(readiness?.checklist) ? readiness.checklist : []
+                const mineCount = checklist.filter((i: any) => i.controllable !== false).length
+                const extCount  = checklist.filter((i: any) => i.controllable === false).length
+                return [
+                  { title: 'Score', value: readiness ? `${readiness.overallScore ?? 0}` : '—', sub: 'Overall' },
+                  { title: 'Yours To Do', value: readiness ? String(mineCount) : '—', sub: 'Needs Your Action' },
+                  { title: 'Waiting', value: readiness ? String(extCount) : '—', sub: 'Court / Other Side' },
+                ]
+              })().map((item, idx) => (
                 <div
                   key={idx}
                   style={{
@@ -272,8 +280,8 @@ export default function ReadinessPage() {
                   <>
                     <EmergencyResponse />
                     <ReadinessScore readiness={readiness} loading={loading} />
-                    <GapAnalysis readiness={readiness} loading={loading} />
-                    <StrengthAnalysis readiness={readiness} loading={loading} />
+                    <ChecklistBoard readiness={readiness} loading={loading} />
+                    <StrengthsGaps readiness={readiness} loading={loading} columns={1} />
                   </>
                 )}
                 {activeTab === 'Evidence' && (

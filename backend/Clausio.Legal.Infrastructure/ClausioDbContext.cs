@@ -43,9 +43,26 @@ public class ClausioDbContext(DbContextOptions<ClausioDbContext> options) : DbCo
     // AI Analytics & Telemetry
     public DbSet<AiTelemetryLog> AiTelemetryLogs => Set<AiTelemetryLog>();
 
+    // Draft version control
+    public DbSet<Draft> Drafts => Set<Draft>();
+    public DbSet<DraftVersion> DraftVersions => Set<DraftVersion>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasPostgresExtension("vector");
+
+        modelBuilder.Entity<Draft>(e =>
+        {
+            e.HasIndex(x => x.CaseId);
+            e.HasOne<Case>().WithMany().HasForeignKey(x => x.CaseId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<DraftVersion>(e =>
+        {
+            e.HasIndex(x => new { x.DraftId, x.VersionNumber }).IsUnique();
+            e.HasOne(x => x.Draft).WithMany(d => d.Versions)
+                .HasForeignKey(x => x.DraftId).OnDelete(DeleteBehavior.Cascade);
+        });
 
         modelBuilder.Entity<CalendarEventLink>(e =>
             e.HasIndex(x => new { x.IntegrationId, x.EventType, x.SourceId }).IsUnique());

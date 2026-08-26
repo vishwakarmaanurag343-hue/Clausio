@@ -3,6 +3,7 @@ using System;
 using Clausio.Legal.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -12,9 +13,11 @@ using Pgvector;
 namespace Clausio.Legal.Infrastructure.Migrations
 {
     [DbContext(typeof(ClausioDbContext))]
-    partial class ClausioDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260826063710_AddDraftVersioning")]
+    partial class AddDraftVersioning
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1273,17 +1276,8 @@ namespace Clausio.Legal.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("ActionNeeded")
-                        .HasColumnType("text");
-
-                    b.Property<string>("CaseTypeRelevance")
-                        .HasColumnType("text");
-
                     b.Property<string>("Category")
                         .HasColumnType("text");
-
-                    b.Property<bool>("Controllable")
-                        .HasColumnType("boolean");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1293,10 +1287,6 @@ namespace Clausio.Legal.Infrastructure.Migrations
 
                     b.Property<Guid>("ReadinessId")
                         .HasColumnType("uuid");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<string>("Text")
                         .HasColumnType("text");

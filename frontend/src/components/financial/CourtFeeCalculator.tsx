@@ -1,10 +1,12 @@
 import AIResponseFormatter from '@/components/common/AIResponseFormatter'
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { aiApi } from '@/lib/api'
 
-interface Props { caseId: string | null; caseType: string }
+interface Props { caseId: string | null; caseType: string; initialValues?: Record<string, number | null | undefined> }
+
+const numOrNull = (v: any) => (typeof v === 'number' && isFinite(v) && v > 0 ? v : null)
 
 const COURT_FEE_SLABS = [
   { limit: 50000,   fee: 0.08  },  // 8%
@@ -25,7 +27,7 @@ function calculateCourtFee(amount: number): number {
   return Math.round(fee)
 }
 
-export default function CourtFeeCalculator({ caseId, caseType }: Props) {
+export default function CourtFeeCalculator({ caseId, caseType, initialValues }: Props) {
   const [claimAmount,    setClaimAmount]    = useState(1000000)
   const [courtType,      setCourtType]      = useState('District Court')
   const [processSheets,  setProcessSheets]  = useState(3)
@@ -35,6 +37,16 @@ export default function CourtFeeCalculator({ caseId, caseType }: Props) {
   const [draft,          setDraft]          = useState('')
   const [drafting,       setDrafting]       = useState(false)
   const [copied,         setCopied]         = useState(false)
+
+  // Auto-fill from the AI financial profile — every field stays editable so the lawyer
+  // can override any auto-filled value.
+  const [autoFilled, setAutoFilled] = useState<string[]>([])
+  useEffect(() => {
+    if (!initialValues) return
+    const applied: string[] = []
+    if (numOrNull(initialValues.claimAmount)) { setClaimAmount(numOrNull(initialValues.claimAmount)!); applied.push('Claim / Relief Amount') }
+    setAutoFilled(applied)
+  }, [initialValues])
 
   const fmt = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`
 
@@ -64,7 +76,13 @@ export default function CourtFeeCalculator({ caseId, caseType }: Props) {
     <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: 24 }}>
       <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 24 }}>
         <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#0f172a' }}>Court Fee Calculator</h2>
-        <p style={{ margin: '0 0 20px', color: '#64748b', fontSize: 13 }}>Ad valorem court fee calculation for {caseType} matter.</p>
+        <p style={{ margin: '0 0 14px', color: '#64748b', fontSize: 13 }}>Ad valorem court fee calculation for {caseType} matter.</p>
+
+        {autoFilled.length > 0 && (
+          <div style={{ marginBottom: 18, padding: '9px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, fontSize: 11.5, color: '#1d4ed8', lineHeight: 1.5 }}>
+            <i className="ti ti-bolt" /> <strong>{autoFilled.length} value{autoFilled.length > 1 ? 's' : ''} auto-filled</strong> from AI document analysis ({autoFilled.join(', ')}). Edit any field to override.
+          </div>
+        )}
 
         <Field label="Claim / Relief Amount (₹)">
           <input type="number" value={claimAmount} onChange={e => { setClaimAmount(Number(e.target.value)); setCalculated(false) }} style={inputSt} />
@@ -134,7 +152,7 @@ export default function CourtFeeCalculator({ caseId, caseType }: Props) {
                       <i className={`ti ${copied ? 'ti-check' : 'ti-copy'}`} />{copied ? 'Copied!' : 'Copy'}
                     </button>
                   </div>
-                  <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.7, lineHeight: 1.7, maxHeight: 300, overflowY: 'auto' }}>{draft}</div>
+                  <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.7, maxHeight: 300, overflowY: 'auto' }}>{draft}</div>
                 </div>
               )}
 

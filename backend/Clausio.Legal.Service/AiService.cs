@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Clausio.Legal.Core.Dtos;
@@ -13,17 +14,18 @@ public interface IAiService
     Task<string> GenerateChronologyAsync(Guid caseId, CancellationToken cancellationToken = default);
     Task<string> DetectContradictionsAsync(Guid caseId, CancellationToken cancellationToken = default);
     Task<string> AnalyzeEvidenceAsync(Guid documentId, CancellationToken cancellationToken = default);
+    Task<string> AnalyzeCaseEvidenceAsync(Guid caseId, CancellationToken cancellationToken = default);
     Task<string> ResearchAsync(Guid caseId, CancellationToken cancellationToken = default);
     Task<string> GenerateActionPlanAsync(Guid caseId, CancellationToken cancellationToken = default);
     Task<string> TranslateAsync(TranslateRequest request, CancellationToken cancellationToken = default);
     Task<string> ChatAsync(ChatRequestDto request, CancellationToken cancellationToken = default);
     IAsyncEnumerable<string> StreamChatAsync(ChatRequestDto request, CancellationToken cancellationToken = default);
     Task<string> DraftClientUpdateAsync(Guid caseId, ClientUpdateRequestDto request, CancellationToken cancellationToken = default);
-    Task<string> AnalyzeFinancialsAsync(Guid caseId, CancellationToken cancellationToken = default);
-    Task<string> AssessReadinessAsync(Guid caseId, CancellationToken cancellationToken = default);
+    Task<string> AnalyzeFinancialsAsync(Guid caseId, System.Text.Json.JsonElement? options = null, CancellationToken cancellationToken = default);
+    Task<string> AssessReadinessAsync(Guid caseId, Clausio.Legal.Core.Dtos.GenerateReadinessOptionsDto? options = null, CancellationToken cancellationToken = default);
     Task<string> AssessCaseRisksAsync(Guid caseId, CancellationToken cancellationToken = default);
     Task<string> GenerateCaseRecommendationsAsync(Guid caseId, CancellationToken cancellationToken = default);
-    Task<string> EmergencyTriageAsync(EmergencyRequestDto request, CancellationToken cancellationToken = default);
+    Task<string> EmergencyTriageAsync(Guid caseId, EmergencyRequestDto request, CancellationToken cancellationToken = default);
     Task<string> PrepHearingAsync(Guid caseId, CancellationToken cancellationToken = default);
     Task<string> PrepWitnessAsync(Guid caseId, WitnessPrepRequestDto request, CancellationToken cancellationToken = default);
     Task<string> ClassifyCaseTypeAsync(CaseTypeRequestDto request, CancellationToken cancellationToken = default);
@@ -39,11 +41,27 @@ public class AiService : IAiService
         _pipeline = pipeline;
     }
 
+    /// <summary>
+    /// Courtroom-grade four-section working brief for the Analysis page. Dedicated
+    /// Summary persona/template returns strict { summary:[{parties, reliefSought,
+    /// keyFacts, proceduralHistory}] } JSON — every sentence grounded in the uploaded
+    /// documents, each section written as a full plain-Indian-English paragraph.
+    /// </summary>
     public Task<string> SummarizeCaseAsync(Guid caseId, CancellationToken cancellationToken = default)
-        => _pipeline.ExecuteAsync(caseId, "Prepare a comprehensive case summary brief.", "Summarization", null, cancellationToken);
+        => _pipeline.ExecuteAsync(caseId,
+            "Condense this case file into the four-section working brief strictly per the system instructions — parties, relief sought, key facts and procedural history. Ground every sentence in the uploaded documents, write each section as a full plain-Indian-English paragraph an advocate can read aloud, and say plainly where the record is silent.",
+            "Summarization", null, cancellationToken);
 
+    /// <summary>
+    /// Verified document-grounded chronology for the Analysis page. Dedicated
+    /// Chronology persona/template returns strict { timeline:[{date, event,
+    /// sourceDocument, conflictingDate}] } JSON — only dates actually present
+    /// in the record, conflicts flagged rather than silently resolved.
+    /// </summary>
     public Task<string> GenerateChronologyAsync(Guid caseId, CancellationToken cancellationToken = default)
-        => _pipeline.ExecuteAsync(caseId, "Construct a comprehensive chronological timeline.", "Analysis", null, cancellationToken);
+        => _pipeline.ExecuteAsync(caseId,
+            "Build the verified case chronology strictly per the system instructions. Extract only dates and events actually present in the case documents, quote each date exactly as its document states it, cite the exact source document for every event, flag conflicting dates via conflictingDate instead of picking one, and order earliest first.",
+            "Chronology", null, cancellationToken);
 
     /// <summary>
     /// Courtroom-grade contradiction detection for the Strategy tab. Dedicated
@@ -58,6 +76,18 @@ public class AiService : IAiService
 
     public Task<string> AnalyzeEvidenceAsync(Guid documentId, CancellationToken cancellationToken = default)
         => _pipeline.ExecuteAsync(documentId, "Analyze the specific evidence contained in this document.", "Analysis", null, cancellationToken);
+
+    /// <summary>
+    /// Courtroom-grade evidence review for the Analysis page. Case-level rather than
+    /// per-document: ranking impact by the claim each document serves and spotting
+    /// missing evidence both require the whole record. Dedicated EvidenceIntelligence
+    /// persona/template returns strict { evidence:[{documentName, impact, supports,
+    /// summary}], missingEvidence:[…] } JSON.
+    /// </summary>
+    public Task<string> AnalyzeCaseEvidenceAsync(Guid caseId, CancellationToken cancellationToken = default)
+        => _pipeline.ExecuteAsync(caseId,
+            "Review every uploaded document strictly per the system instructions. Rank each by how directly it supports or undermines a specific claim in this dispute, state plainly what each document actually shows, and flag only specific evidence the record shows was needed but was never uploaded.",
+            "Evidence", null, cancellationToken);
 
     public Task<string> ResearchAsync(Guid caseId, CancellationToken cancellationToken = default)
         => _pipeline.ExecuteAsync(caseId,
@@ -101,11 +131,61 @@ public class AiService : IAiService
         return _pipeline.ExecuteAsync(caseId, instructions, "LegalDraft", parameters, cancellationToken);
     }
 
-    public Task<string> AnalyzeFinancialsAsync(Guid caseId, CancellationToken cancellationToken = default)
-        => _pipeline.ExecuteAsync(caseId, "Analyze the financial implications.", "Analysis", null, cancellationToken);
+    /// <summary>
+    /// Document-grounded financial-profile extraction for the Financial page. Dedicated
+    /// FinancialProfile template returns strict {financialProfile, flaggedDiscrepancies[],
+    /// summary} JSON built ONLY from the uploaded financial documents. Optional modal
+    /// options (occupation, income source, focus notes…) steer the extraction focus.
+    /// </summary>
+    public Task<string> AnalyzeFinancialsAsync(Guid caseId, System.Text.Json.JsonElement? options = null, CancellationToken cancellationToken = default)
+    {
+        var focus = FinancialFocus(options);
+        return _pipeline.ExecuteAsync(caseId,
+            "Extract the structured financial profile strictly per the system instructions, using only the uploaded financial documents in the context — never invent a figure. Return only the contracted JSON." + focus,
+            "FinancialProfile", null, cancellationToken);
+    }
 
-    public Task<string> AssessReadinessAsync(Guid caseId, CancellationToken cancellationToken = default)
-        => _pipeline.ExecuteAsync(caseId, "Assess case readiness for trial.", "Analysis", null, cancellationToken);
+    private static string FinancialFocus(System.Text.Json.JsonElement? o)
+    {
+        if (o is not { ValueKind: System.Text.Json.JsonValueKind.Object } obj) return "";
+        var parts = new List<string>();
+        if (obj.TryGetProperty("occupation", out var oc) && oc.ValueKind == System.Text.Json.JsonValueKind.String)   parts.Add($"Respondent's occupation: {oc.GetString()}");
+        if (obj.TryGetProperty("incomeSource", out var inc) && inc.ValueKind == System.Text.Json.JsonValueKind.String) parts.Add($"Primary income source: {inc.GetString()}");
+        if (obj.TryGetProperty("caseFocus", out var cf) && cf.ValueKind == System.Text.Json.JsonValueKind.String)     parts.Add($"Case focus: {cf.GetString()}");
+        if (obj.TryGetProperty("documents", out var dt) && dt.ValueKind == System.Text.Json.JsonValueKind.Array)
+            parts.Add("Documents the advocate says exist: " + string.Join(", ", dt.EnumerateArray().Select(x => x.GetString())));
+        if (obj.TryGetProperty("notes", out var fn) && fn.ValueKind == System.Text.Json.JsonValueKind.String && !string.IsNullOrWhiteSpace(fn.GetString()))
+            parts.Add($"Advocate's additional instructions: {fn.GetString()}");
+        return parts.Count == 0 ? "" : "\n\nADVOCATE'S FOCUS FOR THIS ANALYSIS:\n- " + string.Join("\n- ", parts);
+    }
+
+    /// <summary>
+    /// Case-type-tailored readiness assessment. Dedicated ReadinessAssessment template
+    /// returns strict {overallScore, scoreSummary, checklist[], strengths[], gaps[]} JSON.
+    /// Optional modal options (hearing type, objective, urgency…) steer the focus.
+    /// </summary>
+    public Task<string> AssessReadinessAsync(Guid caseId, Clausio.Legal.Core.Dtos.GenerateReadinessOptionsDto? options = null, CancellationToken cancellationToken = default)
+    {
+        var focus = ReadinessFocus(options);
+        return _pipeline.ExecuteAsync(caseId,
+            "Assess this case's hearing readiness strictly per the system instructions. " +
+            "Build the checklist around this case's specific type and current stage, judge every item from the actual record, " +
+            "and return only the contracted JSON." + focus,
+            "Readiness", null, cancellationToken);
+    }
+
+    private static string ReadinessFocus(Clausio.Legal.Core.Dtos.GenerateReadinessOptionsDto? o)
+    {
+        if (o is null) return "";
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(o.HearingType)) parts.Add($"Hearing type: {o.HearingType}");
+        if (!string.IsNullOrWhiteSpace(o.Court))       parts.Add($"Court / forum: {o.Court}");
+        if (!string.IsNullOrWhiteSpace(o.Objective))   parts.Add($"Primary objective: {o.Objective}");
+        if (!string.IsNullOrWhiteSpace(o.Urgency))     parts.Add($"Urgency: {o.Urgency}");
+        if (o.FocusAreas is { Count: > 0 })            parts.Add($"Areas to emphasise: {string.Join(", ", o.FocusAreas)}");
+        if (!string.IsNullOrWhiteSpace(o.Notes))       parts.Add($"Advocate's additional instructions: {o.Notes}");
+        return parts.Count == 0 ? "" : "\n\nADVOCATE'S FOCUS FOR THIS ASSESSMENT:\n- " + string.Join("\n- ", parts);
+    }
 
     /// <summary>
     /// Courtroom-grade risk assessment for the Strategy tab. Dedicated RiskAssessment
@@ -126,8 +206,16 @@ public class AiService : IAiService
             "Recommend the concrete strategic moves for this case strictly per the system instructions. Examine each document's contents and filing status, the hearing history and every date. Moves that directly counter a risk visible in the record come first with addressesRisk naming it; standalone moves only when clearly supported by the case context.",
             "Recommendation", null, cancellationToken);
 
-    public Task<string> EmergencyTriageAsync(EmergencyRequestDto request, CancellationToken cancellationToken = default)
-        => _pipeline.ExecuteAsync(Guid.Empty, $"Perform an emergency triage for the following critical update: {request.Query}", "ActionPlan", null, cancellationToken);
+    /// <summary>
+    /// Urgent-situation triage against the live case record. Dedicated EmergencyTriage
+    /// template returns strict {severity, headline, immediateActions[], draftResponse, …} JSON.
+    /// Previously ran with Guid.Empty — no case context at all.
+    /// </summary>
+    public Task<string> EmergencyTriageAsync(Guid caseId, EmergencyRequestDto request, CancellationToken cancellationToken = default)
+        => _pipeline.ExecuteAsync(caseId,
+            $"EMERGENCY TRIAGE. The advocate reports this urgent situation: {request.Query}. " +
+            "Assess it strictly per the system instructions against the case record and return only the contracted JSON.",
+            "Emergency", null, cancellationToken);
 
     public Task<string> PrepHearingAsync(Guid caseId, CancellationToken cancellationToken = default)
         => _pipeline.ExecuteAsync(caseId,

@@ -28,4 +28,20 @@ public class S3DocumentStorage(IAmazonS3 s3, string bucketName) : IDocumentStora
 
     s3.DeleteObjectAsync(bucketName, storagePath).GetAwaiter().GetResult();
    }
+
+    public async Task<Stream?> OpenAsync(string storagePath, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(storagePath))
+            return null;
+
+        try
+        {
+            var response = await s3.GetObjectAsync(bucketName, storagePath, cancellationToken);
+            return response.ResponseStream;
+        }
+        catch (AmazonS3Exception ex) when (ex.ErrorCode == "NoSuchKey" || ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
 }

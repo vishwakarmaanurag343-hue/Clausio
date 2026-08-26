@@ -324,7 +324,7 @@ export const researchApi = {
 
 export const readinessApi = {
   getByCaseId: (caseId: string) => get(`/cases/${caseId}/readiness`, 'Failed to fetch readiness'),
-  generate: (caseId: string) => send('POST', `/cases/${caseId}/readiness/generate`, undefined, 'Failed to generate readiness report'),
+  generate: (caseId: string, data?: any) => send('POST', `/cases/${caseId}/readiness/generate`, data, 'Failed to generate readiness report'),
   updateScore: (caseId: string, data: any) => send('PUT', `/cases/${caseId}/readiness/score`, data, 'Failed to update readiness score'),
 }
 
@@ -336,6 +336,23 @@ export const statsApi = {
   activity: () => get('/stats/activity', 'Failed to fetch activity'),
 }
 
+export const draftsApi = {
+  create: (data: { caseId: string; draftType: string; title?: string; content: string }) =>
+    send('POST', '/drafts', data, 'Failed to save draft'),
+  getByCaseId: (caseId: string) =>
+    send('GET', `/drafts/case/${caseId}`, undefined, 'Failed to load saved drafts'),
+  get: (id: string) =>
+    send('GET', `/drafts/${id}`, undefined, 'Failed to load draft history'),
+  addVersion: (id: string, content: string) =>
+    send('POST', `/drafts/${id}/versions`, { content }, 'Failed to save new draft version'),
+  finalize: (id: string) =>
+    send('PATCH', `/drafts/${id}/finalize`, {}, 'Failed to mark draft as final'),
+  remove: (id: string) =>
+    del(`/drafts/${id}`, 'Failed to delete draft'),
+  removeVersion: (id: string, versionNumber: number) =>
+    send('DELETE', `/drafts/${id}/versions/${versionNumber}`, undefined, 'Failed to delete version'),
+}
+
 export const aiApi = {
   getSummary: (caseId: string) => send('POST', `/ai/summary/${caseId}`, undefined, 'Failed to generate summary'),
   getRisks: (caseId: string) => send('POST', `/ai/risks/${caseId}`, undefined, 'Failed to assess case risks'),
@@ -343,10 +360,11 @@ export const aiApi = {
   getChronology: (caseId: string) => send('POST', `/ai/chronology/${caseId}`, undefined, 'Failed to generate chronology'),
   getContradictions: (caseId: string) => send('POST', `/ai/contradictions/${caseId}`, undefined, 'Failed to find contradictions'),
   getEvidence: (documentId: string) => send('POST', `/ai/evidence/${documentId}`, undefined, 'Failed to analyse evidence'),
+  getCaseEvidence: (caseId: string) => send('POST', `/ai/case-evidence/${caseId}`, undefined, 'Failed to analyse evidence'),
   getLegalResearch: (caseId: string) => send('POST', `/ai/research/${caseId}`, undefined, 'Failed to fetch research'),
   getActionPlan: (caseId: string) => send('POST', `/ai/actionplan/${caseId}`, undefined, 'Failed to generate action plan'),
   getWhatsApp: (caseId: string, data: any) => send('POST', `/ai/whatsapp/${caseId}`, data, 'Failed to generate WhatsApp update'),
-  getFinancial: (caseId: string) => send('POST', `/ai/financial/${caseId}`, undefined, 'Failed to analyse financials'),
+  getFinancial: (caseId: string, data?: any) => send('POST', `/ai/financial/${caseId}`, data, 'Failed to analyse financials'),
   getReadiness: (caseId: string) => send('POST', `/ai/readiness/${caseId}`, undefined, 'Failed to generate readiness report'),
   getEmergency: (caseId: string, data: any) => send('POST', `/ai/emergency/${caseId}`, data, 'Failed to generate emergency response'),
   getPrep: (caseId: string) => send('POST', `/ai/prep/${caseId}`, undefined, 'Failed to generate prep notes'),

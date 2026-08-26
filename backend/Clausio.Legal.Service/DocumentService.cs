@@ -12,12 +12,25 @@ public interface IDocumentService
     Task<List<Document>> ListAsync(Guid caseId, CancellationToken cancellationToken = default);
     Task<Document> UploadAsync(Guid caseId, string fileName, string? contentType, string? documentType, string? exhibitLabel, Stream content, long sizeBytes, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(Guid caseId, Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>Opens a stored case file for streaming to the client; null when the document or its file is missing.</summary>
+    Task<(Stream Stream, string ContentType, string FileName)?> OpenAsync(Guid caseId, Guid id, CancellationToken cancellationToken = default);
 }
 
 public class DocumentService(ClausioDbContext db, IDocumentStorage storage, IDocumentTextExtractor textExtractor, IAiJobQueueService jobQueue) : IDocumentService
 {
     public Task<List<Document>> ListAsync(Guid caseId, CancellationToken cancellationToken = default) =>
         db.Documents.AsNoTracking().Where(d => d.CaseId == caseId).OrderByDescending(d => d.CreatedAt).ToListAsync(cancellationToken);
+
+    public async Task<(Stream Stream, string ContentType, string FileName)?> OpenAsync(Guid caseId, Guid id, CancellationToken cancellationToken = default)
+    {
+        var doc = await db.Documents.AsNoTracking()
+            .FirstOrDefaultAsync(d => d.CaseId == caseId && d.Id == id, cancellationToken);
+        if (doc?.StoragePath is null) return null;
+
+        var stream = await storage.OpenAsync(doc.StoragePath, cancellationToken);
+        return stream is null ? null : (stream, doc.ContentType ?? "application/octet-stream", doc.FileName);
+    }
 
     public async Task<Document> UploadAsync(Guid caseId, string fileName, string? contentType, string? documentType, string? exhibitLabel, Stream content, long sizeBytes, CancellationToken cancellationToken = default)
     {

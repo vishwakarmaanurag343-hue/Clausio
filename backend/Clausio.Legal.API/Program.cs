@@ -14,6 +14,7 @@ using Clausio.Legal.Service;
 using Clausio.Legal.Service.AI;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 using System.Text;
@@ -163,6 +164,7 @@ builder.Services.AddScoped<IBillingService, BillingService>();
 builder.Services.AddScoped<IActionPlanService, ActionPlanService>();
 builder.Services.AddScoped<IContradictionService, ContradictionService>();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
+builder.Services.AddScoped<IDraftService, DraftService>();
 builder.Services.AddScoped<IHearingService, HearingService>();
 builder.Services.AddScoped<IWitnessService, WitnessService>();
 builder.Services.AddScoped<INoteService, NoteService>();
@@ -242,19 +244,34 @@ app.MapGet("/api/health", () => Results.Ok(new { status = "healthy", timestamp =
 
 app.MapControllers();
 
-// Auto database migration on startup (non-blocking log on dev/offline DB)
+// Auto database migration on startup (non-blocking log on dev/offline DB).
+// Applied one migration at a time so a single legacy conflict (e.g. JudgmentChunks
+// created out-of-band before its migration was recorded) can never block the
+// newer migrations behind it.
+var logger = app.Services.GetService<ILogger<Program>>();
 try
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<ClausioDbContext>();
-    await db.Database.MigrateAsync();
+    foreach (var migration in await db.Database.GetPendingMigrationsAsync())
+    {
+        try
+        {
+            // EF8 has no Migrate(targetMigration) facade overload — go through IMigrator.
+            db.Database.GetService<Microsoft.EntityFrameworkCore.Migrations.IMigrator>().Migrate(migration);
+            logger?.LogInformation("Applied migration {Migration}", migration);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogWarning(ex, "Migration {Migration} skipped or failed: {Message}", migration, ex.Message);
+        }
+    }
 
     var sensDb = scope.ServiceProvider.GetRequiredService<Clausio.Legal.Infrastructure.Security.SensitiveDbContext>();
     await sensDb.Database.EnsureCreatedAsync();
 }
 catch (Exception ex)
 {
-    var logger = app.Services.GetService<ILogger<Program>>();
     logger?.LogWarning(ex, "Database migration on startup skipped or failed: {Message}", ex.Message);
 }
 // Seed judgments in background

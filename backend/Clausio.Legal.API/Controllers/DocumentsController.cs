@@ -16,6 +16,16 @@ public class DocumentsController(IDocumentService documentService, ClausioDbCont
     public async Task<IActionResult> List(Guid caseId, CancellationToken cancellationToken) =>
         Ok(await documentService.ListAsync(caseId, cancellationToken));
 
+    // Streams the stored file itself (used by Analysis-page timeline "open source" jumps).
+    // Auth stays on the JSON API — the frontend fetches with the bearer header and opens the blob.
+    [HttpGet("{id:guid}/file")]
+    public async Task<IActionResult> GetFile(Guid caseId, Guid id, CancellationToken cancellationToken)
+    {
+        var file = await documentService.OpenAsync(caseId, id, cancellationToken);
+        if (file is null) return NotFound();
+        return File(file.Value.Stream, file.Value.ContentType, file.Value.FileName);
+    }
+
     [HttpPost]
     [RequestSizeLimit(100_000_000)]
     public async Task<IActionResult> Upload(

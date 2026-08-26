@@ -112,7 +112,10 @@ export default function GenerateReadinessModal({ onClose, onGenerated }: Props) 
     if (!selectedCaseId) { setError('Select a case first.'); return }
     setGenerating(true); setError('')
     try {
-      await readinessApi.generate(selectedCaseId)
+      await readinessApi.generate(selectedCaseId, {
+        hearingType, court, objective, urgency, notes,
+        focusAreas: checks,
+      })
       onGenerated?.()
       onClose()
     } catch (err: any) {
@@ -197,7 +200,7 @@ export default function GenerateReadinessModal({ onClose, onGenerated }: Props) 
           <div style={{ gridColumn: '1 / span 2', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: 16 }}>
             <div style={{ fontWeight: 700, color: '#1d4ed8', marginBottom: 10, fontSize: 13 }}>Clausio AI will generate</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-              {['Overall Readiness Score', 'Top Strengths', 'Critical Weaknesses / Gaps', 'Missing Documents Checklist', 'Cross Examination Questions', 'Recommended Next Actions', 'Timeline Review', 'Hearing Preparation Notes'].map((item, i) => (
+              {['Tailored Readiness Score + Summary', 'Checklist Built for Your Case Type', 'Why Each Item Matters', 'Your Actions vs Court-Controlled Items', 'Concrete Next Steps per Pending Item', 'Case Strengths', 'Critical Gaps'].map((item, i) => (
                 <div key={i} style={{ display: 'flex', gap: 6, fontSize: 12, color: '#334155', alignItems: 'center' }}>
                   <i className="ti ti-check" style={{ color: '#2563eb', fontSize: 12 }} />{item}
                 </div>

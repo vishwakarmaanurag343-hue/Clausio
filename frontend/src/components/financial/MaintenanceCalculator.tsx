@@ -1,12 +1,15 @@
 import AIResponseFormatter from '@/components/common/AIResponseFormatter'
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { aiApi } from '@/lib/api'
 
-interface Props { caseId: string | null }
+interface Props { caseId: string | null; initialValues?: Record<string, number | null | undefined> }
 
-export default function MaintenanceCalculator({ caseId }: Props) {
+// Only real extracted numbers land in a field — never a zero or NaN from a null profile value
+const numOrNull = (v: any) => (typeof v === 'number' && isFinite(v) && v > 0 ? v : null)
+
+export default function MaintenanceCalculator({ caseId, initialValues }: Props) {
   const [husbandIncome, setHusbandIncome] = useState(250000)
   const [wifeIncome,    setWifeIncome]    = useState(30000)
   const [children,      setChildren]      = useState(1)
@@ -17,6 +20,20 @@ export default function MaintenanceCalculator({ caseId }: Props) {
   const [marriageYears, setMarriageYears] = useState(8)
   const [lifestyle,     setLifestyle]     = useState('Upper Middle')
   const [calculated,    setCalculated]    = useState(false)
+
+  // Auto-fill from the AI financial profile — every field stays editable so the lawyer
+  // can override any auto-filled value.
+  const [autoFilled, setAutoFilled] = useState<string[]>([])
+  useEffect(() => {
+    if (!initialValues) return
+    const applied: string[] = []
+    if (numOrNull(initialValues.husbandIncome)) { setHusbandIncome(numOrNull(initialValues.husbandIncome)!); applied.push("Husband's Monthly Income") }
+    if (numOrNull(initialValues.rent))          { setRent(numOrNull(initialValues.rent)!);           applied.push('Monthly Rent') }
+    if (numOrNull(initialValues.education))     { setEducation(numOrNull(initialValues.education)!); applied.push('Education Expense') }
+    if (numOrNull(initialValues.medical))       { setMedical(numOrNull(initialValues.medical)!);     applied.push('Medical Expense') }
+    if (numOrNull(initialValues.otherExpense))  { setOtherExpense(numOrNull(initialValues.otherExpense)!); applied.push('Other Expenses') }
+    setAutoFilled(applied)
+  }, [initialValues])
 
   const [result, setResult] = useState({ recommended: 0, minimum: 0, maximum: 0, pendenteLite: 0 })
 
@@ -70,7 +87,13 @@ export default function MaintenanceCalculator({ caseId }: Props) {
       {/* Left — Input form */}
       <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(15,23,42,.04)' }}>
         <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#0f172a' }}>Maintenance Calculator</h2>
-        <p style={{ margin: '0 0 24px', color: '#64748b', fontSize: 13 }}>Enter financial details to calculate recommended maintenance.</p>
+        <p style={{ margin: '0 0 16px', color: '#64748b', fontSize: 13 }}>Enter financial details to calculate recommended maintenance.</p>
+
+        {autoFilled.length > 0 && (
+          <div style={{ marginBottom: 18, padding: '9px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, fontSize: 11.5, color: '#1d4ed8', lineHeight: 1.5 }}>
+            <i className="ti ti-bolt" /> <strong>{autoFilled.length} value{autoFilled.length > 1 ? 's' : ''} auto-filled</strong> from AI document analysis ({autoFilled.join(', ')}). Edit any field to override.
+          </div>
+        )}
 
         {[
           { label: 'Husband Monthly Income (₹)', val: husbandIncome, set: setHusbandIncome },
@@ -180,7 +203,7 @@ export default function MaintenanceCalculator({ caseId }: Props) {
                 <i className={`ti ${copied ? 'ti-check' : 'ti-copy'}`} style={{ marginRight: 4 }} />{copied ? 'Copied!' : 'Copy'}
               </button>
             </div>
-            <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.7, lineHeight: 1.7, maxHeight: 300, overflowY: 'auto' }}>{draft}</div>
+            <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.7, maxHeight: 300, overflowY: 'auto' }}>{draft}</div>
           </div>
         )}
 

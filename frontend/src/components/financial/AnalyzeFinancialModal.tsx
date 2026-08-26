@@ -140,7 +140,7 @@ export default function AnalyzeFinancialModal({ onClose, onAnalyse }: Props) {
           <div style={{ gridColumn: '1 / span 2', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: 16 }}>
             <div style={{ fontWeight: 700, color: '#1d4ed8', marginBottom: 10, fontSize: 13 }}>AI will generate:</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-              {['Declared vs Estimated Income', 'Hidden Income Indicators', 'Maintenance Range (Min/Max/Recommended)', 'Pendente Lite Amount', 'Asset Summary', 'Suspicious Transactions', 'Settlement Range', 'Court Argument Strategy'].map((item, i) => (
+              {['Structured Financial Profile (income, expenses, liabilities)', 'Key Transactions Relevant to the Claim', 'Claim / Suit Valuation Figures', 'Discrepancies Flagged Between Documents', 'Auto-filled Calculator Inputs (editable)', 'Plain-Language Summary for the Case'].map((item, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#334155' }}>
                   <i className="ti ti-check" style={{ color: '#2563eb', fontSize: 12 }} />{item}
                 </div>

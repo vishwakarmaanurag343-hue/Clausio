@@ -132,6 +132,27 @@ export default function AIInsights() {
         // Strip markdown code fences
         cleanText = cleanText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim()
 
+        // New four-section Summary contract ({summary:[{parties, reliefSought, keyFacts,
+        // proceduralHistory}]}) — flatten to labelled prose so this panel keeps its
+        // full-summary layout instead of feeding a JSON blob to the markdown renderer.
+        try {
+          const brief = JSON.parse(cleanText)
+          const entry = Array.isArray(brief) ? brief[0] : Array.isArray(brief?.summary) ? brief.summary[0] : null
+          if (entry && typeof entry === 'object' && (entry.parties || entry.keyFacts || entry.reliefSought || entry.proceduralHistory)) {
+            const section = (label: string, body?: string) => body ? `**${label}.** ${body}` : ''
+            setSummary({
+              fullSummary: [
+                section('Parties', entry.parties),
+                section('Relief sought', entry.reliefSought),
+                section('Key facts', entry.keyFacts),
+                section('Procedural history', entry.proceduralHistory),
+              ].filter(Boolean).join('\n\n'),
+              keyStrengths: [], keyWeaknesses: [], nextSteps: [], verdictProbability: null,
+            })
+            return
+          }
+        } catch { /* not the new contract — fall through to legacy parsing */ }
+
         try {
           const parsed = JSON.parse(cleanText)
           if (parsed && typeof parsed === 'object') {

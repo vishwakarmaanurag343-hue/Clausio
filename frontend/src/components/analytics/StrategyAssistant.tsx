@@ -45,9 +45,28 @@ export default function StrategyAssistant() {
     setError('')
     try {
       const res = await aiApi.getSummary(selectedCaseId)
-      const parsed = parseAiJson<CaseSummaryResponse>(res.summary ?? res.result ?? "")
-      setSummary(parsed)
-      setRawText(parsed ? "" : res.summary ?? res.result ?? "")
+      const raw = res.summary ?? res.result ?? ""
+      const parsed = parseAiJson<any>(raw)
+
+      // New four-section Summary contract ({summary:[{parties, reliefSought, keyFacts,
+      // proceduralHistory}]}) — map it onto this page's legacy fields so the sections
+      // render instead of silently blanking. Strengths/weaknesses stay empty: a brief
+      // doesn't assert them.
+      const entry = Array.isArray(parsed) ? parsed[0] : Array.isArray(parsed?.summary) ? parsed.summary[0] : null
+      if (entry && typeof entry === 'object' && (entry.parties || entry.keyFacts || entry.reliefSought || entry.proceduralHistory)) {
+        setSummary({
+          coreFacts:     [entry.parties, entry.keyFacts].filter(Boolean).join('\n\n'),
+          currentStage:  entry.proceduralHistory ?? '',
+          keyStrengths:  [],
+          keyWeaknesses: [],
+          nextSteps:     entry.reliefSought ? [`Relief sought in the case: ${entry.reliefSought}`] : [],
+          fullSummary:   '',
+        })
+        return
+      }
+
+      setSummary(parseAiJson<CaseSummaryResponse>(raw))
+      setRawText(parsed ? "" : raw)
     } catch (err: any) {
       setError(err.message || 'Failed to generate strategy')
     } finally {

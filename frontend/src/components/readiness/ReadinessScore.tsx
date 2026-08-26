@@ -5,40 +5,29 @@ interface Props {
   loading:   boolean
 }
 
-function scoreLabel(score: number) {
-  if (score >= 80) return { text: 'Ready for Hearing',  badge: 'Good Shape',  color: '#16a34a' }
-  if (score >= 50) return { text: 'Needs Attention',    badge: 'In Progress', color: '#d97706' }
-  return               { text: 'Not Ready',             badge: 'At Risk',     color: '#dc2626' }
+function band(score: number) {
+  if (score >= 80) return { color: '#16a34a', badge: 'Ready for Hearing' }
+  if (score >= 50) return { color: '#d97706', badge: 'Needs Attention' }
+  return               { color: '#dc2626', badge: 'Not Ready' }
 }
 
 export default function ReadinessScore({ readiness, loading }: Props) {
-  const score = readiness?.score ?? readiness?.readinessScore ?? 0
-  const label = scoreLabel(score)
+  const score = Math.max(0, Math.min(100, readiness?.overallScore ?? readiness?.score ?? 0))
+  const hasScore = !!readiness && (readiness.overallScore > 0 || readiness.score > 0)
+  const label = band(score)
+  const summary: string = readiness?.scoreSummary ?? readiness?.summary ?? ''
 
-  // ✅ Use dimension scores from AI if available, otherwise derive from score
-  const dimensionScores = readiness?.dimensionScores ?? null
-  const evidence   = dimensionScores?.evidence   ?? Math.round(score * 0.30)
-  const witnesses  = dimensionScores?.witnesses  ?? Math.round(score * 0.20)
-  const research   = dimensionScores?.research   ?? Math.round(score * 0.20)
-  const procedural = dimensionScores?.procedural ?? Math.round(score * 0.20)
-  const strategy   = dimensionScores?.strategy   ?? Math.round(score * 0.10)
-
-  const dimensions = [
-    { label: 'Evidence',    value: evidence,   max: 30 },
-    { label: 'Witnesses',   value: witnesses,  max: 20 },
-    { label: 'Research',    value: research,   max: 20 },
-    { label: 'Procedural',  value: procedural, max: 20 },
-    { label: 'Strategy',    value: strategy,   max: 10 },
-  ]
+  const R = 74
+  const CIRC = 2 * Math.PI * R
 
   return (
     <div className="glass-card" style={{ padding: 20 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#0f172a' }}>Hearing Readiness</h2>
-          <p style={{ marginTop: 2, fontSize: 12, color: '#64748b' }}>Overall preparation score.</p>
+          <p style={{ marginTop: 2, fontSize: 12, color: '#64748b' }}>Overall preparation for the next hearing.</p>
         </div>
-        {readiness && (
+        {hasScore && (
           <div style={{ background: `${label.color}1a`, border: `1px solid ${label.color}33`, color: label.color, padding: '4px 10px', borderRadius: 20, fontWeight: 600, fontSize: 11 }}>
             {label.badge}
           </div>
@@ -46,63 +35,42 @@ export default function ReadinessScore({ readiness, loading }: Props) {
       </div>
 
       {loading && (
-        <div style={{ textAlign: 'center', padding: 30, color: '#64748b', fontSize: 13 }}>Loading...</div>
+        <div style={{ textAlign: 'center', padding: 40, color: '#64748b', fontSize: 13 }}>Loading...</div>
       )}
 
-      {!loading && !readiness && (
-        <div style={{ textAlign: 'center', padding: 30, color: '#94a3b8', fontSize: 13 }}>
+      {!loading && !hasScore && (
+        <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8', fontSize: 13 }}>
           Click Generate AI Report to assess this case.
         </div>
       )}
 
-      {!loading && readiness && (
+      {!loading && hasScore && (
         <>
-          {/* Big score number */}
-          <div style={{ textAlign: 'center', marginBottom: 24 }}>
-            <div style={{ fontSize: 64, fontWeight: 700, color: label.color, lineHeight: 1, letterSpacing: '-2px' }}>
-              {score}
-            </div>
-            <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>out of 100</div>
-            <div style={{ marginTop: 8, fontSize: 14, fontWeight: 600, color: '#334155' }}>{label.text}</div>
+          {/* Ring gauge */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
+            <svg width="190" height="190" viewBox="0 0 190 190">
+              <circle cx="95" cy="95" r={R} fill="none" stroke="#e2e8f0" strokeWidth="13" />
+              <circle cx="95" cy="95" r={R} fill="none" stroke={label.color} strokeWidth="13"
+                strokeLinecap="round"
+                strokeDasharray={CIRC}
+                strokeDashoffset={CIRC * (1 - score / 100)}
+                transform="rotate(-90 95 95)"
+                style={{ transition: 'stroke-dashoffset 0.8s ease, stroke 0.4s ease' }} />
+              <text x="95" y="92" textAnchor="middle" fontSize="46" fontWeight="700" fill={label.color} letterSpacing="-1">{score}</text>
+              <text x="95" y="116" textAnchor="middle" fontSize="12" fontWeight="600" fill="#94a3b8">out of 100</text>
+            </svg>
           </div>
 
-          {/* Overall progress bar */}
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ height: 12, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
-              <div style={{ width: `${score}%`, height: '100%', background: label.color, borderRadius: 999, transition: 'width 0.5s ease' }} />
-            </div>
-          </div>
-
-          {/* Dimension breakdown */}
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 }}>
-            Breakdown
-          </div>
-          {dimensions.map(d => (
-            <MetricBar
-              key={d.label}
-              label={d.label}
-              value={d.value}
-              max={d.max}
-              color={d.value >= d.max * 0.7 ? '#16a34a' : d.value >= d.max * 0.4 ? '#f59e0b' : '#ef4444'}
-            />
-          ))}
+          {summary && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
+                What&apos;s Driving This Score
+              </div>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: '#334155' }}>{summary}</p>
+            </>
+          )}
         </>
       )}
-    </div>
-  )
-}
-
-function MetricBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
-  const pct = Math.round((value / max) * 100)
-  return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-        <span style={{ fontSize: 12, fontWeight: 500, color: '#334155' }}>{label}</span>
-        <span style={{ fontSize: 11, fontWeight: 700, color }}>{value}/{max}</span>
-      </div>
-      <div style={{ height: 6, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
-        <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 999 }} />
-      </div>
     </div>
   )
 }
