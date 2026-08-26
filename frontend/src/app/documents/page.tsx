@@ -63,7 +63,7 @@ export default function DocumentsPage() {
     if (!file || !selectedCaseId) return
     setUploading(true)
     try {
-      await documentsApi.upload(selectedCaseId, file)
+      await documentsApi.upload(selectedCaseId, file, 'Uploaded Document')
       await load()
     } catch (err: any) { setError(err.message) }
     finally { setUploading(false); e.target.value = '' }

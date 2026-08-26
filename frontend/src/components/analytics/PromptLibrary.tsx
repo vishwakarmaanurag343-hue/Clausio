@@ -69,7 +69,7 @@ export default function PromptLibrary() {
         case 'financial':      res = await aiApi.getFinancial(selectedCaseId);      break
         case 'prep':           res = await aiApi.getPrep(selectedCaseId);           break
         case 'readiness':      res = await aiApi.getReadiness(selectedCaseId);      break
-        case 'witness':        res = await aiApi.getWitness(selectedCaseId);        break
+        case 'witness':        res = await aiApi.getWitness(selectedCaseId, {});        break
         case 'actionplan':     res = await aiApi.getActionPlan(selectedCaseId);     break
         default: return
       }

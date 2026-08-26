@@ -42,8 +42,7 @@ const SECTIONS = [
   },
 ]
 
-export default function SettingsPage() {
-
+function SettingsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [active, setActive] = useState('Profile')
@@ -60,16 +59,14 @@ export default function SettingsPage() {
   }, [])
 
   function renderContent() {
-    const section = SECTIONS.flatMap(s => s.items).find(i => i.name === active)
-    if (section && !section.live) return <ComingSoon name={active} />
     switch (active) {
       case 'Profile':      return <ProfileSettings />
       case 'Security':     return <SecuritySettings />
       case 'AI':           return <AISettings />
       case 'Legal':        return <LegalSettings />
-      case 'Integrations': return <Suspense><IntegrationsSettings /></Suspense>
       case 'About':        return <AboutClausio />
-      default:             return <ProfileSettings />
+      case 'Integrations': return <IntegrationsSettings />
+      default:             return <ComingSoon name={active} />
     }
   }
 
@@ -251,5 +248,13 @@ function ComingSoon({ name }: { name: string }) {
         <span style={{ fontSize: 12, color: '#1e40af', fontWeight: 600 }}>Expected in next release · support@clausio.io</span>
       </div>
     </div>
+  )
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 20, color: '#64748b' }}>Loading settings...</div>}>
+      <SettingsContent />
+    </Suspense>
   )
 }

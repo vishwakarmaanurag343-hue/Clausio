@@ -12,6 +12,7 @@ import PreDepositCalculator  from '@/components/financial/PreDepositCalculator'
 import NiActCalculator       from '@/components/financial/NiActCalculator'
 import CourtFeeCalculator    from '@/components/financial/CourtFeeCalculator'
 import DamagesCalculator     from '@/components/financial/DamagesCalculator'
+import MaintenanceTracker from '@/components/financial/MaintenanceTracker'
 import AnalyzeFinancialModal from '@/components/financial/AnalyzeFinancialModal'
 
 // Compoundable offences that carry a real financial component (compensation/fine in lieu
@@ -32,12 +33,15 @@ function isCompoundableFinancialCriminal(name: string, subType: string) {
 // Tabs per case type
 function getTabsForCaseType(ct: string, subType = '', caseName = ''): string[] {
   const t = ct.toLowerCase()
-  const family      = t.includes('family') || t.includes('matrimonial') || t.includes('divorce')
+  const hay    = `${subType} ${caseName}`.toLowerCase()
+  const family = t.includes("family") || t.includes("matrimonial") || t.includes("divorce")
+              || hay.includes("dv act") || hay.includes("domestic violence")
+              || hay.includes("125 crpc") || hay.includes("section 125")
   const civilFamily = t.includes('civil') || t.includes('property') || t.includes('commercial')
                    || t.includes('consumer') || t.includes('labour') || t.includes('arbitration')
                    || t.includes('rera') || t.includes('corporate')
 
-  if (family)      return ['AI Analysis', 'Maintenance Calculator', 'Settlement Calculator']
+  if (family)      return ['AI Analysis', 'Maintenance Calculator', 'Settlement Calculator', 'Maintenance Compliance Tracker']
   if (t.includes('gst') || t.includes('income tax')) return ['AI Analysis', 'Tax Demand Calculator', 'Pre-deposit Calculator']
   if (t.includes('ni act')) return ['AI Analysis', 'NI Act Calculator', 'Court Fee Calculator']
   if (t.includes('criminal')) {
@@ -149,7 +153,8 @@ export default function FinancialPage() {
 
     // Family
     if (t === 'Maintenance Calculator') return <MaintenanceCalculator caseId={selectedCaseId} initialValues={autoFillFor(t)} />
-    if (t === 'Settlement Calculator')  return <SettlementCalculator  caseId={selectedCaseId} initialValues={autoFillFor(t)} />
+    if (t === 'Maintenance Compliance Tracker') return <MaintenanceTracker caseId={selectedCaseId} />
+    if (t === 'Settlement Calculator')  return <SettlementCalculator  caseId={selectedCaseId} initialValues={autoFillFor(t)} assets={profile?.assets} />
 
     // GST / Income Tax
     if (t === 'Tax Demand Calculator')  return <TaxDemandCalculator  caseType={caseType} caseId={selectedCaseId} />

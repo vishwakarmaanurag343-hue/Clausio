@@ -28,7 +28,7 @@ export default function CrossExamination() {
     setResult(null)
     setRawText('')
     try {
-      const res = await aiApi.getWitness(selectedCaseId)
+      const res = await aiApi.getWitness(selectedCaseId, {})
       const raw = res.intelligence ?? res.result ?? ''
       const parsed = parseAiJson<any>(raw)
       if (parsed) {

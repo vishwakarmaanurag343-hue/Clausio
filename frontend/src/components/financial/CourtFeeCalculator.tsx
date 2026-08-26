@@ -1,45 +1,50 @@
-import AIResponseFormatter from '@/components/common/AIResponseFormatter'
 'use client'
 
 import { useState, useEffect } from 'react'
 import { aiApi } from '@/lib/api'
+import { HBars } from '@/components/financial/FinancialCharts'
 
 interface Props { caseId: string | null; caseType: string; initialValues?: Record<string, number | null | undefined> }
 
 const numOrNull = (v: any) => (typeof v === 'number' && isFinite(v) && v > 0 ? v : null)
 
 const COURT_FEE_SLABS = [
-  { limit: 50000,   fee: 0.08  },  // 8%
-  { limit: 200000,  fee: 0.06  },  // 6%
-  { limit: 500000,  fee: 0.04  },  // 4%
-  { limit: 1000000, fee: 0.03  },  // 3%
-  { limit: Infinity, fee: 0.025 }, // 2.5%
+  { from: 0,       to: 50000,   label: '₹0 – ₹50,000',       rate: 0.08  },
+  { from: 50000,   to: 200000,  label: '₹50,001 – ₹2,00,000', rate: 0.06  },
+  { from: 200000,  to: 500000,  label: '₹2,00,001 – ₹5,00,000', rate: 0.04 },
+  { from: 500000,  to: 1000000, label: '₹5,00,001 – ₹10,00,000', rate: 0.03 },
+  { from: 1000000, to: Infinity, label: 'Above ₹10,00,000',   rate: 0.025 },
 ]
 
 function calculateCourtFee(amount: number): number {
   let fee = 0; let remaining = amount; let prev = 0
   for (const slab of COURT_FEE_SLABS) {
-    const slabAmt = Math.min(remaining, slab.limit - prev)
-    fee += slabAmt * slab.fee
-    remaining -= slabAmt; prev = slab.limit
+    const slabAmt = Math.min(remaining, slab.to - prev)
+    fee += slabAmt * slab.rate
+    remaining -= slabAmt; prev = slab.to
     if (remaining <= 0) break
   }
   return Math.round(fee)
 }
 
-export default function CourtFeeCalculator({ caseId, caseType, initialValues }: Props) {
-  const [claimAmount,    setClaimAmount]    = useState(1000000)
-  const [courtType,      setCourtType]      = useState('District Court')
-  const [processSheets,  setProcessSheets]  = useState(3)
-  const [miscFees,       setMiscFees]       = useState(500)
-  const [calculated,     setCalculated]     = useState(false)
-  const [result,         setResult]         = useState({ courtFee: 0, process: 0, misc: 0, total: 0 })
-  const [draft,          setDraft]          = useState('')
-  const [drafting,       setDrafting]       = useState(false)
-  const [copied,         setCopied]         = useState(false)
+function getActiveSlab(amount: number): number {
+  for (let i = 0; i < COURT_FEE_SLABS.length; i++) {
+    if (amount <= COURT_FEE_SLABS[i].to) return i
+  }
+  return COURT_FEE_SLABS.length - 1
+}
 
-  // Auto-fill from the AI financial profile — every field stays editable so the lawyer
-  // can override any auto-filled value.
+export default function CourtFeeCalculator({ caseId, caseType, initialValues }: Props) {
+  const [claimAmount,   setClaimAmount]   = useState(1000000)
+  const [courtType,     setCourtType]     = useState('District Court')
+  const [processSheets, setProcessSheets] = useState(3)
+  const [miscFees,      setMiscFees]      = useState(500)
+  const [calculated,    setCalculated]    = useState(false)
+  const [result,        setResult]        = useState({ courtFee: 0, process: 0, total: 0 })
+  const [draft,         setDraft]         = useState('')
+  const [drafting,      setDrafting]      = useState(false)
+  const [copied,        setCopied]        = useState(false)
+
   const [autoFilled, setAutoFilled] = useState<string[]>([])
   useEffect(() => {
     if (!initialValues) return
@@ -53,8 +58,7 @@ export default function CourtFeeCalculator({ caseId, caseType, initialValues }: 
   function calculate() {
     const courtFee = calculateCourtFee(claimAmount)
     const process  = processSheets * 200
-    const misc     = miscFees
-    setResult({ courtFee, process, misc, total: courtFee + process + misc })
+    setResult({ courtFee, process, total: courtFee + process + miscFees })
     setCalculated(true)
   }
 
@@ -71,6 +75,8 @@ export default function CourtFeeCalculator({ caseId, caseType, initialValues }: 
   }
 
   function copyDraft() { navigator.clipboard.writeText(draft); setCopied(true); setTimeout(() => setCopied(false), 2000) }
+
+  const activeSlab = getActiveSlab(claimAmount)
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: 24 }}>
@@ -89,13 +95,7 @@ export default function CourtFeeCalculator({ caseId, caseType, initialValues }: 
         </Field>
         <Field label="Court">
           <select value={courtType} onChange={e => { setCourtType(e.target.value); setCalculated(false) }} style={inputSt}>
-            <option>District Court</option>
-            <option>High Court</option>
-            <option>Commercial Court</option>
-            <option>Consumer Forum</option>
-            <option>Labour Court</option>
-            <option>NCLT</option>
-            <option>Family Court</option>
+            {['District Court','High Court','Commercial Court','Consumer Forum','Labour Court','NCLT','Family Court'].map(c => <option key={c}>{c}</option>)}
           </select>
         </Field>
         <Field label="Number of Process Sheets (Service of Summons)">
@@ -120,28 +120,34 @@ export default function CourtFeeCalculator({ caseId, caseType, initialValues }: 
           ) : (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 16 }}>
-                <ACard title="Court Fee"      value={fmt(result.courtFee)} color="#2563eb" bg="#eff6ff" />
-                <ACard title="Process Fees"   value={fmt(result.process)}  color="#d97706" bg="#fff7ed" />
-                <ACard title="Total Filing"   value={fmt(result.total)}    color="#16a34a" bg="#f0fdf4" highlight />
+                <ACard title="Court Fee"    value={fmt(result.courtFee)} color="#2563eb" bg="#eff6ff" />
+                <ACard title="Process Fees" value={fmt(result.process)}  color="#d97706" bg="#fff7ed" />
+                <ACard title="Total Filing" value={fmt(result.total)}    color="#16a34a" bg="#f0fdf4" highlight />
               </div>
 
+              {/* Active slab ladder */}
               <div style={{ marginBottom: 16 }}>
-                {[
-                  { label: 'Claim Amount',    value: fmt(claimAmount)      },
-                  { label: 'Court Fee (Ad Valorem)', value: fmt(result.courtFee) },
-                  { label: `Process Sheets (${processSheets} × ₹200)`, value: fmt(result.process) },
-                  { label: 'Misc Fees',       value: fmt(miscFees)         },
-                  { label: 'Total',           value: fmt(result.total)     },
-                ].map((r, i, arr) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: i < arr.length - 1 ? '1px solid #f1f5f9' : 'none', fontSize: 13 }}>
-                    <span style={{ color: '#64748b' }}>{r.label}</span>
-                    <strong>{r.value}</strong>
-                  </div>
-                ))}
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 8 }}>Fee Slab Ladder — your claim falls in the highlighted slab:</div>
+                {COURT_FEE_SLABS.filter(s => s.to !== Infinity || claimAmount > s.from).map((slab, i) => {
+                  const isActive = i === activeSlab
+                  return (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', marginBottom: 4, borderRadius: 7, background: isActive ? '#eff6ff' : '#f8fafc', border: `1px solid ${isActive ? '#93c5fd' : '#e2e8f0'}`, fontSize: 12 }}>
+                      <span style={{ color: isActive ? '#1d4ed8' : '#64748b', fontWeight: isActive ? 700 : 400 }}>{slab.label}</span>
+                      <span style={{ color: isActive ? '#1d4ed8' : '#94a3b8', fontWeight: isActive ? 700 : 400 }}>@ {(slab.rate * 100).toFixed(1)}% {isActive ? '✓' : ''}</span>
+                    </div>
+                  )
+                })}
               </div>
 
-              <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 12, color: '#334155', lineHeight: 1.6 }}>
-                <strong>Fee Slabs Applied:</strong> 8% on first ₹50,000 / 6% on ₹50,001–₹2,00,000 / 4% on ₹2,00,001–₹5,00,000 / 3% on ₹5,00,001–₹10,00,000 / 2.5% above ₹10 lakhs. Note: Rates vary by state — verify with court registry.
+              {/* HBars chart */}
+              <HBars title="Filing Cost Breakdown" items={[
+                { label: 'Ad Valorem Court Fee',      value: result.courtFee, color: '#2563eb' },
+                { label: 'Process Fees',              value: result.process,  color: '#d97706' },
+                { label: 'Misc (Vakalatnama etc.)',   value: miscFees,        color: '#64748b' },
+              ]} />
+
+              <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: 12, marginTop: 16, marginBottom: 16, fontSize: 12, color: '#334155', lineHeight: 1.6 }}>
+                <strong>Note:</strong> Court fee rates vary by state — verify with the court registry before filing. High Court rates are typically higher.
               </div>
 
               {draft && (

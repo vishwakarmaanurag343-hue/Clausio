@@ -2,21 +2,27 @@
 
 import { useState, useEffect } from 'react'
 import { aiApi } from '@/lib/api'
+import { Donut } from '@/components/financial/FinancialCharts'
 
-interface Props { caseId: string | null; initialValues?: Record<string, number | null | undefined> }
+type AssetStatus = 'Settled' | 'Contested' | 'Not Claimed'
+interface Asset { name: string; value: number; status: AssetStatus }
+
+interface Props {
+  caseId: string | null
+  initialValues?: Record<string, number | null | undefined>
+  assets?: Array<{ name: string; value: number; status: AssetStatus }>
+}
 
 const numOrNull = (v: any) => (typeof v === 'number' && isFinite(v) && v > 0 ? v : null)
 
-export default function SettlementCalculator({ caseId, initialValues }: Props) {
-  const [monthly,     setMonthly]     = useState(50000)
-  const [years,       setYears]       = useState(10)
-  const [inflation,   setInflation]   = useState(5)
-  const [legalCost,   setLegalCost]   = useState(400000)
-  const [litigYears,  setLitigYears]  = useState(3)
-  const [calculated,  setCalculated]  = useState(false)
+export default function SettlementCalculator({ caseId, initialValues, assets: propAssets }: Props) {
+  const [monthly,    setMonthly]    = useState(50000)
+  const [years,      setYears]      = useState(10)
+  const [inflation,  setInflation]  = useState(5)
+  const [legalCost,  setLegalCost]  = useState(400000)
+  const [litigYears, setLitigYears] = useState(3)
+  const [calculated, setCalculated] = useState(false)
 
-  // Auto-fill from the AI financial profile — every field stays editable so the lawyer
-  // can override any auto-filled value.
   const [autoFilled, setAutoFilled] = useState<string[]>([])
   useEffect(() => {
     if (!initialValues) return
@@ -24,6 +30,19 @@ export default function SettlementCalculator({ caseId, initialValues }: Props) {
     if (numOrNull(initialValues.monthly)) { setMonthly(numOrNull(initialValues.monthly)!); applied.push('Monthly Maintenance') }
     setAutoFilled(applied)
   }, [initialValues])
+
+  // Asset table — seeded from props.assets when available
+  const [assetRows, setAssetRows] = useState<Asset[]>(
+    propAssets ?? [
+      { name: 'Matrimonial Home', value: 5000000, status: 'Contested' },
+      { name: 'Joint Savings',    value: 800000,  status: 'Settled'   },
+      { name: 'Vehicle',          value: 600000,  status: 'Not Claimed' },
+    ]
+  )
+
+  useEffect(() => {
+    if (propAssets && propAssets.length > 0) setAssetRows(propAssets)
+  }, [propAssets])
 
   const [result, setResult] = useState({ lifetime: 0, settlement: 0, savings: 0, annualEquiv: 0 })
 
@@ -35,13 +54,13 @@ export default function SettlementCalculator({ caseId, initialValues }: Props) {
   const fmt = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`
 
   function calculate() {
-    const totalMaintenance  = monthly * 12 * years
-    const inflationImpact   = totalMaintenance * (inflation / 100)
-    const litigationCost    = legalCost + (monthly * 12 * litigYears * 0.3) // partial maintenance during litigation
-    const lifetime          = totalMaintenance + inflationImpact + litigationCost
-    const settlement        = lifetime * 0.78
-    const savings           = lifetime - settlement
-    const annualEquiv       = settlement / years
+    const totalMaintenance = monthly * 12 * years
+    const inflationImpact  = totalMaintenance * (inflation / 100)
+    const litigationCost   = legalCost + (monthly * 12 * litigYears * 0.3)
+    const lifetime         = totalMaintenance + inflationImpact + litigationCost
+    const settlement       = lifetime * 0.78
+    const savings          = lifetime - settlement
+    const annualEquiv      = settlement / years
     setResult({ lifetime, settlement, savings, annualEquiv })
     setCalculated(true)
   }
@@ -62,10 +81,25 @@ export default function SettlementCalculator({ caseId, initialValues }: Props) {
 
   function copyDraft() { navigator.clipboard.writeText(draft); setCopied(true); setTimeout(() => setCopied(false), 2000) }
 
+  // Asset table helpers
+  function updateAsset(i: number, field: keyof Asset, val: string | number) {
+    setAssetRows(prev => prev.map((r, idx) => idx === i ? { ...r, [field]: val } : r))
+  }
+  function addAsset() {
+    setAssetRows(prev => [...prev, { name: 'New Asset', value: 0, status: 'Contested' }])
+  }
+  function removeAsset(i: number) {
+    setAssetRows(prev => prev.filter((_, idx) => idx !== i))
+  }
+
+  // Donut data
+  const settled    = assetRows.filter(a => a.status === 'Settled').reduce((s, a) => s + a.value, 0)
+  const contested  = assetRows.filter(a => a.status === 'Contested').reduce((s, a) => s + a.value, 0)
+  const notClaimed = assetRows.filter(a => a.status === 'Not Claimed').reduce((s, a) => s + a.value, 0)
+  const totalAssets = settled + contested + notClaimed
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: 24 }}>
-
-      {/* Left — Input */}
       <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(15,23,42,.04)' }}>
         <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#0f172a' }}>Settlement Calculator</h2>
         <p style={{ margin: '0 0 16px', color: '#64748b', fontSize: 13 }}>Compare long-term maintenance cost vs. one-time settlement amount.</p>
@@ -94,15 +128,12 @@ export default function SettlementCalculator({ caseId, initialValues }: Props) {
         </button>
       </div>
 
-      {/* Right — Results */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
         <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(15,23,42,.04)' }}>
           <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#0f172a' }}>Settlement Recommendation</h2>
           <p style={{ margin: '0 0 20px', color: '#64748b', fontSize: 13 }}>
             {calculated ? 'One-time settlement vs lifetime maintenance cost analysis.' : 'Enter details and click Calculate.'}
           </p>
-
           {!calculated ? (
             <div style={{ textAlign: 'center', padding: 30, color: '#94a3b8', fontSize: 13 }}>
               <i className="ti ti-calculator" style={{ fontSize: 36, display: 'block', marginBottom: 8, opacity: 0.4 }} />
@@ -110,10 +141,67 @@ export default function SettlementCalculator({ caseId, initialValues }: Props) {
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
-              <ACard title="Lifetime Cost"        value={fmt(result.lifetime)}    color="#dc2626" bg="#fef2f2" />
-              <ACard title="Suggested Settlement" value={fmt(result.settlement)}  color="#16a34a" bg="#f0fdf4" highlight />
-              <ACard title="Respondent Saves"     value={fmt(result.savings)}     color="#2563eb" bg="#eff6ff" />
+              <ACard title="Lifetime Cost"        value={fmt(result.lifetime)}   color="#dc2626" bg="#fef2f2" />
+              <ACard title="Suggested Settlement" value={fmt(result.settlement)} color="#16a34a" bg="#f0fdf4" highlight />
+              <ACard title="Respondent Saves"     value={fmt(result.savings)}    color="#2563eb" bg="#eff6ff" />
             </div>
+          )}
+        </div>
+
+        {/* Asset Division Table + Donut */}
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 20, boxShadow: '0 2px 8px rgba(15,23,42,.04)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 14 }}>Asset Division</div>
+            <button onClick={addAsset} style={{ padding: '5px 12px', border: '1px solid #2563eb', borderRadius: 7, background: '#eff6ff', color: '#2563eb', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>+ Add Asset</button>
+          </div>
+
+          <div style={{ overflowX: 'auto', marginBottom: 16 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr>
+                  {['Asset', 'Value (₹)', 'Status', ''].map(h => (
+                    <th key={h} style={{ padding: '7px 8px', background: '#f8fafc', border: '1px solid #e2e8f0', textAlign: 'left', fontWeight: 600, color: '#64748b' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {assetRows.map((row, i) => (
+                  <tr key={i}>
+                    <td style={{ padding: '6px 8px', border: '1px solid #e2e8f0' }}>
+                      <input value={row.name} onChange={e => updateAsset(i, 'name', e.target.value)} style={{ width: '100%', border: 'none', outline: 'none', fontSize: 12, background: 'transparent', fontFamily: 'inherit' }} />
+                    </td>
+                    <td style={{ padding: '6px 8px', border: '1px solid #e2e8f0' }}>
+                      <input type="number" value={row.value} onChange={e => updateAsset(i, 'value', Number(e.target.value))} style={{ width: '100%', border: 'none', outline: 'none', fontSize: 12, background: 'transparent', fontFamily: 'inherit' }} />
+                    </td>
+                    <td style={{ padding: '6px 8px', border: '1px solid #e2e8f0' }}>
+                      <select value={row.status} onChange={e => updateAsset(i, 'status', e.target.value as AssetStatus)} style={{ border: 'none', outline: 'none', fontSize: 12, background: 'transparent', fontFamily: 'inherit', color: row.status === 'Settled' ? '#16a34a' : row.status === 'Contested' ? '#dc2626' : '#64748b' }}>
+                        <option value="Settled">Settled</option>
+                        <option value="Contested">Contested</option>
+                        <option value="Not Claimed">Not Claimed</option>
+                      </select>
+                    </td>
+                    <td style={{ padding: '6px 8px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+                      <button onClick={() => removeAsset(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 14 }}>×</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {totalAssets > 0 && (
+            <>
+              <Donut title="Asset Division" centerLabel="TOTAL" segments={[
+                { label: 'Settled',     value: settled,    color: '#16a34a' },
+                { label: 'Contested',   value: contested,  color: '#dc2626' },
+                { label: 'Not Claimed', value: notClaimed, color: '#94a3b8' },
+              ]} />
+              {contested > 0 && settled > 0 && (
+                <div style={{ marginTop: 10, padding: '8px 12px', background: '#eff6ff', borderRadius: 8, fontSize: 12, color: '#1d4ed8', fontWeight: 500 }}>
+                  {fmt(settled)} already agreed — push to convert the contested {fmt(contested)} at settlement to avoid further litigation.
+                </div>
+              )}
+            </>
           )}
         </div>
 

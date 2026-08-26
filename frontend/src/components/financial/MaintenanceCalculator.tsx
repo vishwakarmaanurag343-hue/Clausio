@@ -1,12 +1,11 @@
-import AIResponseFormatter from '@/components/common/AIResponseFormatter'
 'use client'
 
 import { useState, useEffect } from 'react'
 import { aiApi } from '@/lib/api'
+import { HBars } from '@/components/financial/FinancialCharts'
 
 interface Props { caseId: string | null; initialValues?: Record<string, number | null | undefined> }
 
-// Only real extracted numbers land in a field — never a zero or NaN from a null profile value
 const numOrNull = (v: any) => (typeof v === 'number' && isFinite(v) && v > 0 ? v : null)
 
 export default function MaintenanceCalculator({ caseId, initialValues }: Props) {
@@ -21,8 +20,6 @@ export default function MaintenanceCalculator({ caseId, initialValues }: Props) 
   const [lifestyle,     setLifestyle]     = useState('Upper Middle')
   const [calculated,    setCalculated]    = useState(false)
 
-  // Auto-fill from the AI financial profile — every field stays editable so the lawyer
-  // can override any auto-filled value.
   const [autoFilled, setAutoFilled] = useState<string[]>([])
   useEffect(() => {
     if (!initialValues) return
@@ -35,7 +32,10 @@ export default function MaintenanceCalculator({ caseId, initialValues }: Props) 
     setAutoFilled(applied)
   }, [initialValues])
 
-  const [result, setResult] = useState({ recommended: 0, minimum: 0, maximum: 0, pendenteLite: 0 })
+  const [result, setResult]         = useState({ recommended: 0, minimum: 0, maximum: 0, pendenteLite: 0 })
+  const [spousalBase, setSpousalBase] = useState(0)
+  const [childFactor, setChildFactor] = useState(0)
+  const [yearsFactor, setYearsFactor] = useState(0)
 
   const [draft,      setDraft]      = useState('')
   const [drafting,   setDrafting]   = useState(false)
@@ -45,17 +45,20 @@ export default function MaintenanceCalculator({ caseId, initialValues }: Props) 
   function fmt(n: number) { return `₹${n.toLocaleString('en-IN')}` }
 
   function calculate() {
-    const disposable = husbandIncome - rent - education - medical - otherExpense
-    const wifeDeficit = Math.max(0, 40000 - wifeIncome) // standard of living baseline
-    const base = Math.round((disposable * 0.28) + (wifeDeficit * 0.5))
-    const childFactor = children * 8000
-    const yearsFactor = Math.min(marriageYears * 500, 5000)
+    const disposable    = husbandIncome - rent - education - medical - otherExpense
+    const wifeDeficit   = Math.max(0, 40000 - wifeIncome)
+    const sBase         = Math.round((disposable * 0.28) + (wifeDeficit * 0.5))
+    const cFactor       = children * 8000
+    const yFactor       = Math.min(marriageYears * 500, 5000)
     const lifestyleFactor = lifestyle === 'Luxury' ? 1.4 : lifestyle === 'Upper Middle' ? 1.2 : lifestyle === 'Middle' ? 1.0 : 0.8
-    const recommended = Math.round((base + childFactor + yearsFactor) * lifestyleFactor)
+    const recommended   = Math.round((sBase + cFactor + yFactor) * lifestyleFactor)
+    setSpousalBase(sBase)
+    setChildFactor(cFactor)
+    setYearsFactor(yFactor)
     setResult({
       recommended,
-      minimum:     Math.round(recommended * 0.7),
-      maximum:     Math.round(recommended * 1.5),
+      minimum:      Math.round(recommended * 0.7),
+      maximum:      Math.round(recommended * 1.5),
       pendenteLite: Math.round(recommended * 0.75),
     })
     setCalculated(true)
@@ -75,16 +78,10 @@ export default function MaintenanceCalculator({ caseId, initialValues }: Props) 
     } finally { setDrafting(false) }
   }
 
-  function copyDraft() {
-    navigator.clipboard.writeText(draft)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+  function copyDraft() { navigator.clipboard.writeText(draft); setCopied(true); setTimeout(() => setCopied(false), 2000) }
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: 24 }}>
-
-      {/* Left — Input form */}
       <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(15,23,42,.04)' }}>
         <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#0f172a' }}>Maintenance Calculator</h2>
         <p style={{ margin: '0 0 16px', color: '#64748b', fontSize: 13 }}>Enter financial details to calculate recommended maintenance.</p>
@@ -123,10 +120,7 @@ export default function MaintenanceCalculator({ caseId, initialValues }: Props) 
         </button>
       </div>
 
-      {/* Right — Results */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-        {/* Amount cards */}
         <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(15,23,42,.04)' }}>
           <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#0f172a' }}>Calculation Result</h2>
           <p style={{ margin: '0 0 20px', color: '#64748b', fontSize: 13 }}>
@@ -144,14 +138,30 @@ export default function MaintenanceCalculator({ caseId, initialValues }: Props) 
                 <ACard title="Recommended" value={fmt(result.recommended)} color="#16a34a" bg="#f0fdf4" highlight />
                 <ACard title="Maximum"     value={fmt(result.maximum)}     color="#d97706" bg="#fff7ed" />
               </div>
-              <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, fontSize: 13, color: '#15803d', marginBottom: 8 }}>
+              <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, fontSize: 13, color: '#15803d', marginBottom: 16 }}>
                 <strong>Pendente Lite (Section 24 HMA):</strong> {fmt(result.pendenteLite)}/month — file interim application immediately
+              </div>
+
+              {/* Composition chart */}
+              <HBars title="How the Figure Builds Up" items={[
+                { label: 'Spousal Share (disposable × standard)', value: spousalBase,  color: '#2563eb' },
+                { label: `Children (${children})`,                value: childFactor,  color: '#16a34a' },
+                { label: 'Marriage Duration Factor',              value: yearsFactor,  color: '#8b5cf6' },
+              ]} />
+
+              {/* Expense bars */}
+              <div style={{ marginTop: 16 }}>
+                <HBars title="Monthly Expense Deductions" items={[
+                  { label: 'Rent',       value: rent,         color: '#0ea5e9' },
+                  { label: 'Education',  value: education,    color: '#10b981' },
+                  { label: 'Medical',    value: medical,      color: '#f43f5e' },
+                  { label: 'Other',      value: otherExpense, color: '#94a3b8' },
+                ]} />
               </div>
             </>
           )}
         </div>
 
-        {/* Breakdown */}
         {calculated && (
           <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 20, boxShadow: '0 2px 8px rgba(15,23,42,.04)' }}>
             <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 14, marginBottom: 14 }}>Financial Breakdown</div>
@@ -174,7 +184,6 @@ export default function MaintenanceCalculator({ caseId, initialValues }: Props) 
           </div>
         )}
 
-        {/* AI explanation */}
         {calculated && (
           <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: 18 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>

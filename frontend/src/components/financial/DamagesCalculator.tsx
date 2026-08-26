@@ -1,12 +1,23 @@
-import AIResponseFormatter from '@/components/common/AIResponseFormatter'
 'use client'
 
 import { useState, useEffect } from 'react'
 import { aiApi } from '@/lib/api'
+import { HBars } from '@/components/financial/FinancialCharts'
 
 interface Props { caseId: string | null; caseType: string; label?: string; initialValues?: Record<string, number | null | undefined> }
 
 const numOrNull = (v: any) => (typeof v === 'number' && isFinite(v) && v > 0 ? v : null)
+
+function isoMonthsAgo(n: number): string {
+  const d = new Date()
+  d.setMonth(d.getMonth() - n)
+  return d.toISOString().slice(0, 10)
+}
+function todayIso(): string { return new Date().toISOString().slice(0, 10) }
+function monthsBetween(from: string, to: string): number {
+  const f = new Date(from), t = new Date(to)
+  return Math.max(0, (t.getFullYear() - f.getFullYear()) * 12 + (t.getMonth() - f.getMonth()))
+}
 
 export default function DamagesCalculator({ caseId, caseType, label = 'Damages Calculator', initialValues }: Props) {
   const ct = caseType.toLowerCase()
@@ -15,7 +26,8 @@ export default function DamagesCalculator({ caseId, caseType, label = 'Damages C
   const [mentalAgony,  setMentalAgony]  = useState(100000)
   const [legalCosts,   setLegalCosts]   = useState(50000)
   const [interestRate, setInterestRate] = useState(12)
-  const [monthsDelay,  setMonthsDelay]  = useState(18)
+  const [fromDate,     setFromDate]     = useState(isoMonthsAgo(18))
+  const [toDate,       setToDate]       = useState(todayIso())
   const [punitive,     setPunitive]     = useState(false)
   const [calculated,   setCalculated]   = useState(false)
   const [result,       setResult]       = useState({ interest: 0, punitiveDmg: 0, total: 0, minimum: 0, maximum: 0 })
@@ -23,8 +35,6 @@ export default function DamagesCalculator({ caseId, caseType, label = 'Damages C
   const [drafting,     setDrafting]     = useState(false)
   const [copied,       setCopied]       = useState(false)
 
-  // Auto-fill from the AI financial profile — every field stays editable so the lawyer
-  // can override any auto-filled value.
   const [autoFilled, setAutoFilled] = useState<string[]>([])
   useEffect(() => {
     if (!initialValues) return
@@ -36,6 +46,7 @@ export default function DamagesCalculator({ caseId, caseType, label = 'Damages C
   const fmt = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`
 
   function calculate() {
+    const monthsDelay = Math.max(0, monthsBetween(fromDate, toDate))
     const interest    = Math.round(actualLoss * (interestRate / 100) * (monthsDelay / 12))
     const punitiveDmg = punitive ? Math.round(actualLoss * 0.5) : 0
     const base        = actualLoss + mentalAgony + legalCosts + interest + punitiveDmg
@@ -54,10 +65,11 @@ export default function DamagesCalculator({ caseId, caseType, label = 'Damages C
   async function generateDraft() {
     if (!caseId) return
     setDrafting(true)
+    const monthsDelay = monthsBetween(fromDate, toDate)
     try {
       const res = await aiApi.getDraft(caseId, {
         draftType: getDraftType(),
-        instructions: `Actual loss: ${fmt(actualLoss)}. Mental agony: ${fmt(mentalAgony)}. Legal costs: ${fmt(legalCosts)}. Interest @${interestRate}% for ${monthsDelay} months: ${fmt(result.interest)}. ${punitive ? `Punitive damages: ${fmt(result.punitiveDmg)}.` : ''} Total claimed: ${fmt(result.total)}. Range: ${fmt(result.minimum)} to ${fmt(result.maximum)}.`,
+        instructions: `Actual loss: ${fmt(actualLoss)}. Mental agony: ${fmt(mentalAgony)}. Legal costs: ${fmt(legalCosts)}. Interest @${interestRate}% from ${fromDate} to ${toDate} (${monthsDelay} months): ${fmt(result.interest)}. ${punitive ? `Punitive damages: ${fmt(result.punitiveDmg)}.` : ''} Total claimed: ${fmt(result.total)}. Range: ${fmt(result.minimum)} to ${fmt(result.maximum)}.`,
       })
       setDraft(res.draft ?? res.result ?? '')
     } catch { } finally { setDrafting(false) }
@@ -66,11 +78,14 @@ export default function DamagesCalculator({ caseId, caseType, label = 'Damages C
   function copyDraft() { navigator.clipboard.writeText(draft); setCopied(true); setTimeout(() => setCopied(false), 2000) }
 
   const getStrategyText = () => {
+    const monthsDelay = monthsBetween(fromDate, toDate)
     if (ct.includes('consumer')) return `Under Consumer Protection Act 2019, the consumer is entitled to actual loss ${fmt(actualLoss)} + compensation for mental agony ${fmt(mentalAgony)} + cost of litigation ${fmt(legalCosts)}. The District Commission can award up to ${fmt(result.maximum)}.`
-    if (ct.includes('labour')) return `Under the relevant labour legislation, claim back wages, gratuity and compensation from the date of wrongful termination. Interest at 12% per annum adds ${fmt(result.interest)} to the total claim.`
+    if (ct.includes('labour')) return `Under the relevant labour legislation, claim back wages, gratuity and compensation from the date of wrongful termination. Interest at ${interestRate}% per annum for ${monthsDelay} months adds ${fmt(result.interest)} to the total claim.`
     if (ct.includes('rera'))   return `RERA Authority can award interest at SBI MCLR + 2% on the invested amount, refund + compensation. Total relief sought: ${fmt(result.total)}.`
-    return `Total damages claimed: ${fmt(result.total)} (${fmt(result.minimum)} to ${fmt(result.maximum)} range). Compensation is based on actual loss, mental agony, and interest on delayed payment.`
+    return `Total damages claimed: ${fmt(result.total)} (${fmt(result.minimum)} to ${fmt(result.maximum)} range). Compensation is based on actual loss, mental agony, and interest from ${fromDate} to ${toDate}.`
   }
+
+  const computedMonths = monthsBetween(fromDate, toDate)
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: 24 }}>
@@ -98,11 +113,21 @@ export default function DamagesCalculator({ caseId, caseType, label = 'Damages C
             <option value={9}>9% — Decree rate</option>
             <option value={12}>12% — Standard commercial</option>
             <option value={18}>18% — Agreed rate</option>
+            <option value={18}>18% — Pre-tender / post-decree</option>
           </select>
         </Field>
-        <Field label="Delay Period (Months)">
-          <input type="number" value={monthsDelay} onChange={e => { setMonthsDelay(Number(e.target.value)); setCalculated(false) }} style={inputSt} />
+
+        {/* Date range interest — replaces monthsDelay input */}
+        <Field label="Interest accrues from">
+          <input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setCalculated(false) }} style={inputSt} />
         </Field>
+        <Field label="Interest accrues to">
+          <input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setCalculated(false) }} style={inputSt} />
+        </Field>
+        <div style={{ marginBottom: 14, padding: '7px 10px', background: '#f8fafc', borderRadius: 7, fontSize: 12, color: '#475569' }}>
+          Interest accrues from <strong>{fromDate}</strong> to <strong>{toDate}</strong> = <strong>{computedMonths} months</strong>
+        </div>
+
         <div style={{ marginBottom: 20 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#334155', cursor: 'pointer' }}>
             <input type="checkbox" checked={punitive} onChange={() => { setPunitive(!punitive); setCalculated(false) }} />
@@ -132,12 +157,12 @@ export default function DamagesCalculator({ caseId, caseType, label = 'Damages C
 
               <div style={{ marginBottom: 16 }}>
                 {[
-                  { label: 'Actual Loss',          value: fmt(actualLoss)          },
-                  { label: 'Mental Agony',          value: fmt(mentalAgony)         },
-                  { label: 'Legal Costs',           value: fmt(legalCosts)          },
-                  { label: `Interest @${interestRate}% for ${monthsDelay} months`, value: fmt(result.interest) },
+                  { label: 'Actual Loss',                                               value: fmt(actualLoss)          },
+                  { label: 'Mental Agony',                                              value: fmt(mentalAgony)         },
+                  { label: 'Legal Costs',                                               value: fmt(legalCosts)          },
+                  { label: `Interest @${interestRate}% for ${computedMonths} months`,   value: fmt(result.interest)     },
                   punitive ? { label: 'Punitive Damages', value: fmt(result.punitiveDmg) } : null,
-                  { label: 'Total',                 value: fmt(result.total)        },
+                  { label: 'Total',                                                     value: fmt(result.total)        },
                 ].filter(Boolean).map((r: any, i, arr) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: i < arr.length - 1 ? '1px solid #f1f5f9' : 'none', fontSize: 13 }}>
                     <span style={{ color: '#64748b' }}>{r.label}</span>
@@ -146,7 +171,16 @@ export default function DamagesCalculator({ caseId, caseType, label = 'Damages C
                 ))}
               </div>
 
-              <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: 14, marginBottom: 16, fontSize: 13, color: '#334155', lineHeight: 1.8 }}>
+              {/* HBars chart */}
+              <HBars title="Claim Composition" items={[
+                { label: 'Principal (Actual Loss)', value: actualLoss,        color: '#2563eb' },
+                { label: `Interest @${interestRate}%`, value: result.interest, color: '#f59e0b' },
+                { label: 'Mental Agony',            value: mentalAgony,       color: '#8b5cf6' },
+                { label: 'Litigation Costs',         value: legalCosts,        color: '#64748b' },
+                ...(punitive ? [{ label: 'Punitive', value: result.punitiveDmg, color: '#dc2626' }] : []),
+              ]} />
+
+              <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: 14, marginTop: 16, marginBottom: 16, fontSize: 13, color: '#334155', lineHeight: 1.8 }}>
                 {getStrategyText()}
               </div>
 

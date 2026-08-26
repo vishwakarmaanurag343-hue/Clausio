@@ -6,7 +6,7 @@ import { useUIStore } from '@/lib/store'
 const STORAGE_KEY = 'clausio_ai_settings'
 
 const DEFAULT = {
-  language:          'en',
+  
   draftStyle:        'Professional',
   autoSummary:       true,
   citationSuggest:   true,
@@ -17,7 +17,7 @@ const DEFAULT = {
 }
 
 export default function AISettings() {
-  const { language, setLanguage } = useUIStore()
+  // language store unused
   const [settings, setSettings] = useState(DEFAULT)
   const [saved,    setSaved]    = useState(false)
 
@@ -33,48 +33,19 @@ export default function AISettings() {
 
   function handleSave() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
-    setLanguage(settings.language)
+    
     setSaved(true)
     setTimeout(() => setSaved(false), 3000)
   }
 
   const DRAFT_STYLES = ['Professional', 'Aggressive', 'Balanced', 'Concise', 'Detailed']
-  const LANGUAGES = [
-    { code: 'en', label: 'English' },
-    { code: 'hi', label: 'Hindi' },
-    { code: 'mr', label: 'Marathi' },
-    { code: 'gu', label: 'Gujarati' },
-    { code: 'ta', label: 'Tamil' },
-    { code: 'te', label: 'Telugu' },
-  ]
 
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#0f172a' }}>AI Settings</h2>
-        <p style={{ marginTop: 4, color: '#64748b', fontSize: 13 }}>Configure Clausio AI language, style and features.</p>
+        <p style={{ marginTop: 4, color: '#64748b', fontSize: 13 }}>Configure Clausio AI style and features.</p>
       </div>
-
-      {saved && <Banner message="AI settings saved." />}
-
-      {/* Language */}
-      <Section title="AI Response Language">
-        <p style={{ fontSize: 12, color: '#64748b', marginBottom: 12, marginTop: -8 }}>
-          AI will respond in this language for all features.
-        </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
-          {LANGUAGES.map(l => (
-            <button
-              key={l.code}
-              onClick={() => update('language', l.code)}
-              style={{ padding: '10px 14px', borderRadius: 10, border: `2px solid ${settings.language === l.code ? '#2563eb' : '#e2e8f0'}`, background: settings.language === l.code ? '#eff6ff' : '#fff', color: settings.language === l.code ? '#1e40af' : '#475569', fontWeight: settings.language === l.code ? 700 : 400, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}
-            >
-              {l.label}
-            </button>
-          ))}
-        </div>
-      </Section>
-
       {/* Draft Style */}
       <Section title="Draft Style">
         <p style={{ fontSize: 12, color: '#64748b', marginBottom: 12, marginTop: -8 }}>
