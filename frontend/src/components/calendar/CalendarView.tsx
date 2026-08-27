@@ -42,6 +42,8 @@ export default function CalendarView() {
   const calRef = useRef<FullCalendar>(null)
   const [connected, setConnected] = useState<boolean | null>(null)
   const [cases, setCases] = useState<any[]>([])
+  const [viewTitle, setViewTitle] = useState('')
+  const [activeView, setActiveView] = useState('dayGridMonth')
 
   // modal state: mode 'create' | 'edit' | null
   const [modal, setModal] = useState<null | {
@@ -206,27 +208,107 @@ export default function CalendarView() {
   }
 
   return (
-    <div style={{ flex: 1 }}>
-      {/* legend */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 10, alignItems: 'center' }}>
-        {legend.map(([key, c]) => (
-          <span key={key} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#475569' }}>
-            <span style={{ width: 10, height: 10, borderRadius: 3, background: c.color, display: 'inline-block' }} />
-            {c.label}
-          </span>
-        ))}
-        <span style={{ marginLeft: 'auto', fontSize: 12, color: '#94a3b8' }}>
-          Click any slot to add · click an event to edit
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+      {/* ── APPLE GLASS TOOLBAR ── */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 16,
+        padding: '12px 18px',
+        background: 'rgba(255, 255, 255, 0.65)',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+        borderRadius: 20,
+        border: '1px solid rgba(255, 255, 255, 0.8)',
+        boxShadow: '0 4px 16px rgba(15, 23, 42, 0.03)',
+        flexWrap: 'wrap',
+      }}>
+        {/* Left: Nav (Prev, Today, Next) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', background: 'rgba(241, 245, 249, 0.8)', padding: 3, borderRadius: 12, border: '1px solid rgba(226, 232, 240, 0.8)' }}>
+            <button onClick={() => calRef.current?.getApi().prev()} style={{ border: 'none', background: 'transparent', width: 32, height: 32, borderRadius: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#334155' }}>
+              <i className="ti ti-chevron-left" style={{ fontSize: 16 }} />
+            </button>
+            <button onClick={() => calRef.current?.getApi().next()} style={{ border: 'none', background: 'transparent', width: 32, height: 32, borderRadius: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#334155' }}>
+              <i className="ti ti-chevron-right" style={{ fontSize: 16 }} />
+            </button>
+          </div>
+          <button onClick={() => calRef.current?.getApi().today()} style={{ padding: '6px 14px', borderRadius: 12, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>
+            Today
+          </button>
+        </div>
+
+        {/* Center: Title (Month Year) */}
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.03em' }}>
+          {viewTitle}
+        </h2>
+
+        {/* Right: View Switcher (Month / Week / Day) + Add Event */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', background: 'rgba(241, 245, 249, 0.8)', padding: 3, borderRadius: 14, border: '1px solid rgba(226, 232, 240, 0.8)' }}>
+            {[
+              { id: 'dayGridMonth', label: 'Month' },
+              { id: 'timeGridWeek', label: 'Week' },
+              { id: 'timeGridDay', label: 'Day' },
+            ].map((v) => (
+              <button
+                key={v.id}
+                onClick={() => calRef.current?.getApi().changeView(v.id)}
+                style={{
+                  border: 'none',
+                  background: activeView === v.id ? '#ffffff' : 'transparent',
+                  color: activeView === v.id ? '#2563eb' : '#64748b',
+                  padding: '6px 14px',
+                  borderRadius: 10,
+                  fontWeight: activeView === v.id ? 700 : 600,
+                  fontSize: 12.5,
+                  cursor: 'pointer',
+                  boxShadow: activeView === v.id ? '0 2px 8px rgba(15,23,42,0.06)' : 'none',
+                  transition: 'all 0.15s ease',
+                  fontFamily: 'inherit',
+                }}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setModal({ mode: 'create', title: '', start: toLocalInput(new Date()), end: toLocalInput(new Date(Date.now() + 3600000)), location: '', notes: '', caseId: '' })}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 14,
+              background: '#2563eb', color: '#ffffff', border: 'none', fontWeight: 700, fontSize: 12.5,
+              cursor: 'pointer', boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)', fontFamily: 'inherit',
+            }}
+          >
+            <i className="ti ti-plus" style={{ fontSize: 15 }} /> Add Event
+          </button>
+        </div>
+      </div>
+
+      {/* legend bar */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center', background: 'rgba(255,255,255,0.4)', padding: '8px 16px', borderRadius: 16, border: '1px solid rgba(255,255,255,0.6)', backdropFilter: 'blur(16px)' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+          {legend.map(([key, c]) => (
+            <span key={key} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: '#334155', fontWeight: 600, background: 'rgba(255,255,255,0.85)', padding: '4px 12px', borderRadius: 20, border: '1px solid rgba(226,232,240,0.9)', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.color, display: 'inline-block', boxShadow: `0 0 6px ${c.color}88` }} />
+              {c.label}
+            </span>
+          ))}
+        </div>
+        <span style={{ marginLeft: 'auto', fontSize: 12, color: '#64748b', fontWeight: 500 }}>
+          ✨ Click slot to add · Click event to edit
         </span>
       </div>
 
-      <div className="cal-wrap" style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 16 }}>
+      <div className="cal-wrap">
         <FullCalendar
           ref={calRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
-          headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
-          buttonText={{ today: 'Today', month: 'Month', week: 'Week', day: 'Day' }}
+          headerToolbar={false}
           height="auto"
           firstDay={1}
           nowIndicator
@@ -234,20 +316,55 @@ export default function CalendarView() {
           dateClick={onDateClick}
           eventClick={onEventClick}
           events={eventsSource as any}
-          loading={(isLoading) => { /* could wire a spinner */ }}
-          dayMaxEventRows={4}
+          datesSet={(dateInfo) => {
+            setViewTitle(dateInfo.view.title)
+            setActiveView(dateInfo.view.type)
+          }}
+          eventContent={(eventInfo) => {
+            const e = eventInfo.event.extendedProps as CalEvent
+            const c = colorOf(e.clausioType)
+            return (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '3px 8px',
+                  borderRadius: 8,
+                  background: c.bg,
+                  color: c.color,
+                  border: `1px solid ${c.color}35`,
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  width: '100%',
+                  overflow: 'hidden',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                  backdropFilter: 'blur(8px)',
+                  cursor: 'pointer',
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: c.color, flexShrink: 0, boxShadow: `0 0 4px ${c.color}aa` }} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                  {eventInfo.event.title}
+                </span>
+                {eventInfo.timeText && (
+                  <span style={{ fontSize: 10, opacity: 0.8, flexShrink: 0, fontWeight: 500 }}>
+                    {eventInfo.timeText}
+                  </span>
+                )}
+              </div>
+            )
+          }}
+          dayMaxEventRows={3}
           eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: true }}
           slotMinTime="06:00:00"
           expandRows
-          eventDisplay="block"
-          displayEventTime
-          eventClassNames={(arg) => (arg.event.extendedProps as CalEvent).clausioType ? ['clausio-event'] : []}
         />
       </div>
 
       {/* toast */}
       {toast && (
-        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: '#0f172a', color: '#fff', padding: '10px 20px', borderRadius: 12, fontSize: 13, zIndex: 60, boxShadow: '0 8px 24px rgba(15,23,42,.25)' }}>
+        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: 'rgba(15,23,42,0.9)', backdropFilter: 'blur(16px)', color: '#fff', padding: '10px 22px', borderRadius: 16, fontSize: 13, fontWeight: 600, zIndex: 60, boxShadow: '0 12px 32px rgba(15,23,42,0.3)' }}>
           ✓ {toast}
         </div>
       )}
@@ -255,12 +372,14 @@ export default function CalendarView() {
       {/* add / edit modal */}
       {modal && (
         <div onClick={() => !saving && setModal(null)} style={{
-          position: 'fixed', inset: 0, background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(2px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16,
+          position: 'fixed', inset: 0, background: 'rgba(15,23,42,.35)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, padding: 16,
         }}>
           <div onClick={(e) => e.stopPropagation()} style={{
-            background: '#fff', borderRadius: 20, width: '100%', maxWidth: 480,
-            maxHeight: '90vh', overflowY: 'auto', padding: 24, boxShadow: '0 20px 60px rgba(15,23,42,.25)',
+            background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(32px)',
+            borderRadius: 24, width: '100%', maxWidth: 480,
+            maxHeight: '90vh', overflowY: 'auto', padding: 24, boxShadow: '0 25px 50px -12px rgba(15,23,42,0.25)',
+            border: '1px solid rgba(255, 255, 255, 0.8)',
           }}>
             <h3 style={{ margin: '0 0 4px', fontSize: 17, fontWeight: 700, color: '#0f172a' }}>
               {modal.mode === 'create' ? 'Add Event' : 'Edit Event'}

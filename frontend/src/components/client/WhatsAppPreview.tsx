@@ -314,43 +314,84 @@ export default function WhatsAppPreview({ message, generating, onRegenerate, cha
             <div
               style={{
                 background: '#ffffff',
-                border: '1px solid #e2e8f0',
-                borderRadius: 14,
-                width: isEditing ? '100%' : '92%',
+                border: '1px solid rgba(0,0,0,0.08)',
+                borderRadius: 18,
+                width: '100%',
                 maxWidth: '100%',
-                marginLeft: 'auto',
-                marginRight: 'auto',
-                flex: isEditing ? 1 : 'initial',
                 display: 'flex',
                 flexDirection: 'column',
-                minHeight: isEditing ? 0 : 'initial',
-                lineHeight: 1.65,
-                fontSize: 14,
-                color: '#111827',
-                boxShadow: '0 2px 8px rgba(0,0,0,.06)',
+                boxShadow: '0 12px 32px rgba(15,23,42,0.08)',
                 overflow: 'hidden',
+                margin: '0 auto',
               }}
             >
-              {/* Subject */}
-              {update.subject && !isEditing && (
-                <>
-                  <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid #eef2f7' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: 0.8 }}>SUBJECT</span>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginTop: 3 }}>{update.subject}</div>
-                  </div>
-                </>
-              )}
+              {/* macOS Mail Window Header */}
+              <div style={{
+                background: '#f1f5f9',
+                padding: '10px 16px',
+                borderBottom: '1px solid #e2e8f0',
+                display: 'flex',
+                alignItems: 'center',
+                justify: 'space-between',
+              }}>
+                {/* Traffic Light Dots */}
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#ff5f56', border: '1px solid #e0443e' }} />
+                  <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#ffbd2e', border: '1px solid #dea123' }} />
+                  <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#27c93f', border: '1px solid #1aab29' }} />
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <i className="ti ti-mail" /> Apple Mail Preview
+                </div>
+                <div style={{ display: 'flex', gap: 12, color: '#64748b', fontSize: 14 }}>
+                  <i className="ti ti-arrow-back-up" title="Reply" style={{ cursor: 'pointer' }} />
+                  <i className="ti ti-star" title="Star" style={{ cursor: 'pointer' }} />
+                  <i className="ti ti-trash" title="Delete" style={{ cursor: 'pointer' }} />
+                </div>
+              </div>
 
-              <div style={{ padding: isEditing ? 16 : '16px 18px', ...(isEditing ? { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 } : {}) }}>
+              {/* Email Envelope Header */}
+              <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', background: '#fafafa' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 15, boxShadow: '0 2px 8px rgba(37,99,235,0.3)' }}>
+                      CL
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+                        Clausio Legal Chamber <span style={{ fontSize: 12, fontWeight: 500, color: '#64748b' }}>&lt;updates@clausio.legal&gt;</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                        To: Client &lt;client@case.com&gt;
+                      </div>
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 11.5, color: '#94a3b8', fontWeight: 500 }}>
+                    {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · Today
+                  </span>
+                </div>
+
+                {/* Subject */}
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed #e2e8f0' }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: '#2563eb', letterSpacing: 0.8, textTransform: 'uppercase' }}>Subject</span>
+                  <h3 style={{ margin: '2px 0 0', fontSize: 16, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.01em' }}>
+                    {update.subject || 'Case Update Notification'}
+                  </h3>
+                </div>
+              </div>
+
+              {/* Email Content Body */}
+              <div style={{ padding: 20, minHeight: 180, lineHeight: 1.7, color: '#1e293b' }}>
                 {isEditing ? (
                   <textarea
                     value={activeText}
                     onChange={(e) => setCustomText(e.target.value)}
-                    placeholder="Edit message here..."
+                    placeholder="Edit email message body..."
                     style={{
-                      width: '100%', height: '100%', flex: 1, minHeight: 0,
-                      border: 'none', outline: 'none', background: 'transparent',
-                      fontFamily: 'inherit', fontSize: 14, lineHeight: 1.65, color: '#111827', resize: 'none',
+                      width: '100%', height: '100%', minHeight: 200,
+                      border: '1px solid #cbd5e1', borderRadius: 10, padding: 12,
+                      fontFamily: 'inherit', fontSize: 14, lineHeight: 1.65, color: '#0f172a',
+                      outline: 'none', background: '#ffffff', resize: 'vertical',
                     }}
                   />
                 ) : (
@@ -360,10 +401,13 @@ export default function WhatsAppPreview({ message, generating, onRegenerate, cha
                 )}
               </div>
 
+              {/* Action Required Banner if present */}
               {update.actionRequired && !isEditing && (
-                <div style={{ margin: '0 18px 16px', padding: '9px 12px', borderRadius: 10, background: '#fffbeb', border: '1px solid #fde68a', fontSize: 12.5, color: '#b45309', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                  <i className="ti ti-alert-circle" style={{ fontSize: 15, flexShrink: 0 }} />
-                  <span><strong>Action required:</strong> {update.actionRequired}</span>
+                <div style={{ margin: '0 20px 20px', padding: '12px 16px', borderRadius: 12, background: '#fffbeb', border: '1px solid #fde68a', fontSize: 13, color: '#b45309', display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <i className="ti ti-alert-triangle" style={{ fontSize: 18, color: '#d97706' }} />
+                  <div>
+                    <strong>Action Required:</strong> {update.actionRequired}
+                  </div>
                 </div>
               )}
             </div>

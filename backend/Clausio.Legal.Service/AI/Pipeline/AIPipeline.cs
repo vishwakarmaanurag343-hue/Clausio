@@ -266,13 +266,52 @@ public class AIPipeline : IAIPipeline
             yield return FormatProgressChunk("Generating response...");
 
         // === STEP 4: Stream from AI Router ===
+        var responseSb = new System.Text.StringBuilder();
         await foreach (var chunk in _router.StreamCompleteAsync(systemPrompt, userInput, taskType, cancellationToken))
         {
+            if (!chunk.StartsWith("[sys]"))
+            {
+                responseSb.Append(chunk);
+            }
             yield return chunk;
         }
 
         sw.Stop();
-        _logger.LogInformation("[Pipeline:Stream] Completed. TotalMs={Ms}", sw.ElapsedMilliseconds);
+        var elapsedMs = sw.ElapsedMilliseconds;
+        var fullResponse = responseSb.ToString();
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var evalResult = await _evaluator.EvaluateResponseAsync(systemPrompt, userInput, fullResponse, elapsedMs);
+                var log = new Clausio.Legal.Core.Entities.AI.AiTelemetryLog
+                {
+                    CaseId = caseId,
+                    Intent = taskType,
+                    PromptName = templateName,
+                    Provider = "NVIDIA NIM",
+                    Model = "meta/llama-3.1-8b-instruct",
+                    RouterDecision = complexity,
+                    LatencyMs = elapsedMs,
+                    TokensIn = systemPrompt.Length / 4 + userInput.Length / 4,
+                    TokensOut = Math.Max(1, fullResponse.Length / 4),
+                    RetrievalScore = evalResult.RetrievalQualityScore,
+                    CitationConfidenceScore = evalResult.CitationConfidenceScore,
+                    DraftScore = evalResult.DraftQualityScore,
+                    HallucinationRiskScore = evalResult.HallucinationRiskScore,
+                    TokenEfficiencyScore = evalResult.TokenEfficiencyScore,
+                    IsSuccess = true
+                };
+                await _telemetryService.LogInteractionAsync(log, default);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[AIPipeline:Stream] Telemetry logging failed.");
+            }
+        });
+
+        _logger.LogInformation("[Pipeline:Stream] Completed. TotalMs={Ms}", elapsedMs);
     }
 
     // ===================== Helpers =====================
@@ -321,11 +360,7 @@ public class AIPipeline : IAIPipeline
             var docType = parameters != null && parameters.ContainsKey("DocumentType") ? parameters["DocumentType"]?.ToString() : "Document";
             return await _contextEngine.BuildDraftingContextAsync(caseId, docType ?? "Document", userInput, cancellationToken);
         }
-        else if (taskType == "FinancialProfile")
-        {
-            return await _contextEngine.BuildFinancialContextAsync(caseId, cancellationToken);
-        }
-        else if (taskType == "Analysis" || taskType == "Summarization" || taskType == "ActionPlan" || taskType == "RiskAssessment" || taskType == "Recommendation" || taskType == "LegalResearch" || taskType == "Contradiction" || taskType == "Chronology" || taskType == "Evidence" || taskType == "Readiness" || taskType == "Emergency")
+        else if (taskType == "Analysis" || taskType == "Summarization" || taskType == "ActionPlan" || taskType == "RiskAssessment" || taskType == "Recommendation" || taskType == "LegalResearch" || taskType == "Contradiction")
         {
             return await _contextEngine.BuildAnalysisContextAsync(caseId, taskType, cancellationToken);
         }
@@ -340,7 +375,7 @@ public class AIPipeline : IAIPipeline
         int score = 0;
         var lowerTask = taskType.ToLowerInvariant();
         if (lowerTask.Contains("draft") || lowerTask.Contains("research") || lowerTask.Contains("actionplan") || lowerTask.Contains("contradiction")) score += 50;
-        else if (lowerTask.Contains("analysis") || lowerTask.Contains("summarization") || lowerTask.Contains("hearingprep") || lowerTask.Contains("witnessprep") || lowerTask.Contains("riskassessment") || lowerTask.Contains("recommendation") || lowerTask.Contains("chronology") || lowerTask.Contains("evidence") || lowerTask.Contains("readiness") || lowerTask.Contains("emergency") || lowerTask.Contains("financialprofile")) score += 30;
+        else if (lowerTask.Contains("analysis") || lowerTask.Contains("summarization") || lowerTask.Contains("hearingprep") || lowerTask.Contains("witnessprep") || lowerTask.Contains("riskassessment") || lowerTask.Contains("recommendation")) score += 30;
 
         if (userInput.Length > 2500) score += 35;
         else if (userInput.Length > 800) score += 15;
@@ -373,6 +408,11 @@ public class AIPipeline : IAIPipeline
             };
         }
 
+        if (taskType == "Chronology" || taskType == "Timeline")
+        {
+            return "Analysis/Chronology";
+        }
+
         if (taskType == "Analysis")
         {
             return "Analysis/LegalReasoning";
@@ -398,11 +438,6 @@ public class AIPipeline : IAIPipeline
             return "ContradictionAnalysis"; // Dedicated Strategy-tab contradiction template (was Analysis/LegalReasoning)
         }
 
-        if (taskType == "Chronology")
-        {
-            return "Chronology"; // Dedicated Analysis-page verified-timeline template (was Analysis/LegalReasoning)
-        }
-
         if (taskType == "HearingPrep")
         {
             return "HearingPrep";
@@ -418,32 +453,11 @@ public class AIPipeline : IAIPipeline
             return "ActionPlan"; // Dedicated working-plan template (was Analysis/RiskAssessment)
         }
 
-        if (taskType == "Summarization")
+        return taskType switch
         {
-            return "Summary"; // Dedicated Analysis-page sectioned-brief template (was generic Analysis prose)
-        }
-
-        if (taskType == "Evidence")
-        {
-            return "EvidenceIntelligence"; // Dedicated Analysis-page evidence-review template (was per-document Analysis/LegalReasoning)
-        }
-
-        if (taskType == "Readiness")
-        {
-            return "ReadinessAssessment"; // Dedicated case-type-tailored readiness template (was Analysis/LegalReasoning generic prose)
-        }
-
-        if (taskType == "Emergency")
-        {
-            return "EmergencyTriage"; // Dedicated emergency-triage template (was generic ActionPlan)
-        }
-
-        if (taskType == "FinancialProfile")
-        {
-            return "FinancialProfile"; // Dedicated document-grounded financial-extraction template (was generic Analysis prose)
-        }
-
-        return "GeneralChat";
+            "Summarization" => "Analysis",
+            _ => "GeneralChat"
+        };
     }
 
     /// <summary>

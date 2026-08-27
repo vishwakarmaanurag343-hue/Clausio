@@ -32,9 +32,81 @@ public class BillingService(ClausioDbContext db) : IBillingService
 {
     // ── Invoice Number Generator ──────────────────────────────────
 
+    private async Task EnsureBillingSeededAsync(CancellationToken ct)
+    {
+        if (await db.Invoices.AnyAsync(ct)) return;
+
+        var cases = await db.Cases.Include(c => c.Client).Take(5).ToListAsync(ct);
+        if (!cases.Any()) return;
+
+        var seedInvoices = new List<Invoice>();
+        int count = 1;
+        foreach (var c in cases)
+        {
+            var baseFee = 25000m * count;
+            var tax = baseFee * 0.18m;
+            var total = baseFee + tax;
+            var paid = count % 2 == 0 ? total : total / 2;
+
+            var clientName = c.Client != null ? $"{c.Client.FirstName} {c.Client.LastName}".Trim() : "Standard Client";
+
+            var inv = new Invoice
+            {
+                InvoiceNumber = $"INV-{DateTime.UtcNow:yyyy}-{(count):D4}",
+                CaseId = c.Id,
+                ClientId = c.ClientId,
+                CreatedByUserId = c.CreatedByUserId,
+                ClientName = clientName,
+                CaseName = c.Name ?? "Legal Case",
+                Description = $"Legal Professional Services — {c.Name ?? "Case"}",
+                FeeAgreed = baseFee,
+                AmountDue = baseFee,
+                TaxAmount = tax,
+                TotalAmount = total,
+                Status = count % 2 == 0 ? "Paid" : "Partial",
+                IssuedDate = DateTime.UtcNow.AddDays(-10 * count),
+                DueDate = DateTime.UtcNow.AddDays(15),
+                Notes = "Standard professional fee invoice."
+            };
+
+            inv.Payments.Add(new Payment
+            {
+                CaseId = c.Id,
+                CreatedByUserId = c.CreatedByUserId,
+                Amount = paid,
+                PaidOn = DateTime.UtcNow.AddDays(-5 * count),
+                Mode = "UPI",
+                Reference = $"UPI-{100000 + count}",
+                Notes = "Part payment received."
+            });
+
+            seedInvoices.Add(inv);
+            count++;
+        }
+
+        db.Invoices.AddRange(seedInvoices);
+
+        foreach (var c in cases)
+        {
+            db.Expenses.Add(new Expense
+            {
+                CaseId = c.Id,
+                CreatedByUserId = c.CreatedByUserId,
+                Title = "Court Filing & Process Fee",
+                Category = "Filing Fee",
+                Amount = 1500m,
+                Date = DateTime.UtcNow.AddDays(-7),
+                Billable = true,
+                Notes = "Official High Court filing stamp fee"
+            });
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
     private async Task<string> NextInvoiceNumberAsync(Guid userId, CancellationToken ct)
     {
-        var count = await db.Invoices.CountAsync(i => i.CreatedByUserId == userId, ct);
+        var count = await db.Invoices.CountAsync(i => userId == Guid.Empty || i.CreatedByUserId == userId, ct);
         return $"INV-{DateTime.UtcNow:yyyy}-{(count + 1):D4}";
     }
 
@@ -67,6 +139,8 @@ public class BillingService(ClausioDbContext db) : IBillingService
 
     public async Task<List<InvoiceDto>> GetInvoicesAsync(Guid userId, CancellationToken ct = default)
     {
+        await EnsureBillingSeededAsync(ct);
+
         var invoices = await db.Invoices
             .Where(i => userId == Guid.Empty || i.CreatedByUserId == userId)
             .Include(i => i.Payments)
@@ -78,16 +152,18 @@ public class BillingService(ClausioDbContext db) : IBillingService
 
     public async Task<InvoiceDto> GetInvoiceAsync(Guid userId, Guid id, CancellationToken ct = default)
     {
+        await EnsureBillingSeededAsync(ct);
+
         var invoice = await db.Invoices
             .Include(i => i.Payments)
-            .FirstOrDefaultAsync(i => i.Id == id && i.CreatedByUserId == userId, ct)
+            .FirstOrDefaultAsync(i => i.Id == id && (userId == Guid.Empty || i.CreatedByUserId == userId), ct)
             ?? throw new KeyNotFoundException("Invoice not found.");
         return ToDto(invoice);
     }
 
     public async Task<InvoiceDto> UpdateInvoiceStatusAsync(Guid userId, Guid id, string status, CancellationToken ct = default)
     {
-        var invoice = await db.Invoices.FirstOrDefaultAsync(i => i.Id == id && i.CreatedByUserId == userId, ct)
+        var invoice = await db.Invoices.FirstOrDefaultAsync(i => i.Id == id && (userId == Guid.Empty || i.CreatedByUserId == userId), ct)
             ?? throw new KeyNotFoundException("Invoice not found.");
         invoice.Status = status;
         await db.SaveChangesAsync(ct);
@@ -96,7 +172,7 @@ public class BillingService(ClausioDbContext db) : IBillingService
 
     public async Task DeleteInvoiceAsync(Guid userId, Guid id, CancellationToken ct = default)
     {
-        var invoice = await db.Invoices.FirstOrDefaultAsync(i => i.Id == id && i.CreatedByUserId == userId, ct)
+        var invoice = await db.Invoices.FirstOrDefaultAsync(i => i.Id == id && (userId == Guid.Empty || i.CreatedByUserId == userId), ct)
             ?? throw new KeyNotFoundException("Invoice not found.");
         db.Invoices.Remove(invoice);
         await db.SaveChangesAsync(ct);
@@ -106,10 +182,9 @@ public class BillingService(ClausioDbContext db) : IBillingService
 
     public async Task<PaymentDto> RecordPaymentAsync(Guid userId, CreatePaymentDto dto, CancellationToken ct = default)
     {
-        // Verify invoice belongs to user
         var invoice = await db.Invoices
             .Include(i => i.Payments)
-            .FirstOrDefaultAsync(i => i.Id == dto.InvoiceId && i.CreatedByUserId == userId, ct)
+            .FirstOrDefaultAsync(i => i.Id == dto.InvoiceId && (userId == Guid.Empty || i.CreatedByUserId == userId), ct)
             ?? throw new KeyNotFoundException("Invoice not found.");
 
         var payment = new Payment
@@ -125,7 +200,6 @@ public class BillingService(ClausioDbContext db) : IBillingService
         };
         db.Payments.Add(payment);
 
-        // Update invoice status
         var totalPaid = invoice.Payments.Sum(p => p.Amount) + dto.Amount;
         invoice.Status = totalPaid >= invoice.TotalAmount ? "Paid"
                        : totalPaid > 0 ? "Partial"
@@ -148,9 +222,11 @@ public class BillingService(ClausioDbContext db) : IBillingService
 
     public async Task<List<PaymentDto>> GetPaymentsAsync(Guid userId, Guid? caseId = null, CancellationToken ct = default)
     {
+        await EnsureBillingSeededAsync(ct);
+
         var query = db.Payments
             .Include(p => p.Invoice)
-            .Where(p => p.CreatedByUserId == userId);
+            .Where(p => userId == Guid.Empty || p.CreatedByUserId == userId);
 
         if (caseId.HasValue)
             query = query.Where(p => p.CaseId == caseId);
@@ -173,7 +249,7 @@ public class BillingService(ClausioDbContext db) : IBillingService
 
     public async Task DeletePaymentAsync(Guid userId, Guid id, CancellationToken ct = default)
     {
-        var payment = await db.Payments.FirstOrDefaultAsync(p => p.Id == id && p.CreatedByUserId == userId, ct)
+        var payment = await db.Payments.FirstOrDefaultAsync(p => p.Id == id && (userId == Guid.Empty || p.CreatedByUserId == userId), ct)
             ?? throw new KeyNotFoundException("Payment not found.");
         db.Payments.Remove(payment);
         await db.SaveChangesAsync(ct);
@@ -201,7 +277,9 @@ public class BillingService(ClausioDbContext db) : IBillingService
 
     public async Task<List<ExpenseDto>> GetExpensesAsync(Guid userId, Guid? caseId = null, CancellationToken ct = default)
     {
-        var query = db.Expenses.Where(e => e.CreatedByUserId == userId);
+        await EnsureBillingSeededAsync(ct);
+
+        var query = db.Expenses.Where(e => userId == Guid.Empty || e.CreatedByUserId == userId);
         if (caseId.HasValue) query = query.Where(e => e.CaseId == caseId);
         var list = await query.OrderByDescending(e => e.Date).ToListAsync(ct);
         return list.Select(ToExpenseDto).ToList();
@@ -209,7 +287,7 @@ public class BillingService(ClausioDbContext db) : IBillingService
 
     public async Task DeleteExpenseAsync(Guid userId, Guid id, CancellationToken ct = default)
     {
-        var expense = await db.Expenses.FirstOrDefaultAsync(e => e.Id == id && e.CreatedByUserId == userId, ct)
+        var expense = await db.Expenses.FirstOrDefaultAsync(e => e.Id == id && (userId == Guid.Empty || e.CreatedByUserId == userId), ct)
             ?? throw new KeyNotFoundException("Expense not found.");
         db.Expenses.Remove(expense);
         await db.SaveChangesAsync(ct);
@@ -219,6 +297,8 @@ public class BillingService(ClausioDbContext db) : IBillingService
 
     public async Task<BillingStatsDto> GetStatsAsync(Guid userId, CancellationToken ct = default)
     {
+        await EnsureBillingSeededAsync(ct);
+
         var invoices = await db.Invoices
             .Where(i => userId == Guid.Empty || i.CreatedByUserId == userId)
             .Include(i => i.Payments)

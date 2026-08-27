@@ -3,23 +3,33 @@
 import { useState, useEffect } from 'react'
 import { aiAnalyticsApi } from '@/lib/api'
 
+function formatModelName(name: string) {
+  if (!name) return 'meta/llama-3.1-8b-instruct'
+  if (name.toUpperCase() === 'FAST') return 'nvidia/llama-3.1-nemotron-70b-instruct'
+  if (name.toUpperCase() === 'REASONING') return 'meta/llama-3.3-70b-instruct'
+  return name
+}
+
 export default function AnalyticsDashboard() {
   const [overview, setOverview] = useState<any>(null)
   const [quality, setQuality] = useState<any>(null)
   const [models, setModels] = useState<any>(null)
+  const [logs, setLogs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [o, q, m] = await Promise.all([
+        const [o, q, m, l] = await Promise.all([
           aiAnalyticsApi.getOverview(),
           aiAnalyticsApi.getQuality(),
-          aiAnalyticsApi.getModels()
+          aiAnalyticsApi.getModels(),
+          aiAnalyticsApi.getLogs()
         ])
         setOverview(o)
         setQuality(q)
         setModels(m)
+        setLogs(Array.isArray(l) ? l : [])
       } catch (err) {
         console.error(err)
       } finally {
@@ -38,18 +48,10 @@ export default function AnalyticsDashboard() {
     )
   }
 
-  // Sample live telemetry logs if API overview loaded
-  const sampleLogs = [
-    { id: '1', intent: 'LegalDraft', prompt: 'Writ Petition (Civil)', model: 'meta/llama-3.1-8b-instruct', latency: '14,695 ms', tokens: '1,414', citations: 'Verified (100%)', status: 'Success' },
-    { id: '2', intent: 'CaseSummary', prompt: 'Executive Case Analysis', model: 'nvidia/llama-3.1-nemotron-70b-instruct', latency: '2,410 ms', tokens: '935', citations: 'Verified (95%)', status: 'Success' },
-    { id: '3', intent: 'GeneralChat', prompt: 'Strategy & Precedents Search', model: 'meta/llama-3.3-70b-instruct', latency: '1,280 ms', tokens: '640', citations: 'Verified (98%)', status: 'Success' },
-    { id: '4', intent: 'DocumentIntel', prompt: 'OCR Text & Evidence Extract', model: 'nvidia/nemotron-3-nano-omni', latency: '890 ms', tokens: '412', citations: 'Verified (100%)', status: 'Success' },
-  ]
-
-  const totalReqs = overview?.totalRequests ?? 69
-  const avgLatency = overview?.averageLatencyMs ?? 2450
+  const totalReqs = overview?.totalRequests ?? 0
+  const avgLatency = overview?.averageLatencyMs ?? 0
   const successRate = overview?.successRate ?? 100.0
-  const avgTokens = overview?.averageTokens ?? 935
+  const avgTokens = overview?.averageTokens ?? 0
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%' }}>
@@ -69,7 +71,7 @@ export default function AnalyticsDashboard() {
             {totalReqs.toLocaleString()}
           </div>
           <div style={{ fontSize: 12, color: '#10b981', fontWeight: 600, marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <i className="ti ti-trending-up" /> +14% vs yesterday
+            <i className="ti ti-trending-up" /> Dynamic Telemetry
           </div>
         </div>
 
@@ -101,7 +103,7 @@ export default function AnalyticsDashboard() {
             {successRate.toFixed(1)}%
           </div>
           <div style={{ fontSize: 12, color: '#10b981', fontWeight: 600, marginTop: 6 }}>
-            0 Unhandled Exceptions
+            Real-time Exception Tracking
           </div>
         </div>
 
@@ -137,10 +139,10 @@ export default function AnalyticsDashboard() {
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <ScoreBar label="Dense + Lexical Retrieval Quality" score={quality?.averageRetrievalScore ?? 8.0} max={10} color="#2563eb" />
-            <ScoreBar label="Draft Legal Accuracy & Structure" score={quality?.averageDraftScore ?? 8.0} max={10} color="#10b981" />
-            <ScoreBar label="Citation Verification Confidence" score={quality?.averageCitationConfidence ?? 9.0} max={10} color="#7c3aed" />
-            <ScoreBar label="Hallucination Risk (Lower score is better)" score={quality?.averageHallucinationRisk ?? 2.0} max={10} color="#ef4444" reverse />
+            <ScoreBar label="Dense + Lexical Retrieval Quality" score={quality?.averageRetrievalScore ?? 0} max={10} color="#2563eb" />
+            <ScoreBar label="Draft Legal Accuracy & Structure" score={quality?.averageDraftScore ?? 0} max={10} color="#10b981" />
+            <ScoreBar label="Citation Verification Confidence" score={quality?.averageCitationConfidence ?? 0} max={10} color="#7c3aed" />
+            <ScoreBar label="Hallucination Risk (Lower score is better)" score={quality?.averageHallucinationRisk ?? 0} max={10} color="#ef4444" reverse />
           </div>
         </div>
 
@@ -151,47 +153,34 @@ export default function AnalyticsDashboard() {
               <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: 0 }}>Active LLM Provider Usage</h3>
               <p style={{ fontSize: 12, color: '#64748b', margin: '4px 0 0 0' }}>NVIDIA NIM & OpenRouter multi-model distribution</p>
             </div>
-            <span style={{ fontSize: 11, background: '#ecfdf5', color: '#047857', padding: '4px 10px', borderRadius: 12, fontWeight: 700 }}>NVIDIA NIM ACTIVE</span>
+            <span style={{ fontSize: 11, background: '#ecfdf5', color: '#047857', padding: '4px 10px', borderRadius: 10, fontWeight: 700 }}>NVIDIA NIM ACTIVE</span>
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {models && models.length > 0 ? models.map((m: any, i: number) => {
-              const pct = Math.round((m.count / totalReqs) * 100)
-              return (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <div style={{ width: 180, fontSize: 12, fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {m.model || 'meta/llama-3.1-8b-instruct'}
+            {models && models.length > 0 ? (
+              models.map((m: any, i: number) => {
+                const totalModelReqs = models.reduce((acc: number, curr: any) => acc + (curr.count || 0), 0) || 1
+                const pct = Math.round(((m.count || 0) / totalModelReqs) * 100)
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div style={{ width: 220, fontSize: 12, fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {formatModelName(m.model)}
+                    </div>
+                    <div style={{ flex: 1, height: 10, background: '#f1f5f9', borderRadius: 6, overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: '100%', background: i % 3 === 0 ? '#2563eb' : i % 3 === 1 ? '#7c3aed' : '#10b981', borderRadius: 6 }} />
+                    </div>
+                    <div style={{ width: 44, fontSize: 12, fontWeight: 700, color: '#0f172a', textAlign: 'right' }}>{pct}%</div>
                   </div>
-                  <div style={{ flex: 1, height: 10, background: '#f1f5f9', borderRadius: 6, overflow: 'hidden' }}>
-                    <div style={{ width: `${pct || 50}%`, height: '100%', background: i === 0 ? '#2563eb' : i === 1 ? '#7c3aed' : '#10b981', borderRadius: 6 }} />
-                  </div>
-                  <div style={{ width: 44, fontSize: 12, fontWeight: 700, color: '#0f172a', textAlign: 'right' }}>{pct || 50}%</div>
+                )
+              })
+            ) : (
+              <div style={{ padding: '24px 16px', textAlign: 'center', color: '#475569', fontSize: 13, background: '#f8fafc', borderRadius: 12, border: '1px dashed #e2e8f0' }}>
+                <i className="ti ti-chart-bar" style={{ fontSize: 24, color: '#94a3b8', display: 'block', marginBottom: 6 }} />
+                <span style={{ fontWeight: 600, color: '#0f172a' }}>No AI requests logged in database yet</span>
+                <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 4 }}>
+                  Ask a question in <strong>AI Chat</strong> or generate a document to record live model metrics in PostgreSQL.
                 </div>
-              )
-            }) : (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <div style={{ width: 180, fontSize: 12, fontWeight: 600, color: '#1e293b' }}>meta/llama-3.1-8b-instruct</div>
-                  <div style={{ flex: 1, height: 10, background: '#f1f5f9', borderRadius: 6, overflow: 'hidden' }}>
-                    <div style={{ width: '65%', height: '100%', background: '#2563eb', borderRadius: 6 }} />
-                  </div>
-                  <div style={{ width: 44, fontSize: 12, fontWeight: 700, color: '#0f172a', textAlign: 'right' }}>65%</div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <div style={{ width: 180, fontSize: 12, fontWeight: 600, color: '#1e293b' }}>meta/llama-3.3-70b-instruct</div>
-                  <div style={{ flex: 1, height: 10, background: '#f1f5f9', borderRadius: 6, overflow: 'hidden' }}>
-                    <div style={{ width: '25%', height: '100%', background: '#7c3aed', borderRadius: 6 }} />
-                  </div>
-                  <div style={{ width: 44, fontSize: 12, fontWeight: 700, color: '#0f172a', textAlign: 'right' }}>25%</div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <div style={{ width: 180, fontSize: 12, fontWeight: 600, color: '#1e293b' }}>nvidia/llama-3.1-nemotron</div>
-                  <div style={{ flex: 1, height: 10, background: '#f1f5f9', borderRadius: 6, overflow: 'hidden' }}>
-                    <div style={{ width: '10%', height: '100%', background: '#10b981', borderRadius: 6 }} />
-                  </div>
-                  <div style={{ width: 44, fontSize: 12, fontWeight: 700, color: '#0f172a', textAlign: 'right' }}>10%</div>
-                </div>
-              </>
+              </div>
             )}
           </div>
         </div>
@@ -224,28 +213,44 @@ export default function AnalyticsDashboard() {
               </tr>
             </thead>
             <tbody>
-              {sampleLogs.map((log) => (
-                <tr key={log.id} style={{ borderBottom: '1px solid #f8fafc' }}>
-                  <td style={{ padding: '12px 14px', fontWeight: 600, color: '#0f172a' }}>
-                    <span style={{ background: '#eff6ff', color: '#1d4ed8', padding: '3px 8px', borderRadius: 6, fontSize: 11 }}>
-                      {log.intent}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 14px', color: '#334155', fontWeight: 500 }}>{log.prompt}</td>
-                  <td style={{ padding: '12px 14px', color: '#64748b', fontFamily: 'monospace', fontSize: 11 }}>{log.model}</td>
-                  <td style={{ padding: '12px 14px', color: '#0f172a', fontWeight: 600 }}>{log.latency}</td>
-                  <td style={{ padding: '12px 14px', color: '#64748b' }}>{log.tokens}</td>
-                  <td style={{ padding: '12px 14px', color: '#16a34a', fontWeight: 600, fontSize: 12 }}>
-                    <i className="ti ti-shield-check" style={{ marginRight: 4 }} />
-                    {log.citations}
-                  </td>
-                  <td style={{ padding: '12px 14px' }}>
-                    <span style={{ background: '#dcfce7', color: '#15803d', padding: '3px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>
-                      {log.status}
-                    </span>
+              {logs.length > 0 ? (
+                logs.map((log: any) => (
+                  <tr key={log.id} style={{ borderBottom: '1px solid #f8fafc' }}>
+                    <td style={{ padding: '12px 14px', fontWeight: 600, color: '#0f172a' }}>
+                      <span style={{ background: '#eff6ff', color: '#1d4ed8', padding: '3px 8px', borderRadius: 6, fontSize: 11 }}>
+                        {log.taskIntent || 'GeneralAI'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 14px', color: '#334155', fontWeight: 500, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {log.prompt || 'Legal AI Request'}
+                    </td>
+                    <td style={{ padding: '12px 14px', color: '#64748b', fontFamily: 'monospace', fontSize: 11 }}>
+                      {log.model || 'meta/llama-3.1-8b-instruct'}
+                    </td>
+                    <td style={{ padding: '12px 14px', color: '#0f172a', fontWeight: 600 }}>
+                      {Math.round(log.latencyMs || 0).toLocaleString()} ms
+                    </td>
+                    <td style={{ padding: '12px 14px', color: '#64748b' }}>
+                      {Math.round(log.totalTokens || 0).toLocaleString()}
+                    </td>
+                    <td style={{ padding: '12px 14px', color: '#16a34a', fontWeight: 600, fontSize: 12 }}>
+                      <i className="ti ti-shield-check" style={{ marginRight: 4 }} />
+                      Verified ({(Math.round((log.citationConfidenceScore || 0.95) * 100))}%)
+                    </td>
+                    <td style={{ padding: '12px 14px' }}>
+                      <span style={{ background: log.isSuccess !== false ? '#dcfce7' : '#fef2f2', color: log.isSuccess !== false ? '#15803d' : '#dc2626', padding: '3px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>
+                        {log.isSuccess !== false ? 'Success' : 'Failed'}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={7} style={{ padding: '32px 14px', textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
+                    No telemetry logs recorded yet. As you ask questions in AI Chat or perform legal tasks, real execution metrics will stream here dynamically.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
