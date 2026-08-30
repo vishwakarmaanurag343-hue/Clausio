@@ -5,7 +5,7 @@ public class Invoice : BaseEntity
     public string   InvoiceNumber { get; set; } = string.Empty;
     public Guid     CaseId        { get; set; }
     public Case?    Case          { get; set; }
-    public Guid     ClientId      { get; set; }
+    public Guid?    ClientId      { get; set; }
     public Client?  Client        { get; set; }
     public Guid     CreatedByUserId { get; set; }
 

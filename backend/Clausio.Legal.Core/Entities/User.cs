@@ -9,6 +9,9 @@ public class User : BaseEntity
     public string? Role { get; set; }
     public string? Phone { get; set; }
 
+    /// <summary>Inactive users are kept for audit but blocked from signing in.</summary>
+    public bool IsActive { get; set; } = true;
+
     // Account Lockout & Brute-force protection
     public int FailedLoginAttempts { get; set; } = 0;
     public DateTime? LockoutEnd { get; set; }

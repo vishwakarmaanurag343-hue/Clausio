@@ -4,10 +4,10 @@ import { useState } from 'react'
 import AnalyticsTabs   from '@/components/analytics/AnalyticsTabs'
 import AIChat           from '@/components/analytics/AIChat'
 import CrossExamination from '@/components/analytics/CrossExamination'
+import JudgmentAnalysis from '@/components/analytics/JudgmentAnalysis'
 import PromptLibrary    from '@/components/analytics/PromptLibrary'
 import AIHistory        from '@/components/analytics/AIHistory'
 import KnowledgeBase    from '@/components/analytics/KnowledgeBase'
-import AnalyticsDashboard from '@/components/dashboard/AnalyticsDashboard'
 
 export default function AnalyticsPage() {
   const [activeTab, setActiveTab] = useState('AI Chat')
@@ -17,9 +17,9 @@ export default function AnalyticsPage() {
     switch (activeTab) {
       case 'AI Chat':                 return <AIChat key={chatKey} />
       case 'Cross Examination':       return <CrossExamination />
+      case 'Judgment Analysis':       return <JudgmentAnalysis />
       case 'Prompt Library':          return <PromptLibrary />
       case 'History':                 return <AIHistory />
-      case 'Observability & Metrics': return <AnalyticsDashboard />
       case 'Knowledge Base':          return <KnowledgeBase />
       default:                        return <AIChat key={chatKey} />
     }

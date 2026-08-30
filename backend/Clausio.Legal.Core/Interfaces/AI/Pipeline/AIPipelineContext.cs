@@ -12,6 +12,9 @@ public class AIPipelineContext
     
     public string CaseMemoryXml { get; set; } = string.Empty;
     public string RetrievedEvidenceXml { get; set; } = string.Empty;
+
+    /// <summary>Lawyer's firm document supplied as a style reference (see PromptReferenceDoc).</summary>
+    public string? ReferenceDocText { get; set; }
     
     public string ModelUsed { get; set; } = string.Empty;
     public int TokenCountEstimate { get; set; }

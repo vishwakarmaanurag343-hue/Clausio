@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import '../styles/globals.css'
+import FloatingNotes from '@/components/common/FloatingNotes'
 
 export const metadata: Metadata = {
   title: 'Clausio — Every clause. Intelligently handled.',
@@ -14,7 +15,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Tabler Icons — used for all ti-* icons in the app */}
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <FloatingNotes />
+      </body>
     </html>
   )
 }

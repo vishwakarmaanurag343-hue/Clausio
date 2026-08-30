@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import CaseDescriptionInput from '@/components/cases/CaseDescriptionInput'
 
 interface AddCaseModalProps {
   open:      boolean
@@ -245,7 +246,7 @@ async function translateDescription() {
         </div>
 
         {/* BODY — UNCHANGED */}
-        <div style={{ padding: 32, maxHeight: '65vh', overflowY: 'auto' }}>
+        <div style={{ padding: 32, flex: 1, minHeight: 0, overflowY: 'auto' }}>
 
           {/* STEP 1 — UNCHANGED */}
           {step === 1 && (
@@ -306,16 +307,13 @@ async function translateDescription() {
                   </button>
                 </div>
               </div>
-              <textarea
-                name="description"
+              <CaseDescriptionInput
                 value={form.description}
-                onChange={updateField}
-                rows={6}
-                placeholder="Client can type in Hindi, Gujarati, Marathi or English — AI will translate automatically..."
-                style={{ width: '100%', minHeight: 140, padding: 16, borderRadius: 12, border: '1px solid #dbe3ef', outline: 'none', resize: 'vertical', fontSize: 15, background: '#fff', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                onChange={(text) => setForm(f => ({ ...f, description: text }))}
+                disabled={saving}
               />
-              <p style={{ margin: '6px 0 0', fontSize: 12, color: '#64748b' }}>
-                💡 Supported: English · हिंदी · ગુજરાતી · मराठी
+              <p style={{ margin: '10px 0 0', fontSize: 12, color: '#64748b' }}>
+                💡 Type / Upload / Voice all fill the same field. Non-English text? Use “Translate to English” above.
               </p>
             </div>
           </div>
@@ -521,7 +519,7 @@ function TextAreaField({ label, name, value, placeholder, onChange }: { label: s
 /* ============================================================
    STYLES — UNCHANGED
 ============================================================ */
-const overlay:        React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(15,23,42,.55)', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 30, zIndex: 9999 }
+const overlay:        React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(15,23,42,.55)', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', overflowY: 'auto', padding: '16px', zIndex: 9999 }
 const modal:          React.CSSProperties = { width: '100%', maxWidth: 1150, maxHeight: '92vh', background: '#fff', borderRadius: 24, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 60px rgba(15,23,42,.18)' }
 const header:         React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '26px 32px', borderBottom: '1px solid #e2e8f0', background: '#ffffff' }
 const footer:         React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '24px 32px', borderTop: '1px solid #e2e8f0', background: '#ffffff' }

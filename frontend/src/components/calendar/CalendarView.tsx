@@ -6,6 +6,8 @@
 // "Add Event" form; event clicks open edit/delete — no reload, no external tab.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useCaseStore } from '@/lib/store'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
@@ -39,6 +41,8 @@ function toLocalInput(d: Date) {
 }
 
 export default function CalendarView() {
+  const router = useRouter()
+  const { setSelectedCase } = useCaseStore()
   const calRef = useRef<FullCalendar>(null)
   const [connected, setConnected] = useState<boolean | null>(null)
   const [cases, setCases] = useState<any[]>([])
@@ -432,6 +436,38 @@ export default function CalendarView() {
                 <textarea rows={3} value={modal.notes} onChange={e => setModal({ ...modal, notes: e.target.value })} style={{ ...inp, resize: 'vertical' }} />
               </>
             )}
+
+            {/* Synced case event — jump straight to the case or its hearing prep */}
+            {modal.mode === 'edit' && isSynced && modal.caseId && (() => {
+              const linked = (cases as any[]).find(c => c.id === modal.caseId)
+              const goToCase = () => {
+                if (linked) setSelectedCase(linked.id, linked.name)
+                setModal(null)
+                router.push(`/dashboard?case=${modal.caseId}`)
+              }
+              const prepBrief = () => {
+                if (linked) setSelectedCase(linked.id, linked.name)
+                setModal(null)
+                router.push('/readiness')
+              }
+              return (
+                <div style={{ marginTop: 14, padding: '10px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12 }}>
+                  {linked && (
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>
+                      {linked.name}{linked.caseNumber ? <span style={{ color: '#64748b', fontWeight: 500 }}> · {linked.caseNumber}</span> : null}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={goToCase} style={{ ...ghostBtn, padding: '7px 12px', fontSize: 12.5, color: '#1d4ed8', borderColor: '#bfdbfe', background: '#eff6ff' }}>
+                      <i className="ti ti-folder" style={{ marginRight: 5 }} />Go to Case
+                    </button>
+                    <button onClick={prepBrief} style={{ ...ghostBtn, padding: '7px 12px', fontSize: 12.5, color: '#7c3aed', borderColor: '#ddd6fe', background: '#f5f3ff' }}>
+                      <i className="ti ti-file-text" style={{ marginRight: 5 }} />Prepare Brief
+                    </button>
+                  </div>
+                </div>
+              )
+            })()}
 
             {error && <p style={{ color: '#dc2626', fontSize: 13, margin: '10px 0 0' }}>{error}</p>}
 

@@ -22,8 +22,16 @@ using Clausio.MCP.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Request-scoped carrier for the lawyer's selected AI style reference (?referenceDocId=)
+builder.Services.AddScoped<Clausio.Legal.Core.Interfaces.AI.Pipeline.IPromptReferenceContext,
+    Clausio.Legal.Core.Interfaces.AI.Pipeline.PromptReferenceContext>();
+builder.Services.AddScoped<Clausio.Legal.API.Filters.PromptReferenceFilter>();
+
 // Controllers with JSON fix
-builder.Services.AddControllers()
+builder.Services.AddControllers(options =>
+    {
+        options.Filters.Add<Clausio.Legal.API.Filters.PromptReferenceFilter>();
+    })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.ReferenceHandler =
@@ -179,6 +187,7 @@ builder.Services.AddScoped<IStatsService, StatsService>();
 builder.Services.AddScoped<IAiService, AiService>();
 builder.Services.AddScoped<Clausio.Legal.Service.DocumentClassifierService>();
 builder.Services.AddScoped<Clausio.Legal.Service.JudgmentSearchService>();
+builder.Services.AddScoped<Clausio.Legal.Service.IJudgmentAnalysisService, Clausio.Legal.Service.JudgmentAnalysisService>();
 
 // JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

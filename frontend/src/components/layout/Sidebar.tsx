@@ -1,112 +1,112 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useUIStore, useCaseStore } from '@/lib/store'
+import { adminApi } from '@/lib/api'
+import { getRole, storePermissions, hasPagePermission, pageKeyForPath } from '@/lib/pagePermissions'
 
 const NAV = [
   {
     group: 'Workspace',
     items: [
-      {
-        href: '/chat',
-        icon: 'ti-messages',
-        label: 'Chat',
-        mobileOnly: true,
-      },
-      {
-        href: '/dashboard',
-        icon: 'ti-layout-dashboard',
-        label: 'Dashboard',
-      },
-      {
-        href: '/cases',
-        icon: 'ti-folder',
-        label: 'Cases',
-      },
-      {
-        href: '/hearings',
-        icon: 'ti-notebook',
-        label: 'Hearings',
-        badge: 2,
-      },
-      {
-        href: '/calendar',
-        icon: 'ti-calendar',
-        label: 'Calendar',
-      },
-      {
-        href: '/strategy',
-        icon: 'ti-target',
-        label: 'Strategy',
-      },
-      {
-        href: '/documents',
-        icon: 'ti-files',
-        label: 'Documents',
-      },
-      {
-        href: '/client',
-        icon: 'ti-message-circle',
-        label: 'Client',
-      },
+      { href: '/chat',      icon: 'ti-messages',         label: 'Chat', mobileOnly: true },
+      { href: '/dashboard', icon: 'ti-layout-dashboard', label: 'Dashboard', key: 'dashboard' },
+      { href: '/cases',     icon: 'ti-folder',           label: 'Cases',     key: 'cases' },
+      { href: '/hearings',  icon: 'ti-notebook',         label: 'Hearings',  key: 'hearings', badge: 2 },
+      { href: '/calendar',  icon: 'ti-calendar',         label: 'Calendar',  key: 'calendar' },
+      { href: '/strategy',  icon: 'ti-target',           label: 'Strategy',  key: 'strategy' },
+      { href: '/documents', icon: 'ti-files',            label: 'Documents', key: 'documents' },
+      { href: '/client',    icon: 'ti-message-circle',   label: 'Client',    key: 'clients' },
     ],
   },
-
   {
     group: 'AI',
     items: [
-      {
-        href: '/analysis',
-        icon: 'ti-brain',
-        label: 'Analysis',
-      },
-      {
-        href: '/drafting',
-        icon: 'ti-pencil',
-        label: 'Drafting',
-      },
+      { href: '/analysis', icon: 'ti-brain',  label: 'Analysis', key: 'analysis' },
+      { href: '/drafting', icon: 'ti-pencil', label: 'Drafting', key: 'drafting' },
     ],
   },
-
   {
     group: 'Business',
     items: [
-      {
-        href: '/billing',
-        icon: 'ti-coin',
-        label: 'Billing',
-      },
-      {
-        href: '/analytics',
-        icon: 'ti-chart-bar',
-        label: 'AI Analytics',
-      },
-      {
-        href: '/console',
-        icon: 'ti-terminal-2',
-        label: 'AI Console',
-      },
-      {
-        href: '/financial',
-        icon: 'ti-cash',
-        label: 'Financial',
-      },
-      {
-        href: '/readiness',
-        icon: 'ti-shield-check',
-        label: 'Readiness',
-      },
+      { href: '/billing',   icon: 'ti-coin',          label: 'Billing',      key: 'billing' },
+      { href: '/analytics', icon: 'ti-chart-bar',     label: 'AI Analytics', key: 'analytics' },
+      { href: '/financial', icon: 'ti-cash',          label: 'Financial',    key: 'financial' },
+      { href: '/readiness', icon: 'ti-shield-check',  label: 'Readiness',    key: 'readiness' },
+    ],
+  },
+  {
+    group: 'Masters',
+    superAdminOnly: true,
+    items: [
+      { href: '/masters/users', icon: 'ti-users',        label: 'User Master',  key: 'masters/users' },
+      { href: '/masters/roles', icon: 'ti-shield-check', label: 'Roles Master', key: 'masters/roles' },
     ],
   },
 ]
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const { sidebarExpanded, toggleSidebar } = useUIStore()
   const { selectedCaseName } = useCaseStore()
 
   const expanded = sidebarExpanded
+
+  const [ready, setReady] = useState(false)
+  const [role, setRole] = useState('')
+  const [permsVersion, setPermsVersion] = useState(0)
+
+  // Load THIS signed-in user's page permissions from the backend every time the sidebar
+  // mounts (i.e. on login and on every cross-section navigation). Tagged with the user id
+  // so a previous user's cached permissions can never leak into this session.
+  useEffect(() => {
+    let cancelled = false
+    setRole(getRole())
+    let raw: any = {}
+    try { raw = JSON.parse(localStorage.getItem('clausio_user') || '{}') } catch { raw = {} }
+    const myId: string | undefined = raw.userId || raw.id
+
+    if (!myId) { setReady(true); return }
+
+    adminApi.getMyPermissions()
+      .then((r: any) => {
+        if (cancelled) return
+        storePermissions(myId, r?.pageKeys ?? [], !!r?.unrestricted)
+      })
+      .catch(() => { /* offline / transient — default allow all until next load */ })
+      .finally(() => {
+        if (cancelled) return
+        setPermsVersion(v => v + 1)
+        setReady(true)
+      })
+    return () => { cancelled = true }
+  }, [])
+
+  // Direct-URL guard: bounce the user to /dashboard if they open a page they can't access.
+  useEffect(() => {
+    if (!ready) return
+    const key = pageKeyForPath(pathname)
+    if (!key) return
+    const blocked = key.startsWith('masters/')
+      ? getRole() !== 'SuperAdmin'
+      : !hasPagePermission(key)
+    if (blocked && pathname !== '/dashboard') {
+      alert('You do not have access to this page')
+      router.replace('/dashboard')
+    }
+  }, [pathname, ready, permsVersion, router])
+
+  const visibleNav = NAV
+    .filter(section => !(section as any).superAdminOnly || role === 'SuperAdmin')
+    .map(section => ({
+      ...section,
+      items: section.items.filter(item =>
+        !ready || !(item as any).key || hasPagePermission((item as any).key)),
+    }))
+    .filter(section => section.items.length > 0)
 
   return (
     <>
@@ -171,7 +171,7 @@ export default function Sidebar() {
           padding: '12px 12px 0 12px'
         }}
       >
-        {NAV.map((section) => (
+        {visibleNav.map((section) => (
           <div key={section.group} style={{ marginBottom: 16 }}>
             {expanded && (
               <div
@@ -299,6 +299,7 @@ export default function Sidebar() {
             localStorage.removeItem('clausio_token')
             localStorage.removeItem('clausio_user')
             localStorage.removeItem('clausio-auth')
+            localStorage.removeItem('clausio_page_permissions')
             window.location.href = '/auth/login'
           }}
           style={{ display: 'flex', alignItems: 'center', justifyContent: expanded ? 'flex-start' : 'center', gap: expanded ? 12 : 0, padding: expanded ? '0 12px' : 0, height: 40, borderRadius: 16, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', width: '100%', marginTop: 4, fontFamily: 'inherit' }}
@@ -316,6 +317,7 @@ export default function Sidebar() {
             localStorage.removeItem('clausio_token')
             localStorage.removeItem('clausio_user')
             localStorage.removeItem('clausio-auth')
+            localStorage.removeItem('clausio_page_permissions')
             window.location.href = '/auth/login'
           }}
           style={{

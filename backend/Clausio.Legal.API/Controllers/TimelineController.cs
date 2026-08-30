@@ -22,6 +22,11 @@ public class TimelineController(ITimelineService timelineService) : ControllerBa
     public async Task<IActionResult> CreateBulk(Guid caseId, List<CreateTimelineEventDto> dtos, CancellationToken cancellationToken) =>
         Ok(await timelineService.CreateBulkAsync(caseId, dtos, cancellationToken));
 
+    // Replace the whole timeline for the case — used when the AI chronology is regenerated.
+    [HttpPut("bulk")]
+    public async Task<IActionResult> ReplaceBulk(Guid caseId, List<CreateTimelineEventDto> dtos, CancellationToken cancellationToken) =>
+        Ok(await timelineService.ReplaceBulkAsync(caseId, dtos, cancellationToken));
+
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid caseId, Guid id, CreateTimelineEventDto dto, CancellationToken cancellationToken)
     {

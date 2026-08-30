@@ -4,10 +4,88 @@ using Microsoft.Extensions.Logging;
 
 namespace Clausio.Legal.Service;
 
+/// <summary>One scored JudgmentChunks row with its corpus metadata kept intact.</summary>
+public record JudgmentMatch(string CaseName, int? Year, string? CaseType, string ChunkText, int Score);
+
 public class JudgmentSearchService(
     ClausioDbContext db,
     ILogger<JudgmentSearchService> logger)
 {
+    /// <summary>
+    /// Like <see cref="SearchAsync"/> but keeps each chunk's CaseName / Year / CaseType so
+    /// callers (Judgment Analysis) can render structured cards. One chunk per case, best
+    /// keyword overlap first; falls back to a category spread when nothing lexically matches.
+    /// </summary>
+    public async Task<List<JudgmentMatch>> SearchStructuredAsync(
+        string query,
+        int topK = 5,
+        string? caseCategory = null,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var keywords = ExtractKeywords(query);
+            logger.LogInformation("JudgmentSearch(structured) keywords: {Keywords}, category: {Cat}",
+                string.Join(" | ", keywords), caseCategory ?? "(none)");
+
+            var results = new List<JudgmentMatch>();
+
+            foreach (var keyword in keywords.Take(6))
+            {
+                var chunks = await db.JudgmentChunks
+                    .AsNoTracking()
+                    .Where(j => EF.Functions.ILike(j.ChunkText, $"%{keyword}%"))
+                    .Take(25)
+                    .Select(j => new { j.ChunkText, j.CaseName, j.Year, j.CaseType })
+                    .ToListAsync(ct);
+
+                foreach (var chunk in chunks)
+                {
+                    var score = keywords.Count(k =>
+                        chunk.ChunkText.Contains(k, StringComparison.OrdinalIgnoreCase));
+                    results.Add(new JudgmentMatch(
+                        chunk.CaseName ?? "Unknown Case", chunk.Year, chunk.CaseType, chunk.ChunkText, score));
+                }
+            }
+
+            var ranked = results
+                .OrderByDescending(r => r.Score)
+                .ThenByDescending(r => r.ChunkText.Length)
+                .DistinctBy(r => r.CaseName)
+                .Take(topK)
+                .ToList();
+
+            // Thin keyword hits → top up from the case's own corpus category so the advocate
+            // still gets a full set of on-topic precedents to work with.
+            if (ranked.Count < topK && !string.IsNullOrEmpty(caseCategory))
+            {
+                var have = ranked.Select(r => r.CaseName).ToHashSet();
+                var pool = await db.JudgmentChunks
+                    .AsNoTracking()
+                    .Where(j => j.CaseType == caseCategory)
+                    .OrderBy(j => j.Id)
+                    .Take(400)
+                    .Select(j => new { j.ChunkText, j.CaseName, j.Year, j.CaseType })
+                    .ToListAsync(ct);
+
+                foreach (var chunk in pool.DistinctBy(p => p.CaseName))
+                {
+                    if (ranked.Count >= topK) break;
+                    if (have.Contains(chunk.CaseName ?? "Unknown Case")) continue;
+                    ranked.Add(new JudgmentMatch(
+                        chunk.CaseName ?? "Unknown Case", chunk.Year, chunk.CaseType, chunk.ChunkText, 0));
+                }
+            }
+
+            return ranked;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("JudgmentSearch(structured) failed: {Error}", ex.Message);
+            return new List<JudgmentMatch>();
+        }
+    }
+
     // Search JudgmentChunks by keyword similarity (BM25-style)
     // Returns top 3 most relevant chunks
     public async Task<List<string>> SearchAsync(

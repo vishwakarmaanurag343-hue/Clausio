@@ -4,6 +4,7 @@ using Clausio.Legal.Core.Entities;
 using Clausio.Legal.Core.Entities.AI;
 using Clausio.Legal.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -92,10 +93,85 @@ public class AdminController(ClausioDbContext db) : ControllerBase
                 u.Email,
                 u.Role,
                 u.Phone,
+                u.IsActive,
                 u.CreatedAt))
             .ToListAsync(ct);
 
         return Ok(new { data = users, total, page, pageSize });
+    }
+
+    // ── GET /api/admin/users/{id} ────────────────────────────────
+    [HttpGet("users/{id:guid}")]
+    public async Task<IActionResult> GetUser(Guid id, CancellationToken ct)
+    {
+        var u = await db.Users.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (u is null) return NotFound(new { message = "User not found." });
+        return Ok(new AdminUserDto(u.Id, u.FirstName, u.LastName, u.Email, u.Role, u.Phone, u.IsActive, u.CreatedAt));
+    }
+
+    private static readonly string[] ValidRoles =
+        { "SuperAdmin", "SeniorAdvocate", "JuniorAdvocate", "Clerk", "Intern" };
+
+    // ── POST /api/admin/users ───────────────────────────────────
+    [HttpPost("users")]
+    public async Task<IActionResult> CreateUser([FromBody] CreateUserDto dto, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.TempPassword))
+            return BadRequest(new { message = "Email and a temporary password are required." });
+
+        var email = dto.Email.Trim().ToLowerInvariant();
+        if (await db.Users.AnyAsync(u => u.Email == email, ct))
+            return BadRequest(new { message = "A user with this email already exists." });
+
+        var role = string.IsNullOrWhiteSpace(dto.Role) ? "JuniorAdvocate" : dto.Role;
+        if (!ValidRoles.Contains(role))
+            return BadRequest(new { message = $"Invalid role. Allowed: {string.Join(", ", ValidRoles)}." });
+
+        var user = new User
+        {
+            FirstName = dto.FirstName?.Trim() ?? "",
+            LastName = dto.LastName?.Trim() ?? "",
+            Email = email,
+            Phone = dto.Phone?.Trim(),
+            Role = role,
+            IsActive = true,
+        };
+        user.PasswordHash = new PasswordHasher<User>().HashPassword(user, dto.TempPassword);
+
+        db.Users.Add(user);
+        await db.SaveChangesAsync(ct);
+        return Ok(new AdminUserDto(user.Id, user.FirstName, user.LastName, user.Email, user.Role, user.Phone, user.IsActive, user.CreatedAt));
+    }
+
+    // ── PUT /api/admin/users/{id} ───────────────────────────────
+    [HttpPut("users/{id:guid}")]
+    public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUserDto dto, CancellationToken ct)
+    {
+        var user = await db.Users.FindAsync(new object[] { id }, ct);
+        if (user is null) return NotFound(new { message = "User not found." });
+
+        if (dto.FirstName is not null) user.FirstName = dto.FirstName.Trim();
+        if (dto.LastName is not null) user.LastName = dto.LastName.Trim();
+        if (dto.Phone is not null) user.Phone = dto.Phone.Trim();
+        if (dto.IsActive is not null) user.IsActive = dto.IsActive.Value;
+
+        if (dto.Email is not null)
+        {
+            var email = dto.Email.Trim().ToLowerInvariant();
+            if (email != user.Email && await db.Users.AnyAsync(u => u.Email == email && u.Id != id, ct))
+                return BadRequest(new { message = "Another user already uses this email." });
+            user.Email = email;
+        }
+
+        if (dto.Role is not null)
+        {
+            if (!ValidRoles.Contains(dto.Role))
+                return BadRequest(new { message = $"Invalid role. Allowed: {string.Join(", ", ValidRoles)}." });
+            user.Role = dto.Role;
+        }
+
+        await db.SaveChangesAsync(ct);
+        return Ok(new AdminUserDto(user.Id, user.FirstName, user.LastName, user.Email, user.Role, user.Phone, user.IsActive, user.CreatedAt));
     }
 
     // ── PUT /api/admin/users/{id}/role ───────────────────────────
@@ -105,9 +181,8 @@ public class AdminController(ClausioDbContext db) : ControllerBase
         [FromBody] UpdateUserRoleDto dto,
         CancellationToken ct)
     {
-        var validRoles = new[] { "SuperAdmin", "SeniorAdvocate", "JuniorAdvocate" };
-        if (!validRoles.Contains(dto.Role))
-            return BadRequest(new { message = "Invalid role. Must be SuperAdmin, SeniorAdvocate or JuniorAdvocate." });
+        if (!ValidRoles.Contains(dto.Role))
+            return BadRequest(new { message = $"Invalid role. Allowed: {string.Join(", ", ValidRoles)}." });
 
         var user = await db.Users.FindAsync(new object[] { id }, ct);
         if (user is null) return NotFound(new { message = "User not found." });
@@ -226,5 +301,39 @@ public class AdminController(ClausioDbContext db) : ControllerBase
             .ToListAsync(ct);
 
         return Ok(new { data = logs, total, page, pageSize });
+    }
+
+    // ── GET /api/admin/permissions/{userId} → the page keys this user may open ──
+    [HttpGet("permissions/{userId:guid}")]
+    public async Task<IActionResult> GetPermissions(Guid userId, CancellationToken ct)
+    {
+        var keys = await db.UserPagePermissions.AsNoTracking()
+            .Where(p => p.UserId == userId && p.HasAccess)
+            .Select(p => p.PageKey)
+            .ToListAsync(ct);
+        return Ok(new { userId, pageKeys = keys });
+    }
+
+    // ── PUT /api/admin/permissions/{userId} → replace all of this user's page grants ──
+    [HttpPut("permissions/{userId:guid}")]
+    public async Task<IActionResult> SetPermissions(Guid userId, [FromBody] UpdatePermissionsDto dto, CancellationToken ct)
+    {
+        if (!await db.Users.AnyAsync(u => u.Id == userId, ct))
+            return NotFound(new { message = "User not found." });
+
+        var existing = await db.UserPagePermissions.Where(p => p.UserId == userId).ToListAsync(ct);
+        db.UserPagePermissions.RemoveRange(existing);
+
+        var keys = (dto.PageKeys ?? new List<string>())
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .Select(k => k.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        foreach (var key in keys)
+            db.UserPagePermissions.Add(new UserPagePermission { UserId = userId, PageKey = key, HasAccess = true });
+
+        await db.SaveChangesAsync(ct);
+        return Ok(new { userId, pageKeys = keys });
     }
 }

@@ -35,9 +35,10 @@ export default function GenerateUpdateModal({
         background: 'rgba(15,23,42,.55)',
         display: 'flex',
         justifyContent: 'center',
-        alignItems: 'center',
+        alignItems: 'flex-start',
+        overflowY: 'auto',
+        padding: '20px 16px',
         zIndex: 999,
-        padding: 24,
       }}
     >
       <div
@@ -47,7 +48,8 @@ export default function GenerateUpdateModal({
           maxWidth: 720,
           background: '#ffffff',
           borderRadius: 18,
-          overflow: 'hidden',
+          maxHeight: 'calc(100vh - 40px)',
+          overflowY: 'auto',
           boxShadow: '0 20px 60px rgba(0,0,0,.25)',
         }}
       >

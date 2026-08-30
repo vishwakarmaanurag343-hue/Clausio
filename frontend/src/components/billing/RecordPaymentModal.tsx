@@ -15,7 +15,9 @@ export default function RecordPaymentModal({
         background: 'rgba(15,23,42,.55)',
         display: 'flex',
         justifyContent: 'center',
-        alignItems: 'center',
+        alignItems: 'flex-start',
+        overflowY: 'auto',
+        padding: '20px 16px',
         zIndex: 9999,
       }}
     >
@@ -25,8 +27,9 @@ export default function RecordPaymentModal({
           maxWidth: '95%',
           background: '#fff',
           borderRadius: 18,
+          maxHeight: 'calc(100vh - 40px)',
+          overflowY: 'auto',
           boxShadow: '0 30px 80px rgba(0,0,0,.25)',
-          overflow: 'hidden',
         }}
       >
         {/* Header */}

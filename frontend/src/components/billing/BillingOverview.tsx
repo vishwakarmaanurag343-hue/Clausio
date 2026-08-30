@@ -4,20 +4,19 @@ interface Props { cases: any[]; clients: any[]; stats: any; loading: boolean; on
 
 export default function BillingOverview({ cases, clients, stats, loading, onRefresh }: Props) {
   const fmt = (n: any) => `₹${Number(n ?? 0).toLocaleString('en-IN')}`
-
-  const activeCases  = cases.filter(c => c.status !== 'Closed').length
+  const activeCases = cases.filter(c => c.status !== 'Closed').length
   const casesByType: Record<string, number> = {}
-  cases.forEach(c => { const t = c.caseType ?? c.type ?? 'Unknown'; casesByType[t] = (casesByType[t] ?? 0) + 1 })
+  cases.forEach(c => { const t = c.caseType ?? c.type ?? 'Other'; casesByType[t] = (casesByType[t] ?? 0) + 1 })
 
   return (
     <div>
-      {/* Financial stats */}
-      <div className="billing-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
+      {/* 4 stat cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
         {[
-          { label: 'Total Billed',    value: fmt(stats?.totalBilled),    icon: 'ti-receipt-2',    color: '#2563eb', bg: '#eff6ff'  },
-          { label: 'Amount Received', value: fmt(stats?.totalPaid),      icon: 'ti-circle-check', color: '#16a34a', bg: '#f0fdf4'  },
-          { label: 'Pending',         value: fmt(stats?.totalPending),   icon: 'ti-clock',        color: '#dc2626', bg: '#fef2f2'  },
-          { label: 'Expenses',        value: fmt(stats?.totalExpenses),  icon: 'ti-cash',         color: '#d97706', bg: '#fff7ed'  },
+          { label: 'Total Billed',    value: fmt(stats?.totalBilled),   icon: 'ti-receipt-2',    color: '#2563eb', bg: '#eff6ff' },
+          { label: 'Amount Received', value: fmt(stats?.totalPaid),     icon: 'ti-circle-check', color: '#16a34a', bg: '#f0fdf4' },
+          { label: 'Pending',         value: fmt(stats?.totalPending),  icon: 'ti-clock',        color: '#dc2626', bg: '#fef2f2' },
+          { label: 'Expenses',        value: fmt(stats?.totalExpenses), icon: 'ti-cash',         color: '#d97706', bg: '#fff7ed' },
         ].map((s, i) => (
           <div key={i} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
@@ -31,13 +30,13 @@ export default function BillingOverview({ cases, clients, stats, loading, onRefr
         ))}
       </div>
 
-      {/* Invoice status + Case stats */}
-      <div className="billing-counts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
+      {/* Invoice status counts */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
         {[
-          { label: 'Total Invoices', value: stats?.invoiceCount ?? 0,  color: '#2563eb' },
-          { label: 'Paid Invoices',  value: stats?.paidCount    ?? 0,  color: '#16a34a' },
-          { label: 'Unpaid',         value: stats?.unpaidCount  ?? 0,  color: '#dc2626' },
-          { label: 'Active Cases',   value: activeCases,                color: '#7c3aed' },
+          { label: 'Total Invoices', value: stats?.invoiceCount ?? 0, color: '#2563eb' },
+          { label: 'Paid',           value: stats?.paidCount    ?? 0, color: '#16a34a' },
+          { label: 'Unpaid',         value: stats?.unpaidCount  ?? 0, color: '#dc2626' },
+          { label: 'Active Cases',   value: activeCases,               color: '#7c3aed' },
         ].map((s, i) => (
           <div key={i} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '14px 18px', textAlign: 'center' }}>
             <div style={{ fontSize: 32, fontWeight: 800, color: s.color }}>{loading ? '—' : s.value}</div>
@@ -46,10 +45,10 @@ export default function BillingOverview({ cases, clients, stats, loading, onRefr
         ))}
       </div>
 
-      <div className="billing-bottom-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         {/* Cases by type */}
         <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 22 }}>
-          <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 16, marginBottom: 16 }}>Cases by Practice Area</div>
+          <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 15, marginBottom: 16 }}>Cases by Practice Area</div>
           {Object.keys(casesByType).length === 0
             ? <div style={{ textAlign: 'center', padding: 20, color: '#94a3b8', fontSize: 13 }}>No cases yet</div>
             : Object.entries(casesByType).sort((a, b) => b[1] - a[1]).map(([type, count], i) => {
@@ -70,18 +69,21 @@ export default function BillingOverview({ cases, clients, stats, loading, onRefr
           }
         </div>
 
-        {/* Recent activity */}
+        {/* Recent cases */}
         <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 22 }}>
-          <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 16, marginBottom: 16 }}>Recent Cases</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 15 }}>Recent Cases</div>
+            <button onClick={onRefresh} style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 7, padding: '4px 10px', cursor: 'pointer', fontSize: 12, color: '#64748b', fontFamily: 'inherit' }}>↻ Refresh</button>
+          </div>
           {cases.length === 0
             ? <div style={{ textAlign: 'center', padding: 20, color: '#94a3b8', fontSize: 13 }}>No cases yet</div>
             : cases.slice(0, 6).map((c, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f1f5f9', fontSize: 13 }}>
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 0', borderBottom: i < 5 ? '1px solid #f1f5f9' : 'none', fontSize: 13 }}>
                   <div>
                     <div style={{ fontWeight: 600, color: '#0f172a' }}>{c.name}</div>
-                    <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{c.caseType ?? c.type ?? '—'}</div>
+                    <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{c.caseType ?? c.type ?? '—'} · {c.court ?? '—'}</div>
                   </div>
-                  <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, fontWeight: 700, background: c.status === 'Active' ? '#f0fdf4' : '#f8fafc', color: c.status === 'Active' ? '#15803d' : '#64748b' }}>
+                  <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, fontWeight: 700, background: c.status === 'Active' ? '#f0fdf4' : '#f8fafc', color: c.status === 'Active' ? '#15803d' : '#64748b' }}>
                     {c.status ?? 'Active'}
                   </span>
                 </div>

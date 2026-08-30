@@ -96,7 +96,8 @@ export default function AddHearingModal({ onClose, onSaved }: Props) {
         background:     'rgba(15,23,42,0.45)',
         display:        'flex',
         justifyContent: 'center',
-        alignItems:     'center',
+        alignItems:     'flex-start',
+        overflowY:      'auto',
         zIndex:         999,
         padding:        24,
       }}
@@ -104,16 +105,19 @@ export default function AddHearingModal({ onClose, onSaved }: Props) {
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width:        '100%',
-          maxWidth:     700,
-          background:   '#ffffff',
-          borderRadius: 16,
-          overflow:     'hidden',
-          boxShadow:    '0 20px 60px rgba(0,0,0,.25)',
+          width:         '100%',
+          maxWidth:      700,
+          maxHeight:     'calc(100vh - 48px)',
+          background:    '#ffffff',
+          borderRadius:  16,
+          overflow:      'hidden',
+          display:       'flex',
+          flexDirection: 'column',
+          boxShadow:     '0 20px 60px rgba(0,0,0,.25)',
         }}
       >
-        {/* Header — UNCHANGED */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #e2e8f0' }}>
+        {/* Header — fixed */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #e2e8f0', flexShrink: 0 }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#0f172a' }}>
               Record Hearing
@@ -127,8 +131,8 @@ export default function AddHearingModal({ onClose, onSaved }: Props) {
           </button>
         </div>
 
-        {/* Body — UNCHANGED */}
-        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 22 }}>
+        {/* Body — scrollable */}
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 22, flex: 1, minHeight: 0, overflowY: 'auto' }}>
 
           {/* Error message — NEW */}
           {error && (

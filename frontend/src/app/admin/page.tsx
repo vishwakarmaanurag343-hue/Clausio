@@ -2,18 +2,36 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuthStore } from '@/lib/store'
 import { BASE } from '@/lib/api'
+import AIConsoleDashboard from '@/components/console/AIConsoleDashboard'
+import AnalyticsDashboard from '@/components/dashboard/AnalyticsDashboard'
 
+// Match the rest of the app: the live token lives in localStorage (the sliding-session
+// refresh only updates localStorage, so the cookie goes stale). Fall back to the cookie.
 function getToken() {
-    return document.cookie.split(';').find(c => c.trim().startsWith('clausio_token='))?.split('=')[1] ?? ''
+    if (typeof window === 'undefined') return ''
+    return (
+        localStorage.getItem('clausio_token') ||
+        document.cookie.split(';').find(c => c.trim().startsWith('clausio_token='))?.split('=')[1] ||
+        ''
+    )
+}
+
+function describeStatus(status: number): string {
+    if (status === 401) return 'Session expired or not signed in. Please sign in again.'
+    if (status === 403) return 'This account is not a SuperAdmin.'
+    if (status === 404) return 'Endpoint not found.'
+    if (status >= 500) return `Server error (${status}).`
+    return `Request failed (${status}).`
 }
 
 async function adminFetch(path: string) {
     const res = await fetch(`${BASE}/admin${path}`, {
         headers: { Authorization: `Bearer ${getToken()}` }
     })
-    if (!res.ok) throw new Error(`${res.status}`)
+    const newToken = res.headers.get('x-new-token')
+    if (newToken && typeof window !== 'undefined') localStorage.setItem('clausio_token', newToken)
+    if (!res.ok) throw new Error(describeStatus(res.status))
     return res.json()
 }
 
@@ -26,18 +44,21 @@ async function adminAction(path: string, method: string, body?: any) {
         },
         body: body ? JSON.stringify(body) : undefined
     })
-    if (!res.ok) throw new Error(`${res.status}`)
+    const newToken = res.headers.get('x-new-token')
+    if (newToken && typeof window !== 'undefined') localStorage.setItem('clausio_token', newToken)
+    if (!res.ok) throw new Error(describeStatus(res.status))
     return res.json()
 }
 
 export default function AdminPage() {
     const router = useRouter()
-    const [tab, setTab] = useState<'overview' | 'users' | 'audit' | 'ai'>('overview')
+    const [tab, setTab] = useState<'overview' | 'users' | 'audit' | 'ai' | 'console' | 'metrics'>('overview')
     const [stats, setStats] = useState<any>(null)
     const [users, setUsers] = useState<any[]>([])
     const [auditLogs, setAuditLogs] = useState<any[]>([])
     const [aiLogs, setAiLogs] = useState<any[]>([])
     const [loading, setLoading] = useState(false)
+    const [statsLoading, setStatsLoading] = useState(true)
     const [search, setSearch] = useState('')
     const [roleFilter, setRoleFilter] = useState('')
     const [error, setError] = useState('')
@@ -54,43 +75,47 @@ export default function AdminPage() {
     }, [router])
 
     const loadStats = useCallback(async () => {
-        try { setStats(await adminFetch('/stats')) } catch { }
+        setStatsLoading(true); setError('')
+        try { setStats(await adminFetch('/stats')) }
+        catch (e: any) { setError(e.message || 'Failed to load stats.') }
+        finally { setStatsLoading(false) }
     }, [])
 
     const loadUsers = useCallback(async () => {
-        setLoading(true)
+        setLoading(true); setError('')
         try {
             const params = new URLSearchParams()
             if (search) params.set('search', search)
             if (roleFilter) params.set('role', roleFilter)
             const data = await adminFetch(`/users?${params}`)
             setUsers(data.data ?? [])
-        } catch (e: any) { setError(e.message) }
+        } catch (e: any) { setError(e.message); setUsers([]) }
         finally { setLoading(false) }
     }, [search, roleFilter])
 
     const loadAudit = useCallback(async () => {
-        setLoading(true)
+        setLoading(true); setError('')
         try {
             const data = await adminFetch('/audit-logs?pageSize=50')
             setAuditLogs(data.data ?? [])
-        } catch { }
+        } catch (e: any) { setError(e.message); setAuditLogs([]) }
         finally { setLoading(false) }
     }, [])
 
     const loadAiLogs = useCallback(async () => {
-        setLoading(true)
+        setLoading(true); setError('')
         try {
             const data = await adminFetch('/ai-logs?pageSize=50')
             setAiLogs(data.data ?? [])
-        } catch { }
+        } catch (e: any) { setError(e.message); setAiLogs([]) }
         finally { setLoading(false) }
     }, [])
 
-    useEffect(() => { loadStats() }, [loadStats])
-    useEffect(() => { if (tab === 'users') loadUsers() }, [tab, loadUsers])
-    useEffect(() => { if (tab === 'audit') loadAudit() }, [tab, loadAudit])
-    useEffect(() => { if (tab === 'ai') loadAiLogs() }, [tab, loadAiLogs])
+    useEffect(() => { if (authorized) loadStats() }, [authorized, loadStats])
+    useEffect(() => { if (authorized && tab === 'users') loadUsers() }, [authorized, tab, loadUsers])
+    useEffect(() => { if (authorized && tab === 'audit') loadAudit() }, [authorized, tab, loadAudit])
+    useEffect(() => { if (authorized && tab === 'ai') loadAiLogs() }, [authorized, tab, loadAiLogs])
+    useEffect(() => { setError('') }, [tab])
 
     async function handleRoleChange(userId: string, role: string) {
         try {
@@ -112,6 +137,8 @@ export default function AdminPage() {
         { key: 'users', label: 'Users', icon: 'ti-users' },
         { key: 'audit', label: 'Audit Trail', icon: 'ti-list-check' },
         { key: 'ai', label: 'AI Logs', icon: 'ti-brain' },
+        { key: 'console', label: 'AI Console', icon: 'ti-terminal-2' },
+        { key: 'metrics', label: 'Observability & Metrics', icon: 'ti-chart-bar' },
     ]
 
     if (authorized === null) {
@@ -146,7 +173,25 @@ export default function AdminPage() {
                 ))}
             </div>
 
+            {/* Global error banner */}
+            {error && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, fontSize: 13, color: '#dc2626', marginBottom: 16 }}>
+                    <span><i className="ti ti-alert-triangle" style={{ marginRight: 6 }} />{error}</span>
+                    <button
+                        onClick={() => { setError(''); if (tab === 'overview') loadStats(); else if (tab === 'users') loadUsers(); else if (tab === 'audit') loadAudit(); else if (tab === 'ai') loadAiLogs() }}
+                        style={{ padding: '4px 12px', border: '1px solid #fca5a5', borderRadius: 7, background: '#fff', color: '#dc2626', cursor: 'pointer', fontWeight: 700, fontSize: 12, fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                        Retry
+                    </button>
+                </div>
+            )}
+
             {/* ── OVERVIEW TAB ── */}
+            {tab === 'overview' && statsLoading && !stats && (
+                <div style={{ textAlign: 'center', padding: 48, color: '#64748b', fontSize: 13 }}>Loading stats…</div>
+            )}
+            {tab === 'overview' && !statsLoading && !stats && !error && (
+                <div style={{ textAlign: 'center', padding: 48, color: '#94a3b8', fontSize: 13 }}>No stats available.</div>
+            )}
             {tab === 'overview' && stats && (
                 <div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 24 }}>
@@ -331,6 +376,32 @@ export default function AdminPage() {
                             </tbody>
                         </table>
                     </div>
+                </div>
+            )}
+
+            {/* ── AI CONSOLE TAB (moved here from /console — SuperAdmin only) ── */}
+            {tab === 'console' && (
+                <div>
+                    <div style={{ marginBottom: 16 }}>
+                        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>AI Developer Console &amp; Telemetry</h2>
+                        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748b' }}>
+                            Real-time tracking of AI models, token consumption (In/Out), prompt latency, and endpoint fallback logs.
+                        </p>
+                    </div>
+                    <AIConsoleDashboard />
+                </div>
+            )}
+
+            {/* ── OBSERVABILITY & METRICS TAB (moved here from AI Analytics page) ── */}
+            {tab === 'metrics' && (
+                <div>
+                    <div style={{ marginBottom: 16 }}>
+                        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>Observability &amp; Metrics</h2>
+                        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748b' }}>
+                            AI usage overview, model quality scores and interaction telemetry.
+                        </p>
+                    </div>
+                    <AnalyticsDashboard />
                 </div>
             )}
         </div>

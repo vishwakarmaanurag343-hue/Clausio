@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import AIResponseFormatter from '@/components/common/AIResponseFormatter'
 
 interface HistoryItem {
   query:    string
@@ -28,8 +29,7 @@ export default function AIHistory() {
 
   function copyItem(idx: number, item: HistoryItem) {
     navigator.clipboard.writeText(`Query: ${item.query}\n\nResponse:\n${item.response}`)
-    setCopied(idx)
-    setTimeout(() => setCopied(null), 2000)
+    setCopied(idx); setTimeout(() => setCopied(null), 2000)
   }
 
   function deleteItem(idx: number) {
@@ -50,7 +50,7 @@ export default function AIHistory() {
   }
 
   function formatTime(iso: string) {
-    const d = new Date(iso)
+    const d     = new Date(iso)
     const today = new Date()
     if (d.toDateString() === today.toDateString()) {
       return `Today ${d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`
@@ -128,7 +128,7 @@ export default function AIHistory() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {filtered.map((item, i) => (
           <div key={i} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
-            {/* Row */}
+            {/* Row header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', cursor: 'pointer' }}
               onClick={() => setExpanded(expanded === i ? null : i)}>
               <div style={{ width: 32, height: 32, borderRadius: 8, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -153,13 +153,11 @@ export default function AIHistory() {
               </div>
             </div>
 
-            {/* Expanded response */}
+            {/* Expanded — show flash card output */}
             {expanded === i && (
-              <div style={{ borderTop: '1px solid #f1f5f9', padding: '14px 16px', background: '#f8fafc' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Response</div>
-                <pre style={{ fontSize: 12, color: '#334155', lineHeight: 1.8, whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0, maxHeight: 300, overflowY: 'auto' }}>
-                  {item.response}
-                </pre>
+              <div style={{ borderTop: '1px solid #f1f5f9', padding: '16px', background: '#f8fafc' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>Response</div>
+                <AIResponseFormatter content={item.response} />
               </div>
             )}
           </div>

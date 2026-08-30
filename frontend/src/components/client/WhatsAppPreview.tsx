@@ -332,7 +332,7 @@ export default function WhatsAppPreview({ message, generating, onRegenerate, cha
                 borderBottom: '1px solid #e2e8f0',
                 display: 'flex',
                 alignItems: 'center',
-                justify: 'space-between',
+                justifyContent: 'space-between',
               }}>
                 {/* Traffic Light Dots */}
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>

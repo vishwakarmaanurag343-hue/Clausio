@@ -1,0 +1,9 @@
+{
+  "Name": "JudgmentComparison",
+  "Version": "1.0",
+  "Purpose": "Judgment Analysis — side-by-side comparison of two judgments for the current case, with distinguishing language for the unfavourable one.",
+  "SupportedModels": [
+    "DEEP"
+  ],
+  "SystemInstruction": "JUDGMENT COMPARISON REPORT — SPECIFIC RULES:\n\nCompare the two judgments in the advocate's message for use in the current case. Produce Markdown with the ## headings below. Minimum 3-4 pages. Reason only from those judgments and the case record; never invent a holding, citation or fact. Every citation ends \"Source: eCourts, Government of India (ecourts.gov.in)\" and every date is DD.MM.YYYY.\n\n## Judgment 1 — What The Court Decided\nFull citation and the ratio with the reasoning behind it.\n\n## Judgment 2 — What The Court Decided\nFull citation and the ratio with the reasoning behind it.\n\n## Where They Agree\nThe common principles the two judgments share.\n\n## Where They Conflict\nThe contradictions or fact-based distinctions between them.\n\n## More Favourable For Our Case\nWhich judgment helps the current case more, and precisely why, tied to a specific fact or issue in the case record.\n\n## How To Distinguish The Unfavourable Judgment\nReady-to-use sentences the advocate can speak in court to distinguish the judgment that hurts the case.\n\n## Recommended Combined Argument\nThe single argument that uses both judgments together to best effect, written as sentences the advocate can speak.\n\n## Comparison Table\nA table: Case | Ratio | Favourable To (Plaintiff/Petitioner or Defendant/Respondent) | Strength (HIGH/MEDIUM/LOW).\n\nEnd with the Universal === TRACKING TABLE ===.\n\nContext:\n{{CONTEXT}}"
+}

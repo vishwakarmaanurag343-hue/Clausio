@@ -109,54 +109,38 @@ async def transcribe_voice_raw(request: Request):
 
 @app.post("/api/voice")
 async def transcribe_voice(file: UploadFile = File(...)):
-    """Accept a webm/ogg audio blob from the browser and return transcribed text."""
-    import tempfile, subprocess
-    
-    # Write incoming audio to a temp file
-    suffix = ".webm"
+    """Accept a webm/ogg audio blob from the browser and return transcribed text.
+
+    Decodes with PyAV (bundled by faster-whisper) so the `ffmpeg` CLI is NOT required.
+    """
+    import tempfile, warnings
+    from faster_whisper.audio import decode_audio
+
+    suffix = os.path.splitext(file.filename or "")[1] or ".webm"
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         tmp.write(await file.read())
         tmp_path = tmp.name
 
-    wav_path = tmp_path.replace(".webm", ".wav")
-    
     try:
-        # Convert webm → wav 16kHz mono using ffmpeg
-        result = subprocess.run(
-            ["ffmpeg", "-y", "-i", tmp_path, "-ar", "16000", "-ac", "1", "-f", "wav", wav_path],
-            capture_output=True, timeout=15
-        )
-        
-        if result.returncode != 0:
-            raise HTTPException(status_code=500, detail=f"ffmpeg failed: {result.stderr.decode()}")
-        
         if not whisper_model:
             raise HTTPException(status_code=503, detail="Whisper model not loaded yet")
-        
-        import os as _os
-        import wave, struct
-        import warnings
-        wav_size = _os.path.getsize(wav_path) if _os.path.exists(wav_path) else 0
-        print(f"[voice] WAV size: {wav_size} bytes, transcribing...")
-        
-        # Load WAV as float32 numpy array and normalize amplitude
-        with wave.open(wav_path, 'rb') as wf:
-            frames = wf.readframes(wf.getnframes())
-            audio_np = np.frombuffer(frames, dtype=np.int16).astype(np.float32) / 32768.0
-            
-        # Sanitize NaN/Inf
-        audio_np = np.nan_to_num(audio_np, nan=0.0, posinf=0.0, neginf=0.0)
-        
-        max_amp = float(np.max(np.abs(audio_np))) if len(audio_np) > 0 else 0
-        print(f"[voice] Max amplitude: {max_amp:.4f}")
-        
-        # Normalize to prevent near-zero mel spectrogram issues
-        if max_amp > 0.0001:
-            audio_np = (audio_np / max_amp * 0.9).astype(np.float32)
-        else:
+
+        # PyAV decode → float32 mono @ 16kHz numpy array (no ffmpeg subprocess)
+        try:
+            audio_np = decode_audio(tmp_path, sampling_rate=SAMPLE_RATE)
+        except Exception as e:
+            print(f"[voice] decode failed: {e}")
+            raise HTTPException(status_code=422, detail=f"Could not decode audio: {e}")
+
+        audio_np = np.nan_to_num(np.asarray(audio_np, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0)
+        max_amp = float(np.max(np.abs(audio_np))) if len(audio_np) else 0.0
+        print(f"[voice] samples={len(audio_np)}, max_amp={max_amp:.4f}")
+
+        if max_amp <= 0.0001:
             print("[voice] Audio too quiet, returning empty")
             return {"text": ""}
-        
+        audio_np = (audio_np / max_amp * 0.9).astype(np.float32)
+
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
@@ -166,26 +150,22 @@ async def transcribe_voice(file: UploadFile = File(...)):
                     language="en",
                     vad_filter=True,
                     vad_parameters=dict(min_silence_duration_ms=300),
-                    temperature=0.0
+                    temperature=0.0,
                 )
             text = " ".join(s.text.strip() for s in segments).strip()
-            
+
             hallucinations = {"you.", "thank you.", "thank you", "bye.", "you"}
             if text.strip().lower() in hallucinations:
                 text = ""
-                
+
             print(f"[voice] Transcribed: '{text}'")
             return {"text": text}
         except Exception as e:
             print(f"[voice] Whisper error: {e}")
             return {"text": ""}
-    
-    except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=504, detail="Transcription timed out")
     finally:
-        for p in [tmp_path, wav_path]:
-            if os.path.exists(p):
-                os.remove(p)
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
 @app.post("/api/ocr")
 async def process_ocr(file: UploadFile = File(...)):
     # Save the file temporarily

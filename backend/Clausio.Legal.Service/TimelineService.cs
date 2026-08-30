@@ -10,6 +10,7 @@ public interface ITimelineService
     Task<List<TimelineEvent>> ListAsync(Guid caseId, CancellationToken cancellationToken = default);
     Task<TimelineEvent> CreateAsync(Guid caseId, CreateTimelineEventDto dto, CancellationToken cancellationToken = default);
     Task<List<TimelineEvent>> CreateBulkAsync(Guid caseId, List<CreateTimelineEventDto> dtos, CancellationToken cancellationToken = default);
+    Task<List<TimelineEvent>> ReplaceBulkAsync(Guid caseId, List<CreateTimelineEventDto> dtos, CancellationToken cancellationToken = default);
     Task<TimelineEvent?> UpdateAsync(Guid caseId, Guid id, CreateTimelineEventDto dto, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(Guid caseId, Guid id, CancellationToken cancellationToken = default);
     Task ReorderAsync(Guid caseId, List<ReorderDto> items, CancellationToken cancellationToken = default);
@@ -32,6 +33,23 @@ public class TimelineService(ClausioDbContext db) : ITimelineService
     {
         var entities = dtos.Select(dto => Map(caseId, dto)).ToList();
         db.TimelineEvents.AddRange(entities);
+        await db.SaveChangesAsync(cancellationToken);
+        return entities;
+    }
+
+    /// <summary>
+    /// Replace the entire timeline for a case in one shot: drop every existing event,
+    /// insert the supplied set. Used when the AI chronology is (re)generated so repeated
+    /// runs can't pile up duplicate events.
+    /// </summary>
+    public async Task<List<TimelineEvent>> ReplaceBulkAsync(Guid caseId, List<CreateTimelineEventDto> dtos, CancellationToken cancellationToken = default)
+    {
+        var existing = await db.TimelineEvents.Where(t => t.CaseId == caseId).ToListAsync(cancellationToken);
+        db.TimelineEvents.RemoveRange(existing);
+
+        var entities = dtos.Select(dto => Map(caseId, dto)).ToList();
+        db.TimelineEvents.AddRange(entities);
+
         await db.SaveChangesAsync(cancellationToken);
         return entities;
     }

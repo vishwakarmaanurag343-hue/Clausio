@@ -17,7 +17,10 @@ public interface ICaseService
     Task<bool> DeleteAsync(Guid id, Guid userId, CancellationToken cancellationToken = default);
 }
 
-public class CaseService(ClausioDbContext db, IPiiTokenService piiTokenService) : ICaseService
+public class CaseService(
+    ClausioDbContext db,
+    IPiiTokenService piiTokenService,
+    ICalendarSyncService calendarSync) : ICaseService
 {
     public Task<List<Case>> ListAsync(Guid userId, CancellationToken cancellationToken = default) =>
         db.Cases.AsNoTracking().Include(c => c.Client)
@@ -83,6 +86,10 @@ public class CaseService(ClausioDbContext db, IPiiTokenService piiTokenService) 
         db.CaseMemories.Add(memoryEntity);
         await db.SaveChangesAsync(cancellationToken);
 
+        // If a next-hearing date was set on the case, queue a calendar event for it
+        if (entity.NextHearing.HasValue)
+            calendarSync.QueueCaseNextHearingSync(entity.Id);
+
         return entity;
     }
 
@@ -98,6 +105,9 @@ public class CaseService(ClausioDbContext db, IPiiTokenService piiTokenService) 
         if (dto.NextHearing    is not null) entity.NextHearing    = dto.NextHearing;
         if (dto.ReadinessScore is not null) entity.ReadinessScore = dto.ReadinessScore;
         await db.SaveChangesAsync(cancellationToken);
+
+        // Re-sync the case's next-hearing date to the calendar (adds, updates or removes the event)
+        calendarSync.QueueCaseNextHearingSync(entity.Id);
         return entity;
     }
 
@@ -105,6 +115,7 @@ public class CaseService(ClausioDbContext db, IPiiTokenService piiTokenService) 
     {
         var entity = await db.Cases.FirstOrDefaultAsync(c => c.Id == id && c.CreatedByUserId == userId, cancellationToken);
         if (entity is null) return false;
+        calendarSync.QueueRemoval("casehearing", id);
         db.Cases.Remove(entity);
         await db.SaveChangesAsync(cancellationToken);
         return true;

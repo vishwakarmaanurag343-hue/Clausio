@@ -14,7 +14,9 @@ public interface IHearingService
     Task<bool> DeleteAsync(Guid caseId, Guid id, CancellationToken cancellationToken = default);
 }
 
-public class HearingService(ClausioDbContext db) : IHearingService
+public class HearingService(
+    ClausioDbContext db,
+    ICalendarSyncService calendarSync) : IHearingService
 {
     public Task<List<Hearing>> ListAsync(Guid caseId, CancellationToken cancellationToken = default) =>
         db.Hearings.AsNoTracking().Include(h => h.Orders)
@@ -52,6 +54,8 @@ public class HearingService(ClausioDbContext db) : IHearingService
 
         db.Hearings.Add(entity);
         await db.SaveChangesAsync(cancellationToken);
+        // Auto-sync to Google Calendar (fire and forget — never blocks the save response)
+        calendarSync.QueueHearingSync(caseId, entity.Id);
         return entity;
     }
 
@@ -70,6 +74,8 @@ public class HearingService(ClausioDbContext db) : IHearingService
         if (dto.NextObjective is not null) entity.NextObjective = dto.NextObjective;
 
         await db.SaveChangesAsync(cancellationToken);
+        // Re-sync the updated hearing to Google Calendar (fire and forget)
+        calendarSync.QueueHearingSync(entity.CaseId, entity.Id);
         return entity;
     }
 
@@ -90,6 +96,8 @@ public class HearingService(ClausioDbContext db) : IHearingService
         var entity = await db.Hearings.FirstOrDefaultAsync(h => h.CaseId == caseId && h.Id == id, cancellationToken);
         if (entity is null) return false;
 
+        // Queue calendar removal before the row is gone (fire and forget)
+        calendarSync.QueueRemoval("hearing", id);
         db.Hearings.Remove(entity);
         await db.SaveChangesAsync(cancellationToken);
         return true;

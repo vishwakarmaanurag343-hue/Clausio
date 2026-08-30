@@ -110,8 +110,12 @@ export default function AIInsights() {
     if (!selectedCaseId) return
     setLoading(true)
     setSummary(null)
-    aiApi.getSummary(selectedCaseId)
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10000)
+
+    aiApi.getSummary(selectedCaseId, { signal: controller.signal })
       .then(res => {
+        clearTimeout(timeout)
         let raw = res.summary ?? res.result ?? ''
         if (typeof raw === 'object' && raw !== null) {
           setSummary(raw)
@@ -184,8 +188,19 @@ export default function AIInsights() {
 
         setSummary({ fullSummary: cleanText, keyStrengths: [], keyWeaknesses: [], nextSteps: [], verdictProbability: null })
       })
-      .catch(() => setSummary(null))
+      .catch((err) => {
+        clearTimeout(timeout)
+        if (err?.name === 'AbortError') {
+          setSummary({ fullSummary: 'Response taking too long. Try a shorter question.', keyStrengths: [], keyWeaknesses: [], nextSteps: [], verdictProbability: null })
+        } else {
+          setSummary(null)
+        }
+      })
       .finally(() => setLoading(false))
+    return () => {
+      clearTimeout(timeout)
+      controller.abort()
+    }
   }, [selectedCaseId])
 
   const handleDragOver = (e: React.DragEvent) => {

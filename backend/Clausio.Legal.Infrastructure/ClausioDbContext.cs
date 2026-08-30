@@ -24,6 +24,9 @@ public class ClausioDbContext(DbContextOptions<ClausioDbContext> options) : DbCo
     public DbSet<HearingOrder> HearingOrders => Set<HearingOrder>();
     public DbSet<Witness> Witnesses => Set<Witness>();
     public DbSet<Note> Notes => Set<Note>();
+    public DbSet<CaseNote> CaseNotes => Set<CaseNote>();
+    public DbSet<UserPagePermission> UserPagePermissions => Set<UserPagePermission>();
+    public DbSet<PromptReferenceDoc> PromptReferenceDocs => Set<PromptReferenceDoc>();
     public DbSet<CalendarIntegration> CalendarIntegrations => Set<CalendarIntegration>();
     public DbSet<CalendarEventLink> CalendarEventLinks => Set<CalendarEventLink>();
     public DbSet<ClientMeeting> ClientMeetings => Set<ClientMeeting>();
@@ -69,6 +72,14 @@ public class ClausioDbContext(DbContextOptions<ClausioDbContext> options) : DbCo
 
         modelBuilder.Entity<CalendarIntegration>(e =>
             e.HasIndex(x => x.UserId).IsUnique());
+
+        modelBuilder.Entity<CaseNote>(e =>
+            e.HasIndex(x => new { x.UserId, x.CaseId, x.Category }).IsUnique());
+
+        modelBuilder.Entity<UserPagePermission>(e =>
+            e.HasIndex(x => new { x.UserId, x.PageKey }).IsUnique());
+
+        modelBuilder.Entity<PromptReferenceDoc>(e => e.HasIndex(x => x.UserId));
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ClausioDbContext).Assembly);
         base.OnModelCreating(modelBuilder);

@@ -5,7 +5,7 @@ import { motion, type Variants } from 'framer-motion'
 import { MotionButton } from '@/components/ui/Motion'
 import { MotionCard } from '@/components/ui/Motion'
 import { useCaseStore } from '@/lib/store'
-import { aiApi, casesApi, parseAiJson, draftsApi } from '@/lib/api'
+import { aiApi, casesApi, parseAiJson, draftsApi, promptReferenceApi } from '@/lib/api'
 import CaseTypeBadge from '@/components/ui/CaseTypeBadge'
 import { getDraftTypesForCase, type DraftType } from '@/lib/draftTypes'
 import { diffLines } from '@/lib/diffLines'
@@ -361,6 +361,8 @@ export default function DraftsTab() {
   const [draftTypes,   setDraftTypes]   = useState<DraftType[]>([])
   const [draftType,    setDraftType]    = useState('')
   const [instructions, setInstructions] = useState('')
+  const [refDocs,       setRefDocs]       = useState<any[]>([])
+  const [selectedRefId, setSelectedRefId] = useState('')
   const [draft,           setDraft]           = useState('')
   const [customDraftText, setCustomDraftText] = useState<string | null>(null)
   const [isEditing,       setIsEditing]       = useState(false)
@@ -425,6 +427,12 @@ export default function DraftsTab() {
 
   const selectedDraftInfo = draftTypes.find(t => t.label === draftType)
 
+  useEffect(() => {
+    promptReferenceApi.getAll()
+      .then((d: any) => setRefDocs(Array.isArray(d) ? d : []))
+      .catch(() => setRefDocs([]))
+  }, [])
+
   // ── What the preview/editor shows. Live edits (customDraftText) ALWAYS win —
   // otherwise the textarea would be pinned to stored content and appear frozen.
   // Stored content is only the base when no edits are in flight. ──
@@ -465,7 +473,7 @@ export default function DraftsTab() {
     setCustomDraftText(null)
     setIsEditing(false)
     try {
-      const res = await aiApi.getDraft(targetCaseId, { draftType: draftType || 'Bail Application', instructions })
+      const res = await aiApi.getDraft(targetCaseId, { draftType: draftType || 'Bail Application', instructions }, selectedRefId || undefined)
       const rawContent = res?.draft ?? res?.result ?? res
       setDraft(typeof rawContent === 'object' ? JSON.stringify(rawContent) : String(rawContent))
       // Fresh generation starts unsaved — "Save Draft" creates Version 1
@@ -887,6 +895,26 @@ export default function DraftsTab() {
               rows={6}
               style={{ width: '100%', padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 12, fontFamily: 'inherit', outline: 'none', resize: 'vertical', boxSizing: 'border-box', color: '#0f172a', background: 'rgba(255,255,255,0.8)' }}
             />
+          </div>
+
+          {/* Style reference — match the firm's own document format */}
+          <div style={{ background: 'rgba(255,255,255,0.6)', borderRadius: 16, padding: 16, border: '1px solid rgba(0,0,0,0.05)' }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Style Reference (optional)</div>
+            <select
+              value={selectedRefId}
+              onChange={e => setSelectedRefId(e.target.value)}
+              style={{ width: '100%', height: 38, padding: '0 10px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 12, fontFamily: 'inherit', outline: 'none', background: 'rgba(255,255,255,0.9)', color: '#0f172a' }}
+            >
+              <option value="">None — use default Clausio style</option>
+              {refDocs.map(d => (
+                <option key={d.id} value={d.id}>{d.title || d.fileName} ({d.docType})</option>
+              ))}
+            </select>
+            <div style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>
+              {selectedRefId
+                ? 'The draft will copy this document’s structure, prayer format and language.'
+                : 'Upload your firm’s petitions in AI Analytics → Prompt Library to use them here.'}
+            </div>
           </div>
 
           {/* Tips specific to document type */}

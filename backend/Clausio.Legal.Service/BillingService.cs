@@ -118,7 +118,7 @@ public class BillingService(ClausioDbContext db) : IBillingService
         {
             InvoiceNumber   = await NextInvoiceNumberAsync(userId, ct),
             CaseId          = dto.CaseId,
-            ClientId        = dto.ClientId,
+            ClientId        = dto.ClientId ?? Guid.Empty,
             CreatedByUserId = userId,
             ClientName      = dto.ClientName,
             CaseName        = dto.CaseName,
@@ -334,7 +334,7 @@ public class BillingService(ClausioDbContext db) : IBillingService
             Id            = i.Id,
             InvoiceNumber = i.InvoiceNumber,
             CaseId        = i.CaseId,
-            ClientId      = i.ClientId,
+            ClientId      = i.ClientId ?? Guid.Empty,
             ClientName    = i.ClientName,
             CaseName      = i.CaseName,
             Description   = i.Description,

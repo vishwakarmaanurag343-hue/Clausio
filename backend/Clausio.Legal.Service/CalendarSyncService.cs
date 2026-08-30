@@ -16,12 +16,14 @@ public interface ICalendarSyncService
     void QueueHearingSync(Guid caseId, Guid hearingId);
     void QueueOrderSync(Guid orderId);
     void QueueMeetingSync(Guid meetingId);
+    void QueueCaseNextHearingSync(Guid caseId);
     void QueueRemoval(string eventType, Guid sourceId);
 
     // ── Awaited variants (manual buttons / full resync) ──
     Task<PushResultDto> PushHearingAsync(Guid caseId, Guid hearingId, bool enforceThirtyDayWindow = false, CancellationToken cancellationToken = default);
     Task<PushResultDto> PushOrderAsync(Guid orderId, CancellationToken cancellationToken = default);
     Task<PushResultDto> PushMeetingAsync(Guid meetingId, CancellationToken cancellationToken = default);
+    Task<PushResultDto> PushCaseNextHearingAsync(Guid caseId, CancellationToken cancellationToken = default);
     Task<int> FullResyncAsync(Guid userId, CancellationToken cancellationToken = default);
     Task RemoveInternalAsync(string eventType, Guid sourceId, CancellationToken cancellationToken = default);
     Task<CalendarStatusDto> GetStatusAsync(Guid userId, CancellationToken cancellationToken = default);
@@ -64,6 +66,7 @@ public class CalendarSyncService : ICalendarSyncService
     public void QueueHearingSync(Guid caseId, Guid hearingId) => Queue(s => s.PushHearingAsync(caseId, hearingId, enforceThirtyDayWindow: true));
     public void QueueOrderSync(Guid orderId)                                 => Queue(s => s.PushOrderAsync(orderId));
     public void QueueMeetingSync(Guid meetingId)                             => Queue(s => s.PushMeetingAsync(meetingId));
+    public void QueueCaseNextHearingSync(Guid caseId)                        => Queue(s => s.PushCaseNextHearingAsync(caseId));
     public void QueueRemoval(string eventType, Guid sourceId)                => Queue(s => s.RemoveInternalAsync(eventType, sourceId));
 
     // ════════════════════════ hearings ════════════════════════
@@ -250,6 +253,83 @@ public class CalendarSyncService : ICalendarSyncService
         }
     }
 
+    // ════════════════════════ case "next hearing" date ════════════════════════
+
+    /// <summary>
+    /// Syncs a case's denormalised Case.NextHearing date as its own calendar event
+    /// (type "casehearing"). Skipped when a real Hearing row already exists on that
+    /// date — that Hearing's own sync covers it. Removes the event when NextHearing
+    /// is cleared or moves outside the 30-day window.
+    /// </summary>
+    public async Task<PushResultDto> PushCaseNextHearingAsync(Guid caseId, CancellationToken cancellationToken = default)
+    {
+        var kase = await _db.Cases.FirstOrDefaultAsync(c => c.Id == caseId, cancellationToken);
+        if (kase is null) return Not("Case not found.");
+
+        var integration = await GetIntegrationAsync(kase.CreatedByUserId, cancellationToken);
+        if (integration is null) return Not("Google Calendar not connected.");
+
+        var existingLink = await FindLinkAsync(integration.Id, "casehearing", kase.Id, cancellationToken);
+
+        // No date, out of window, or a real Hearing already covers that day → drop the event.
+        var hasRealHearing = kase.NextHearing.HasValue && await _db.Hearings.AnyAsync(
+            h => h.CaseId == caseId && h.HearingDate.Date == kase.NextHearing!.Value.Date, cancellationToken);
+
+        if (!kase.NextHearing.HasValue || !IsWithinWindow(kase.NextHearing.Value) || hasRealHearing)
+        {
+            if (existingLink is not null) await DeleteLinkedEventAsync(integration, existingLink, cancellationToken);
+            return Not(hasRealHearing ? "A recorded hearing already covers this date." : "No upcoming next-hearing date within the sync window.");
+        }
+
+        var when = kase.NextHearing.Value;
+        var desc = string.Join("\n",
+            $"Case: {kase.Name}",
+            string.IsNullOrWhiteSpace(kase.CaseNumber) ? null : $"Case No.: {kase.CaseNumber}",
+            string.IsNullOrWhiteSpace(kase.Court) ? null : $"Court: {kase.Court}",
+            string.IsNullOrWhiteSpace(kase.Stage) ? null : $"Stage: {kase.Stage}",
+            "",
+            "Next hearing date recorded on the case. Record the full hearing in Clausio to add judge, court hall and orders.",
+            "",
+            $"Open in Clausio: {_google.Settings.FrontendUrl}/dashboard?case={caseId}");
+
+        var evt = new GoogleCalendarEvent
+        {
+            Summary = $"[Next Hearing] {kase.Name ?? "Case"}",
+            Description = desc,
+            Start = EventTime(when),
+            End = EventTime(when.AddHours(1)),
+            Reminders = new GoogleEventReminders
+            {
+                UseDefault = false,
+                Overrides = new List<GoogleReminderOverride>
+                {
+                    new() { Minutes = 1440 },
+                    new() { Minutes = MorningOfMinutes(when) },
+                },
+            },
+            ExtendedProperties = new GoogleExtendedProperties
+            {
+                Private = new Dictionary<string, string>
+                {
+                    ["clausioType"] = "hearing", ["clausioSource"] = kase.Id.ToString(), ["clausioCase"] = caseId.ToString(),
+                },
+            },
+        };
+
+        try
+        {
+            var token = await AccessTokenAsync(integration, cancellationToken);
+            var (eventId, url) = await _google.UpsertEventAsync(token, integration.CalendarId, existingLink?.GoogleEventId, evt, cancellationToken);
+            await SaveLinkAsync(integration, existingLink, "casehearing", kase.Id, eventId, cancellationToken);
+            return Ok(eventId, url);
+        }
+        catch (Exception ex)
+        {
+            await RecordErrorAsync(integration, ex.Message, cancellationToken);
+            throw;
+        }
+    }
+
     // ════════════════════════ removal / full resync / status ════════════════════════
 
     public async Task RemoveInternalAsync(string eventType, Guid sourceId, CancellationToken cancellationToken = default)
@@ -364,6 +444,11 @@ public class CalendarSyncService : ICalendarSyncService
 
     private async Task SaveLinkAsync(CalendarIntegration integration, CalendarEventLink? existing, string type, Guid sourceId, string googleEventId, CancellationToken ct)
     {
+        // Re-check: an auto-sync and a manual "Add to Calendar" can race for the same
+        // (integration, type, source). Adding blindly hits the unique index (23505).
+        existing ??= await _db.CalendarEventLinks.FirstOrDefaultAsync(
+            l => l.IntegrationId == integration.Id && l.EventType == type && l.SourceId == sourceId, ct);
+
         if (existing is null)
             _db.CalendarEventLinks.Add(new CalendarEventLink { IntegrationId = integration.Id, EventType = type, SourceId = sourceId, GoogleEventId = googleEventId });
         else

@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useCaseStore } from '@/lib/store'
-import { hearingsApi } from '@/lib/api'
+import { hearingsApi, integrationsApi } from '@/lib/api'
 
 const stages = [
   'First Appearance',
@@ -38,6 +38,13 @@ export default function HearingForm({ onSaved }: Props) {
   const [saving,           setSaving]           = useState(false)
   const [success,          setSuccess]          = useState(false)
   const [error,            setError]            = useState('')
+  const [calConnected,     setCalConnected]     = useState<boolean | null>(null)
+
+  useEffect(() => {
+    integrationsApi.getStatus()
+      .then((s: any) => setCalConnected(!!s?.connected))
+      .catch(() => setCalConnected(false))
+  }, [])
 
   function updateOrder(index: number, key: keyof OrderRow, value: string) {
     setOrders(prev => prev.map((o, i) => (i === index ? { ...o, [key]: value } : o)))
@@ -111,10 +118,13 @@ export default function HearingForm({ onSaved }: Props) {
         </div>
       </div>
 
-      {/* Success message — NEW */}
+      {/* Success message — with calendar auto-sync status */}
       {success && (
-        <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, fontSize: 13, color: '#15803d', marginBottom: 14 }}>
-          ✓ Hearing saved successfully!
+        <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, fontSize: 13, color: '#15803d', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+          <i className="ti ti-calendar-check" style={{ fontSize: 15, flexShrink: 0 }} />
+          {calConnected
+            ? 'Hearing saved and synced to Google Calendar automatically.'
+            : <span>Hearing saved · <a href="/settings?section=Integrations" style={{ color: '#15803d', fontWeight: 700 }}>Connect Google Calendar</a> in Settings to auto-sync hearings.</span>}
         </div>
       )}
 

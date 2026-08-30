@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUIStore, useCaseStore } from '@/lib/store'
-import { authApi, casesApi, hearingsApi, documentsApi, actionPlansApi } from '@/lib/api'
+import { authApi, casesApi, hearingsApi, documentsApi, actionPlansApi, aiApi, parseAiJson } from '@/lib/api'
 import CaseList from '@/components/cases/CaseList'
 import AIInsights from '@/components/dashboard/AIInsights'
 import ScheduleMeetingModal from '@/components/dashboard/ScheduleMeetingModal'
@@ -11,13 +11,11 @@ import {
   DocumentsTab,
   HearingsTab,
 } from '@/components/dashboard/DashboardTabs'
-import NotesTab from '@/components/dashboard/NotesTab'
 
 const TABS = [
   { id: 'Overview', icon: 'ti-layout-dashboard' },
   { id: 'Documents', icon: 'ti-files' },
   { id: 'Hearings', icon: 'ti-gavel' },
-  { id: 'Notes', icon: 'ti-notes' },
 ]
 
 export default function DashboardPage() {
@@ -34,6 +32,9 @@ export default function DashboardPage() {
   const [tasks, setTasks] = useState<any[]>([])
   const [markingId, setMarkingId] = useState<string | null>(null)
   const [showMeetingModal, setShowMeetingModal] = useState(false)
+  const [genPlan, setGenPlan] = useState(false)
+  const [genErr, setGenErr] = useState('')
+  const [taskBusyId, setTaskBusyId] = useState<string | null>(null)
 
   // Auto-select first case of current user
   useEffect(() => {
@@ -81,6 +82,13 @@ export default function DashboardPage() {
       .catch(() => { })
   }, [selectedCaseId])
 
+  const loadTasks = useCallback(() => {
+    if (!selectedCaseId) return
+    actionPlansApi.getByCaseId(selectedCaseId)
+      .then(d => setTasks(Array.isArray(d) ? d : []))
+      .catch(() => { })
+  }, [selectedCaseId])
+
   useEffect(() => {
     if (!selectedCaseId) return
     setCaseData(null)
@@ -92,9 +100,9 @@ export default function DashboardPage() {
     loadHearings()
     documentsApi.getByCaseId(selectedCaseId)
       .then(d => setDocuments(Array.isArray(d) ? d : [])).catch(() => { })
-    actionPlansApi.getByCaseId(selectedCaseId)
-      .then(d => setTasks(Array.isArray(d) ? d : [])).catch(() => { })
-  }, [selectedCaseId, loadHearings])
+    loadTasks()
+    setGenErr('')
+  }, [selectedCaseId, loadHearings, loadTasks])
 
   const allOrders = hearings.flatMap(h => (h.orders ?? []).map((o: any) => ({ ...o, hearingId: h.id })))
   const overdueOrders = allOrders.filter(o => !o.done && o.deadline && new Date(o.deadline) < new Date())
@@ -110,6 +118,85 @@ export default function DashboardPage() {
       await hearingsApi.markOrderDone(selectedCaseId, hearingId, orderId)
       loadHearings()
     } catch { } finally { setMarkingId(null) }
+  }
+
+  // Turn the AI's "relative to hearing" hint into a real calendar date so every task
+  // has a sensible due date (the DB column is non-nullable — a missing date stores as
+  // year 0001, which is what "Due 1 Jan" bugs came from).
+  function resolveDueDate(rel: unknown): string {
+    const r = String(rel ?? '').toLowerCase()
+    const nh = caseData?.nextHearing ? new Date(caseData.nextHearing) : null
+    const shift = (base: Date, days: number) => {
+      const d = new Date(base); d.setDate(d.getDate() + days); return d.toISOString()
+    }
+    if (r.includes('immediat') || r.includes('asap') || r.includes('urgent') || r.includes('now')) return shift(new Date(), 2)
+    const m = r.match(/(\d+)\s*days?\s*before/)
+    if (m && nh) return shift(nh, -parseInt(m[1], 10))
+    if (nh && (r.includes('before') || r.includes('hearing'))) return shift(nh, -1)
+    if (nh) return shift(nh, -3)
+    return shift(new Date(), 7)
+  }
+
+  async function generateActionPlan() {
+    if (!selectedCaseId || genPlan) return
+    setGenPlan(true); setGenErr('')
+    try {
+      const res = await aiApi.getActionPlan(selectedCaseId)
+      const obj = parseAiJson<any>(res.actionPlan ?? res.result ?? '')
+      const items: any[] = Array.isArray(obj) ? obj : Array.isArray(obj?.tasks) ? obj.tasks : []
+      const cleaned = items
+        .filter(it => it && typeof it === 'object' && (it.task || it.title))
+        .map(it => ({
+          title:       String(it.task ?? it.title).trim(),
+          description: String(it.reason ?? it.description ?? '').trim(),
+          priority:    ['Critical', 'High', 'Medium', 'Low'].includes(it.priority) ? it.priority : 'Medium',
+          assignedTo:  ['Advocate', 'Client', 'Clerk', 'Lawyer'].includes(it.owner) ? it.owner : (it.assignedTo || 'Advocate'),
+          dueBy:       resolveDueDate(it.dueRelativeToHearing ?? it.dueBy),
+        }))
+      if (cleaned.length === 0) {
+        setGenErr('The AI could not build a plan from this case file. Please try again.')
+        return
+      }
+      // Don't re-add tasks already in the plan (prevents duplicates on repeat generate)
+      const existing = new Set(tasks.map(t => String(t.title ?? '').trim().toLowerCase()))
+      const toCreate = cleaned.filter(t => !existing.has(t.title.toLowerCase()))
+      if (toCreate.length === 0) {
+        setGenErr('Every AI action item is already in your plan.')
+        return
+      }
+      await Promise.all(toCreate.map(t => actionPlansApi.create(selectedCaseId, t)))
+      loadTasks()
+    } catch (e: any) {
+      setGenErr(e?.message || 'Failed to generate the action plan.')
+    } finally {
+      setGenPlan(false)
+    }
+  }
+
+  async function toggleTaskDone(task: any) {
+    if (!selectedCaseId || taskBusyId) return
+    setTaskBusyId(task.id)
+    try {
+      if (task.done) await actionPlansApi.markUndone(selectedCaseId, task.id)
+      else await actionPlansApi.markDone(selectedCaseId, task.id)
+      loadTasks()
+    } catch { } finally { setTaskBusyId(null) }
+  }
+
+  async function deleteTask(task: any) {
+    if (!selectedCaseId || taskBusyId) return
+    setTaskBusyId(task.id)
+    try {
+      await actionPlansApi.remove(selectedCaseId, task.id)
+      loadTasks()
+    } catch { } finally { setTaskBusyId(null) }
+  }
+
+  function fmtTaskDue(d: unknown): string | null {
+    if (!d) return null
+    const dt = new Date(String(d))
+    if (isNaN(+dt) || dt.getFullYear() < 2000) return null
+    return dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
   }
 
   return (
@@ -413,44 +500,84 @@ export default function DashboardPage() {
                     )}
                   </div>
 
-                  {/* Pending Tasks */}
+                  {/* Action Plan */}
                   <div style={{ background: '#fff', borderRadius: 12, padding: 20, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <i className="ti ti-checklist" style={{ fontSize: 16, color: '#f59e0b' }} />
                         <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Action Plan</span>
+                        {tasks.length > 0 && (
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 10, background: '#f1f5f9', color: '#475569' }}>
+                            {tasks.filter(t => t.done).length}/{tasks.length} done
+                          </span>
+                        )}
                       </div>
-                      <button onClick={() => router.push('/strategy')} style={{ fontSize: 11, color: '#3b82f6', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>
-                        Generate AI →
+                      <button
+                        onClick={generateActionPlan}
+                        disabled={genPlan || !selectedCaseId}
+                        style={{ fontSize: 11, color: genPlan ? '#94a3b8' : '#3b82f6', background: 'none', border: 'none', cursor: genPlan || !selectedCaseId ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <i className={`ti ${genPlan ? 'ti-loader animate-spin' : 'ti-sparkles'}`} style={{ fontSize: 13 }} />
+                        {genPlan ? 'Generating…' : (tasks.length > 0 ? 'Regenerate' : 'Generate with AI')}
                       </button>
                     </div>
 
-                    {pendingTasks.length === 0 ? (
+                    {genErr && (
+                      <div style={{ fontSize: 11, color: '#dc2626', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '7px 10px', marginBottom: 12 }}>
+                        {genErr}
+                      </div>
+                    )}
+
+                    {genPlan && pendingTasks.length === 0 && (
+                      <div style={{ textAlign: 'center', padding: '18px 0', color: '#7c3aed' }}>
+                        <i className="ti ti-loader animate-spin" style={{ fontSize: 24, display: 'block', marginBottom: 8 }} />
+                        <div style={{ fontSize: 12 }}>AI is reading the case file and building the plan…</div>
+                      </div>
+                    )}
+
+                    {!genPlan && pendingTasks.length === 0 && (
                       <div style={{ textAlign: 'center', padding: '20px 0', color: '#94a3b8' }}>
                         <i className="ti ti-sparkles" style={{ fontSize: 28, display: 'block', marginBottom: 8 }} />
-                        <div style={{ fontSize: 12 }}>No action items yet</div>
-                        <button onClick={() => router.push('/strategy')} style={{ marginTop: 8, fontSize: 11, padding: '4px 12px', background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>
-                          Generate Strategy
-                        </button>
+                        <div style={{ fontSize: 12 }}>{tasks.length > 0 ? 'All tasks completed 🎉' : 'No action items yet'}</div>
+                        {tasks.length === 0 && (
+                          <button onClick={generateActionPlan} disabled={!selectedCaseId} style={{ marginTop: 8, fontSize: 11, padding: '4px 12px', background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', borderRadius: 6, cursor: selectedCaseId ? 'pointer' : 'not-allowed', fontFamily: 'inherit', fontWeight: 600 }}>
+                            Generate Action Plan
+                          </button>
+                        )}
                       </div>
-                    ) : (
-                      pendingTasks.slice(0, 5).map((task, i) => {
-                        const pColor = task.priority === 'Critical' || task.priority === 'High' ? '#dc2626' : task.priority === 'Medium' ? '#d97706' : '#16a34a'
-                        return (
-                          <div key={task.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', borderBottom: i < Math.min(pendingTasks.length, 5) - 1 ? '1px solid #f1f5f9' : 'none' }}>
-                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: pColor, flexShrink: 0, marginTop: 5 }} />
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{task.title}</div>
-                              {task.dueBy && (
-                                <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
-                                  Due {new Date(task.dueBy).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {task.assignedTo}
-                                </div>
-                              )}
+                    )}
+
+                    {pendingTasks.slice(0, 6).map((task, i) => {
+                      const pColor = task.priority === 'Critical' || task.priority === 'High' ? '#dc2626' : task.priority === 'Medium' ? '#d97706' : '#16a34a'
+                      const due = fmtTaskDue(task.dueBy)
+                      const busy = taskBusyId === task.id
+                      return (
+                        <div key={task.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', borderBottom: i < Math.min(pendingTasks.length, 6) - 1 ? '1px solid #f1f5f9' : 'none', opacity: busy ? 0.5 : 1 }}>
+                          <input
+                            type="checkbox"
+                            checked={false}
+                            disabled={busy}
+                            onChange={() => toggleTaskDone(task)}
+                            title="Mark done"
+                            style={{ width: 15, height: 15, flexShrink: 0, marginTop: 2, cursor: busy ? 'wait' : 'pointer', accentColor: '#16a34a' }}
+                          />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{task.title}</div>
+                            <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                              {due ? `Due ${due}` : 'Before next hearing'}{task.assignedTo ? ` · ${task.assignedTo}` : ''}
                             </div>
-                            <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 10, background: `${pColor}15`, color: pColor, fontWeight: 700, flexShrink: 0 }}>{task.priority}</span>
                           </div>
-                        )
-                      })
+                          <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 10, background: `${pColor}15`, color: pColor, fontWeight: 700, flexShrink: 0 }}>{task.priority}</span>
+                          <button onClick={() => deleteTask(task)} disabled={busy} title="Remove" style={{ background: 'none', border: 'none', cursor: busy ? 'wait' : 'pointer', color: '#cbd5e1', flexShrink: 0, padding: 0, lineHeight: 1 }}>
+                            <i className="ti ti-x" style={{ fontSize: 13 }} />
+                          </button>
+                        </div>
+                      )
+                    })}
+
+                    {(pendingTasks.length > 6 || tasks.some(t => t.done)) && (
+                      <button onClick={() => router.push('/strategy')} style={{ marginTop: 10, fontSize: 11, color: '#3b82f6', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, padding: 0 }}>
+                        Open full Action Plan →
+                      </button>
                     )}
                   </div>
                 </div>
@@ -546,7 +673,6 @@ export default function DashboardPage() {
             {/* Other tabs */}
             {activeTab === 'Documents' && selectedCaseId && <DocumentsTab caseId={selectedCaseId} />}
             {activeTab === 'Hearings' && selectedCaseId && <HearingsTab caseId={selectedCaseId} />}
-            {activeTab === 'Notes' && selectedCaseId && <NotesTab caseId={selectedCaseId} />}
 
           </div>
         </div>

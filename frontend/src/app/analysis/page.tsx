@@ -212,11 +212,24 @@ export default function AnalysisPage() {
     if (!selectedCaseId) return true
     const chronRes = await aiApi.getChronology(selectedCaseId)
     const chronObj = parseAiJson<any>(chronRes.chronology ?? chronRes.result ?? '')
-    const events: any[] | null = Array.isArray(chronObj) ? chronObj : chronObj?.timeline ?? null
-    setChronologyParseFailed(!events)
-    if (!events || events.length === 0) return !!events
+    const rawEvents: any[] | null = Array.isArray(chronObj) ? chronObj : chronObj?.timeline ?? null
+    setChronologyParseFailed(!rawEvents)
+    if (!rawEvents || rawEvents.length === 0) {
+      if (rawEvents) await timelineApi.bulkReplace(selectedCaseId, [])
+      setTimeline([])
+      return !!rawEvents
+    }
 
-    await timelineApi.bulkCreate(selectedCaseId, events.map((e, i) => {
+    // Drop near-duplicate events the model sometimes emits (same date + same gist).
+    const seen = new Set<string>()
+    const events = rawEvents.filter(e => {
+      const key = `${(e.date ?? '').trim()}|${(e.event ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 80)}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+
+    await timelineApi.bulkReplace(selectedCaseId, events.map((e, i) => {
       // EventDate is a non-nullable DateTime column — normalise; when a document's
       // date format can't be parsed keep it visible via legalSignificance
       const parsed = new Date(e.date ?? '')

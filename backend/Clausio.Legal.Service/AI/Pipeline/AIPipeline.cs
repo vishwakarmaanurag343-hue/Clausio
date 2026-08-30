@@ -33,6 +33,7 @@ public class AIPipeline : IAIPipeline
     private readonly IPiiTokenService _piiTokenService;
     private readonly ILogger<AIPipeline> _logger;
     private readonly JudgmentSearchService _judgmentSearch;
+    private readonly IPromptReferenceContext _promptReference;
 
     public AIPipeline(
         IContextEngine contextEngine,
@@ -48,7 +49,8 @@ public class AIPipeline : IAIPipeline
         Clausio.MCP.Registry.AiCapabilityRegistry capabilityRegistry,
         IPiiTokenService piiTokenService,
         ILogger<AIPipeline> logger,
-        JudgmentSearchService judgmentSearch)
+        JudgmentSearchService judgmentSearch,
+        IPromptReferenceContext promptReference)
     {
         _contextEngine = contextEngine;
         _promptBuilder = promptBuilder;
@@ -64,6 +66,7 @@ public class AIPipeline : IAIPipeline
         _piiTokenService = piiTokenService;
         _logger = logger;
         _judgmentSearch = judgmentSearch;
+        _promptReference = promptReference;
     }
 
     public async Task<string> ExecuteAsync(Guid caseId, string userInput, string taskType, Dictionary<string, object>? parameters = null, CancellationToken cancellationToken = default)
@@ -99,6 +102,15 @@ public class AIPipeline : IAIPipeline
         var tokenizedUserInput = await _piiTokenService.TokenizeAsync(userInput, caseId, cancellationToken);
 
         // === STEP 2.8: RAG — Search 136K SC Judgments ===
+        // These tasks must be grounded ONLY in the uploaded case record — injecting
+        // outside SC judgments makes the model fold precedent facts (dates, parties,
+        // holdings) into a case timeline / brief / evidence review. No precedent RAG.
+        var ragDisabledTasks = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Chronology", "Timeline", "Summarization", "Evidence", "FinancialProfile", "Readiness"
+        };
+        var ragEnabled = !ragDisabledTasks.Contains(taskType);
+
         var ragTopK = taskType == "LegalResearch" ? 4 : 2; // Precedent work needs more corpus than chat/analysis
         string ragQuery;
         string? caseCategory = null;
@@ -122,13 +134,17 @@ public class AIPipeline : IAIPipeline
         {
             ragQuery = userInput;
         }
-        var judgmentChunks = await _judgmentSearch.SearchAsync(ragQuery, ragTopK, caseCategory, cancellationToken);
+        var judgmentChunks = ragEnabled
+            ? await _judgmentSearch.SearchAsync(ragQuery, ragTopK, caseCategory, cancellationToken)
+            : new List<string>();
+        if (!ragEnabled)
+            _logger.LogInformation("[Pipeline] RAG skipped for case-record-only task {Task}", taskType);
         var judgmentContext = "";
         if (judgmentChunks.Any())
         {
             // Precedent work needs the body of each judgment (holdings sit past the header
             // boilerplate); sized so system prompt stays under the LLM provider's TPM ceiling
-            var chunkWords = taskType == "LegalResearch" ? 350 : 300;
+            var chunkWords = taskType == "LegalResearch" ? 250 : 180;
             judgmentContext = "\n\n=== RELEVANT SUPREME COURT JUDGMENTS (Verified) ===\n" +
                 string.Join("\n---\n", judgmentChunks.Select(c => string.Join(" ", c.Split(" ").Take(chunkWords)))) +
                 "\n=== END OF JUDGMENTS ===";
@@ -147,6 +163,16 @@ public class AIPipeline : IAIPipeline
             ? tokenizedContextXml[..8000]
             : tokenizedContextXml;
         var enrichedContext = caseContext + judgmentContext;
+
+        // === STEP 2.9: Style reference (lawyer's own firm document) ===
+        context.ReferenceDocText = GetReferenceDocText(parameters);
+        if (!string.IsNullOrWhiteSpace(context.ReferenceDocText))
+        {
+            enrichedContext += BuildReferenceBlock(context.ReferenceDocText);
+            _logger.LogInformation("[Pipeline] Style reference injected ({Chars} chars used)",
+                Math.Min(3000, context.ReferenceDocText.Length));
+        }
+
         context.CaseMemoryXml = enrichedContext;
         _logger.LogInformation("[Pipeline] Context assembled and PII tokenized. Size={Chars} chars", context.CaseMemoryXml.Length);
 
@@ -168,14 +194,29 @@ public class AIPipeline : IAIPipeline
         else
         {
             context.ModelUsed = context.Complexity == "High" ? "DEEP" : "FAST";
-            response = await _router.CompleteAsync(context.SystemPrompt, context.FinalUserPrompt, taskType, cancellationToken);
+            // Reasoning models (gpt-oss-120b et al.) routinely need 30-60s for a full
+            // structured extraction (chronology, summary, evidence). 25s was cutting those
+            // off mid-generation and returning an unparseable error string to the UI.
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(90));
+            try {
+                response = await _router.CompleteAsync(context.SystemPrompt, context.FinalUserPrompt, taskType, timeoutCts.Token);
+            } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+                response = "The AI took too long to respond. Please try again with a shorter query.";
+            }
         }
 
         // === STEP 4.5: Strip model reasoning blocks (qwen emits <think>…</think>) ===
         response = StripReasoningBlocks(response);
 
         // === STEP 5: Citation Verification ===
-        response = await _citationVerifier.VerifyCitationsAsync(response, cancellationToken);
+        // Citation verification runs async — does not block the response
+        var responseForReturn = response;
+        _ = Task.Run(async () => {
+            try { 
+                await _citationVerifier.VerifyCitationsAsync(responseForReturn, cancellationToken);
+            } catch { }
+        });
 
         // === STEP 5.5: PII Detokenization (Restores real names for Lawyer) ===
         response = await _piiTokenService.DetokenizeAsync(response, caseId, cancellationToken);
@@ -247,6 +288,9 @@ public class AIPipeline : IAIPipeline
 
         // === STEP 2: Context Engine ===
         var contextXml = await BuildContextAsync(caseId, taskType, userInput, parameters, cancellationToken);
+        var streamRef = GetReferenceDocText(parameters);
+        if (!string.IsNullOrWhiteSpace(streamRef))
+            contextXml += BuildReferenceBlock(streamRef);
         _logger.LogInformation("[Pipeline:Stream] Context assembled. Size={Chars} chars", contextXml.Length);
 
         // === Progress: Phase 3 ===
@@ -353,6 +397,38 @@ public class AIPipeline : IAIPipeline
         return null;
     }
 
+    /// <summary>
+    /// The lawyer's style-reference text: explicit parameters["ReferenceDocText"] wins,
+    /// otherwise the request-scoped value the API filter resolved from "?referenceDocId=".
+    /// </summary>
+    private string? GetReferenceDocText(Dictionary<string, object>? parameters)
+    {
+        if (parameters != null && parameters.TryGetValue("ReferenceDocText", out var v) && v is string s && !string.IsNullOrWhiteSpace(s))
+            return s;
+        return _promptReference.Text;
+    }
+
+    /// <summary>
+    /// Instruction + the first 3000 chars of the lawyer's own firm document, appended to
+    /// the AI context so generated output copies their structure, prayer format and language.
+    /// </summary>
+    private static string BuildReferenceBlock(string referenceText)
+    {
+        var excerpt = referenceText.Length > 3000 ? referenceText[..3000] : referenceText;
+        return "\n\n=== STYLE REFERENCE DOCUMENT ===\n" +
+               "The lawyer has provided their own firm's document as a style reference. You MUST follow this " +
+               "exact style, structure, format, language, paragraph numbering and prayer format when generating output.\n\n" +
+               "ANALYSE this reference document carefully:\n" +
+               "→ How are paragraphs numbered?\n" +
+               "→ What language style is used?\n" +
+               "→ How is the prayer section written?\n" +
+               "→ What headings and sub-headings are used?\n" +
+               "→ What is the tone — formal, simple, detailed?\n\n" +
+               "REFERENCE DOCUMENT:\n" + excerpt +
+               "\n=== END OF REFERENCE DOCUMENT ===\n\n" +
+               "Now generate the output in EXACTLY the same style as the reference document above.";
+    }
+
     private async Task<string> BuildContextAsync(Guid caseId, string taskType, string userInput, Dictionary<string, object>? parameters, CancellationToken cancellationToken)
     {
         if (taskType == "LegalDraft")
@@ -360,7 +436,11 @@ public class AIPipeline : IAIPipeline
             var docType = parameters != null && parameters.ContainsKey("DocumentType") ? parameters["DocumentType"]?.ToString() : "Document";
             return await _contextEngine.BuildDraftingContextAsync(caseId, docType ?? "Document", userInput, cancellationToken);
         }
-        else if (taskType == "Analysis" || taskType == "Summarization" || taskType == "ActionPlan" || taskType == "RiskAssessment" || taskType == "Recommendation" || taskType == "LegalResearch" || taskType == "Contradiction")
+        else if (taskType == "FinancialProfile")
+        {
+            return await _contextEngine.BuildFinancialContextAsync(caseId, cancellationToken);
+        }
+        else if (taskType == "Analysis" || taskType == "Summarization" || taskType == "ActionPlan" || taskType == "RiskAssessment" || taskType == "Recommendation" || taskType == "LegalResearch" || taskType == "Contradiction" || taskType == "Chronology" || taskType == "Timeline" || taskType == "Evidence" || taskType == "Readiness" || taskType == "Emergency" || taskType == "SimilarCaseFinder" || taskType == "JudgmentComparison" || taskType == "JudgmentApplicability")
         {
             return await _contextEngine.BuildAnalysisContextAsync(caseId, taskType, cancellationToken);
         }
@@ -375,7 +455,7 @@ public class AIPipeline : IAIPipeline
         int score = 0;
         var lowerTask = taskType.ToLowerInvariant();
         if (lowerTask.Contains("draft") || lowerTask.Contains("research") || lowerTask.Contains("actionplan") || lowerTask.Contains("contradiction")) score += 50;
-        else if (lowerTask.Contains("analysis") || lowerTask.Contains("summarization") || lowerTask.Contains("hearingprep") || lowerTask.Contains("witnessprep") || lowerTask.Contains("riskassessment") || lowerTask.Contains("recommendation")) score += 30;
+        else if (lowerTask.Contains("analysis") || lowerTask.Contains("summarization") || lowerTask.Contains("hearingprep") || lowerTask.Contains("witnessprep") || lowerTask.Contains("riskassessment") || lowerTask.Contains("recommendation") || lowerTask.Contains("chronology") || lowerTask.Contains("evidence") || lowerTask.Contains("readiness") || lowerTask.Contains("emergency") || lowerTask.Contains("financialprofile")) score += 30;
 
         if (userInput.Length > 2500) score += 35;
         else if (userInput.Length > 800) score += 15;
@@ -399,18 +479,103 @@ public class AIPipeline : IAIPipeline
             var docType = parameters != null && parameters.ContainsKey("DocumentType") ? parameters["DocumentType"]?.ToString() : null;
             return docType switch
             {
-                "Legal Notice" => "Drafts/LegalNotice",
-                "Consumer Complaint" => "Drafts/ConsumerComplaint",
-                "Agreement" => "Drafts/Agreement",
-                "Employment Agreement" => "Drafts/EmploymentAgreement",
-                "Affidavit" => "Drafts/Affidavit",
+                "Bail Application (Sessions Court)"
+                    => "Drafts/criminal_bail_sessions",
+                "Bail Application (High Court)"
+                    => "Drafts/criminal_bail_highcourt",
+                "Anticipatory Bail"
+                    => "Drafts/anticipatory_bail",
+                "Bail (NDPS Act)"
+                    => "Drafts/bail_ndps",
+                "Criminal Appeal"
+                    => "Drafts/criminal_appeal",
+                "Quashing Petition"
+                    => "Drafts/quashing_petition",
+                "Discharge Application"
+                    => "Drafts/discharge_application",
+                "Criminal Revision"
+                    => "Drafts/criminal_revision",
+                "Divorce Petition (Section 13 HMA)"
+                    => "Drafts/family_divorce_petition",
+                "Mutual Consent Divorce (Section 13B)"
+                    => "Drafts/mutual_consent_divorce",
+                "Maintenance (Section 24 HMA)"
+                    => "Drafts/family_maintenance_s24",
+                "Child Custody Application"
+                    => "Drafts/child_custody",
+                "Domestic Violence Application (PWDVA)"
+                    => "Drafts/domestic_violence",
+                "Restitution of Conjugal Rights"
+                    => "Drafts/restitution_conjugal_rights",
+                "Permanent Alimony (Section 25 HMA)"
+                    => "Drafts/permanent_alimony",
+                "Civil Plaint / Suit"
+                    => "Drafts/civil_plaint",
+                "Written Statement"
+                    => "Drafts/written_statement",
+                "Interim Injunction Application"
+                    => "Drafts/interim_injunction",
+                "Stay Application"
+                    => "Drafts/stay_application",
+                "Civil Appeal"
+                    => "Drafts/civil_appeal",
+                "Execution Petition"
+                    => "Drafts/execution_petition",
+                "Contempt Petition"
+                    => "Drafts/contempt_petition",
+                "Specific Performance Suit"
+                    => "Drafts/specific_performance",
+                "Declaratory Suit"
+                    => "Drafts/declaratory_suit",
+                "Partition Suit"
+                    => "Drafts/partition_suit",
+                "Cheque Bounce Complaint (Section 138)"
+                    => "Drafts/ni_act_complaint",
+                "NI Act Legal Notice (15-day)"
+                    => "Drafts/ni_act_legal_notice",
+                "Consumer Complaint"
+                    => "Drafts/consumer_complaint",
+                "Consumer Complaint Reply"
+                    => "Drafts/consumer_reply",
+                "GST Appeal"
+                    => "Drafts/gst_appeal",
+                "GST Show Cause Notice Reply"
+                    => "Drafts/gst_scn_reply",
+                "GST Writ Petition (Article 226)"
+                    => "Drafts/gst_writ",
+                "Income Tax Appeal (CIT(A) / ITAT)"
+                    => "Drafts/income_tax_appeal",
+                "RERA Complaint"
+                    => "Drafts/rera_complaint",
+                "Eviction Suit"
+                    => "Drafts/eviction_suit",
+                "Arbitration Section 9 (Interim Relief)"
+                    => "Drafts/arbitration_s9",
+                "Arbitration Section 34 (Set Aside Award)"
+                    => "Drafts/arbitration_s34",
+                "NCLT Petition (IBC Section 9)"
+                    => "Drafts/nclt_petition_ibc",
+                "Succession Certificate"
+                    => "Drafts/succession_certificate",
+                "Writ Petition (Article 226)"
+                    => "Drafts/writ_petition",
+                "Legal Notice"
+                    => "Drafts/legal_notice",
+                "Affidavit"
+                    => "Drafts/affidavit",
+                "Agreement / Contract"
+                    => "Drafts/agreement",
+                "Legal Opinion"
+                    => "Drafts/legal_opinion",
+                "Notice / Show Cause Notice"
+                    => "Drafts/notice",
                 _ => "LegalDraft"
             };
         }
 
         if (taskType == "Chronology" || taskType == "Timeline")
         {
-            return "Analysis/Chronology";
+            return "Chronology"; // top-level Chronology_v1.json (there is no Analysis/ variant)
         }
 
         if (taskType == "Analysis")
@@ -438,6 +603,21 @@ public class AIPipeline : IAIPipeline
             return "ContradictionAnalysis"; // Dedicated Strategy-tab contradiction template (was Analysis/LegalReasoning)
         }
 
+        if (taskType == "SimilarCaseFinder")
+        {
+            return "SimilarCaseFinder"; // Judgment Analysis — Similar Case Finder enrichment
+        }
+
+        if (taskType == "JudgmentComparison")
+        {
+            return "JudgmentComparison"; // Judgment Analysis — side-by-side comparison
+        }
+
+        if (taskType == "JudgmentApplicability")
+        {
+            return "JudgmentApplicability"; // Judgment Analysis — applicability / how-to-use report
+        }
+
         if (taskType == "HearingPrep")
         {
             return "HearingPrep";
@@ -453,11 +633,32 @@ public class AIPipeline : IAIPipeline
             return "ActionPlan"; // Dedicated working-plan template (was Analysis/RiskAssessment)
         }
 
-        return taskType switch
+        if (taskType == "Summarization")
         {
-            "Summarization" => "Analysis",
-            _ => "GeneralChat"
-        };
+            return "Summary"; // Dedicated Analysis-page sectioned-brief template (was generic Analysis prose)
+        }
+
+        if (taskType == "Evidence")
+        {
+            return "EvidenceIntelligence"; // Dedicated Analysis-page evidence-review template (was per-document Analysis/LegalReasoning)
+        }
+
+        if (taskType == "Readiness")
+        {
+            return "ReadinessAssessment"; // Dedicated case-type-tailored readiness template (was Analysis/LegalReasoning generic prose)
+        }
+
+        if (taskType == "Emergency")
+        {
+            return "EmergencyTriage"; // Dedicated emergency-triage template (was generic ActionPlan)
+        }
+
+        if (taskType == "FinancialProfile")
+        {
+            return "FinancialProfile"; // Dedicated document-grounded financial-extraction template (was generic Analysis prose)
+        }
+
+        return "GeneralChat";
     }
 
     /// <summary>

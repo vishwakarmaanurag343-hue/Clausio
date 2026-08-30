@@ -7,8 +7,29 @@ public record AdminUserDto(
     string  Email,
     string? Role,
     string? Phone,
+    bool    IsActive,
     DateTime CreatedAt
 );
+
+public record UpdateUserDto(
+    string? FirstName,
+    string? LastName,
+    string? Email,
+    string? Phone,
+    string? Role,
+    bool?   IsActive
+);
+
+public record CreateUserDto(
+    string  FirstName,
+    string  LastName,
+    string  Email,
+    string? Phone,
+    string? Role,
+    string  TempPassword
+);
+
+public record UpdatePermissionsDto(List<string> PageKeys);
 
 public record AdminStatsDto(
     int TotalUsers,

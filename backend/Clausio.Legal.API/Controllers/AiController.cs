@@ -11,7 +11,7 @@ namespace Clausio.Legal.API.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/ai")]
-public class AiController(IAiService aiService) : ControllerBase
+public class AiController(IAiService aiService, IJudgmentAnalysisService judgmentAnalysis) : ControllerBase
 {
     // ✅ Returns { summary: "..." } — matches frontend aiApi.getSummary()
     [HttpPost("summary/{caseId:guid}")]
@@ -187,6 +187,31 @@ public class AiController(IAiService aiService) : ControllerBase
     {
         var result = await aiService.DraftDocumentAsync(caseId, request, cancellationToken);
         return Ok(new { draft = result });
+    }
+
+    // ✅ Returns { judgments: [{ caseName, citation, year, court, caseType, ratioDecidendi, howToUse, similarityLevel, chunkText, relevanceScore }] }
+    // Judgment Analysis — Similar Case Finder. Searches the verified JudgmentChunks corpus for the current case.
+    [HttpGet("judgment-analysis/{caseId:guid}")]
+    public async Task<IActionResult> GetSimilarJudgments(Guid caseId, [FromQuery] int topK = 5, CancellationToken ct = default)
+    {
+        var judgments = await judgmentAnalysis.FindSimilarJudgmentsAsync(caseId, topK, ct);
+        return Ok(new { judgments });
+    }
+
+    // ✅ Returns { comparison: "<AI markdown>" } — Judgment Analysis — side-by-side comparison of two judgments.
+    [HttpPost("judgment-compare/{caseId:guid}")]
+    public async Task<IActionResult> CompareJudgments(Guid caseId, [FromBody] CompareJudgmentsDto dto, CancellationToken ct = default)
+    {
+        var comparison = await judgmentAnalysis.CompareJudgmentsAsync(caseId, dto, ct);
+        return Ok(new { comparison });
+    }
+
+    // ✅ Returns { report: "<AI markdown>" } — Judgment Analysis — applicability / how-to-use report for one judgment.
+    [HttpPost("judgment-applicability/{caseId:guid}")]
+    public async Task<IActionResult> GetApplicabilityReport(Guid caseId, [FromBody] ApplicabilityDto dto, CancellationToken ct = default)
+    {
+        var report = await judgmentAnalysis.GetApplicabilityReportAsync(caseId, dto, ct);
+        return Ok(new { report });
     }
 
     [HttpPost("upload-context/{caseId:guid}")]

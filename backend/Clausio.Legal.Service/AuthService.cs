@@ -81,6 +81,9 @@ public class AuthService(ClausioDbContext db, IOptions<JwtSettings> jwtOptions) 
         var user = await db.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken)
             ?? throw new InvalidOperationException("Invalid email or password.");
 
+        if (!user.IsActive)
+            throw new InvalidOperationException("This account has been deactivated. Contact your administrator.");
+
         // ⏱️ Account Lockout Check (15 min lockout after 5 failed attempts)
         if (user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTime.UtcNow)
         {

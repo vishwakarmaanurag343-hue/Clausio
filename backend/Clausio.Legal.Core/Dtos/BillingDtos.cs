@@ -5,7 +5,7 @@ namespace Clausio.Legal.Core.Dtos;
 public class CreateInvoiceDto
 {
     public Guid     CaseId      { get; set; }
-    public Guid     ClientId    { get; set; }
+    public Guid?    ClientId    { get; set; }
     public string   ClientName  { get; set; } = string.Empty;
     public string   CaseName    { get; set; } = string.Empty;
     public string   Description { get; set; } = string.Empty;

@@ -74,24 +74,104 @@ public class DraftEngine : IDraftEngine
 
     private string GetTemplateForDocumentType(string documentType)
     {
-        var lower = documentType.ToLowerInvariant();
-        return lower switch
+        return documentType switch
         {
-            var t when t.Contains("notice") => "Drafts/Notice",
-            var t when t.Contains("consumer") => "Drafts/ConsumerComplaint",
-            var t when t.Contains("complaint") => "Drafts/ConsumerComplaint",
-            var t when t.Contains("agreement") => "Drafts/Agreement",
-            var t when t.Contains("affidavit") => "Drafts/Affidavit",
-            var t when t.Contains("petition") => "Drafts/Petition",
-            var t when t.Contains("nda") => "Drafts/Agreement",
-            var t when t.Contains("employment") => "Drafts/Agreement",
-            var t when t.Contains("lease") => "Drafts/Agreement",
-            var t when t.Contains("opinion") => "Drafts/LegalOpinion",
-            var t when t.Contains("written statement") => "Drafts/WrittenStatement",
-            var t when t.Contains("reply") => "Drafts/WrittenStatement",
-            var t when t.Contains("risk") => "Analysis/RiskAssessment",
-            var t when t.Contains("clause") => "Analysis/ClauseAnalysis",
-            var t when t.Contains("client update") => "ClientUpdate",
+            "Bail Application (Sessions Court)"
+                => "Drafts/criminal_bail_sessions",
+            "Bail Application (High Court)"
+                => "Drafts/criminal_bail_highcourt",
+            "Anticipatory Bail"
+                => "Drafts/anticipatory_bail",
+            "Bail (NDPS Act)"
+                => "Drafts/bail_ndps",
+            "Criminal Appeal"
+                => "Drafts/criminal_appeal",
+            "Quashing Petition"
+                => "Drafts/quashing_petition",
+            "Discharge Application"
+                => "Drafts/discharge_application",
+            "Criminal Revision"
+                => "Drafts/criminal_revision",
+            "Divorce Petition (Section 13 HMA)"
+                => "Drafts/family_divorce_petition",
+            "Mutual Consent Divorce (Section 13B)"
+                => "Drafts/mutual_consent_divorce",
+            "Maintenance (Section 24 HMA)"
+                => "Drafts/family_maintenance_s24",
+            "Child Custody Application"
+                => "Drafts/child_custody",
+            "Domestic Violence Application (PWDVA)"
+                => "Drafts/domestic_violence",
+            "Restitution of Conjugal Rights"
+                => "Drafts/restitution_conjugal_rights",
+            "Permanent Alimony (Section 25 HMA)"
+                => "Drafts/permanent_alimony",
+            "Civil Plaint / Suit"
+                => "Drafts/civil_plaint",
+            "Written Statement"
+                => "Drafts/written_statement",
+            "Interim Injunction Application"
+                => "Drafts/interim_injunction",
+            "Stay Application"
+                => "Drafts/stay_application",
+            "Civil Appeal"
+                => "Drafts/civil_appeal",
+            "Execution Petition"
+                => "Drafts/execution_petition",
+            "Contempt Petition"
+                => "Drafts/contempt_petition",
+            "Specific Performance Suit"
+                => "Drafts/specific_performance",
+            "Declaratory Suit"
+                => "Drafts/declaratory_suit",
+            "Partition Suit"
+                => "Drafts/partition_suit",
+            "Cheque Bounce Complaint (Section 138)"
+                => "Drafts/ni_act_complaint",
+            "NI Act Legal Notice (15-day)"
+                => "Drafts/ni_act_legal_notice",
+            "Consumer Complaint"
+                => "Drafts/consumer_complaint",
+            "Consumer Complaint Reply"
+                => "Drafts/consumer_reply",
+            "GST Appeal"
+                => "Drafts/gst_appeal",
+            "GST Show Cause Notice Reply"
+                => "Drafts/gst_scn_reply",
+            "GST Writ Petition (Article 226)"
+                => "Drafts/gst_writ",
+            "Income Tax Appeal (CIT(A) / ITAT)"
+                => "Drafts/income_tax_appeal",
+            "RERA Complaint"
+                => "Drafts/rera_complaint",
+            "Eviction Suit"
+                => "Drafts/eviction_suit",
+            "Arbitration Section 9 (Interim Relief)"
+                => "Drafts/arbitration_s9",
+            "Arbitration Section 34 (Set Aside Award)"
+                => "Drafts/arbitration_s34",
+            "NCLT Petition (IBC Section 9)"
+                => "Drafts/nclt_petition_ibc",
+            "Succession Certificate"
+                => "Drafts/succession_certificate",
+            "Writ Petition (Article 226)"
+                => "Drafts/writ_petition",
+            "Legal Notice"
+                => "Drafts/legal_notice",
+            "Affidavit"
+                => "Drafts/affidavit",
+            "Agreement / Contract"
+                => "Drafts/agreement",
+            "Legal Opinion"
+                => "Drafts/legal_opinion",
+            "Notice / Show Cause Notice"
+                => "Drafts/notice",
+            var t when t.Contains("risk")
+                => "Analysis/RiskAssessment",
+            var t when t.Contains("clause")
+                => "Analysis/ClauseAnalysis",
+            var t when t.Contains("client update")
+                => "ClientUpdate",
             _ => "LegalDraft"
         };
     }

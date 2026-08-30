@@ -53,6 +53,7 @@ export const config = {
     '/settings/:path*',
     '/drafting/:path*',
     '/console/:path*',
+    '/masters/:path*',
     '/auth/:path*',
     '/login',
   ]

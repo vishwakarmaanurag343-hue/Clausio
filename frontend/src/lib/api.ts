@@ -142,11 +142,12 @@ function get(path: string, fallbackMessage: string) {
   return fetch(`${BASE}${path}`, { headers: headers() }).then(res => handle(res, fallbackMessage))
 }
 
-function send(method: string, path: string, data: any, fallbackMessage: string) {
+function send(method: string, path: string, data: any, fallbackMessage: string, options?: RequestInit) {
   return fetch(`${BASE}${path}`, {
     method,
     headers: headers(),
     body: data !== undefined ? JSON.stringify(data) : undefined,
+    ...options,
   }).then(res => handle(res, fallbackMessage))
 }
 
@@ -161,6 +162,7 @@ export const authApi = {
     const data = await send('POST', '/auth/login', { email, password }, 'Invalid email or password')
     localStorage.setItem('clausio_token', data.token)
     localStorage.setItem('clausio_user', JSON.stringify(data))
+    localStorage.removeItem('clausio_page_permissions') // never carry a previous user's page access
     // ✅ NEW — save to cookie for Next.js middleware auth guard
     if (typeof window !== 'undefined') {
       document.cookie = `clausio_token=${data.token}; path=/; max-age=${604800}`
@@ -203,6 +205,9 @@ export const aiAnalyticsApi = {
   },
   getModels: async () => {
     return get('/ai-analytics/models', 'Failed to fetch model metrics')
+  },
+  getLogs: async (limit: number = 20) => {
+    return get(`/ai-analytics/logs?limit=${limit}`, 'Failed to fetch AI telemetry logs')
   }
 }
 export const clientsApi = {
@@ -233,6 +238,79 @@ export const notesApi = {
   create:      (caseId: string, data: any) => send('POST', `/cases/${caseId}/notes`, data, 'Failed to save note'),
   update:      (caseId: string, id: string, data: any) => send('PUT', `/cases/${caseId}/notes/${id}`, data, 'Failed to update note'),
   remove:      (caseId: string, id: string) => del(`/cases/${caseId}/notes/${id}`, 'Failed to delete note'),
+}
+
+// Prompt Library / Drafting — the lawyer's own firm documents kept as AI style references.
+export const promptReferenceApi = {
+  getAll: () => send('GET', '/prompt-references', undefined, 'Failed to load reference docs'),
+  getOne: (id: string) => send('GET', `/prompt-references/${id}`, undefined, 'Failed to load reference doc'),
+  upload: async (file: File, title: string, docType: string) => {
+    const token = (typeof window !== 'undefined' && localStorage.getItem('clausio_token')) || ''
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('title', title)
+    formData.append('docType', docType)
+    const res = await fetch(`${BASE}/prompt-references`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    })
+    if (!res.ok) {
+      let msg = 'Upload failed'
+      try { msg = (await res.json())?.error || msg } catch { /* non-JSON */ }
+      throw new Error(msg)
+    }
+    return res.json()
+  },
+  delete: (id: string) => send('DELETE', `/prompt-references/${id}`, undefined, 'Failed to delete'),
+}
+
+// "Add New Case" description input — extract text from an uploaded PDF / DOCX / TXT.
+export const extractTextApi = {
+  fromFile: async (file: File): Promise<{ text: string; fileName: string; wordCount: number }> => {
+    const token = (typeof window !== 'undefined' && localStorage.getItem('clausio_token')) || ''
+    const formData = new FormData()
+    formData.append('file', file)
+    const res = await fetch(`${BASE}/documents/extract-text`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    })
+    if (!res.ok) {
+      let msg = 'Failed to extract text'
+      try { msg = (await res.json())?.error || msg } catch { /* non-JSON body */ }
+      throw new Error(msg)
+    }
+    return res.json()
+  },
+}
+
+// Masters → User Master / Roles Master (SuperAdmin). Reuses the /api/admin/* controller.
+export const adminApi = {
+  getUsers:         () => send('GET', '/admin/users?pageSize=200', undefined, 'Failed to get users'),
+  getUser:          (id: string) => send('GET', `/admin/users/${id}`, undefined, 'Failed to get user'),
+  createUser:       (data: { firstName: string; lastName: string; email: string; phone?: string; role?: string; tempPassword: string }) =>
+                      send('POST', '/admin/users', data, 'Failed to create user'),
+  updateUser:       (id: string, data: any) => send('PUT', `/admin/users/${id}`, data, 'Failed to update user'),
+  updateUserRole:   (id: string, role: string) => send('PUT', `/admin/users/${id}/role`, { role }, 'Failed to update role'),
+  deleteUser:       (id: string) => send('DELETE', `/admin/users/${id}`, undefined, 'Failed to delete user'),
+  getPermissions:   (userId: string) => send('GET', `/admin/permissions/${userId}`, undefined, 'Failed to get permissions'),
+  savePermissions:  (userId: string, pageKeys: string[]) => send('PUT', `/admin/permissions/${userId}`, { pageKeys }, 'Failed to save permissions'),
+  getMyPermissions: () => send('GET', '/admin/my-permissions', undefined, 'Failed to load permissions'),
+}
+
+// Floating Notes panel — free-form notepad synced per user (api/notes → NotepadController)
+export const notepadApi = {
+  getForCase: (caseId: string) =>
+    send('GET', `/notes?caseId=${caseId}`, undefined, 'Failed to get notes'),
+  getGeneral: () =>
+    send('GET', '/notes/general', undefined, 'Failed to get notes'),
+  getAll: () =>
+    send('GET', '/notes/all', undefined, 'Failed to get notes'),
+  save: (data: { caseId?: string; category: string; content: string }) =>
+    send('POST', '/notes', data, 'Failed to save note'),
+  delete: (id: string) =>
+    send('DELETE', `/notes/${id}`, undefined, 'Failed to delete note'),
 }
 
 export const integrationsApi = {
@@ -294,6 +372,8 @@ export const timelineApi = {
   update: (caseId: string, id: string, data: any) => send('PUT', `/cases/${caseId}/timeline/${id}`, data, 'Failed to update timeline event'),
   remove: (caseId: string, id: string) => del(`/cases/${caseId}/timeline/${id}`, 'Failed to delete timeline event'),
   bulkCreate: (caseId: string, data: any) => send('POST', `/cases/${caseId}/timeline/bulk`, data, 'Failed to save timeline'),
+  // Replace the entire timeline for the case (drops existing events first).
+  bulkReplace: (caseId: string, data: any) => send('PUT', `/cases/${caseId}/timeline/bulk`, data, 'Failed to save timeline'),
 }
 
 export const contradictionsApi = {
@@ -353,26 +433,40 @@ export const draftsApi = {
     send('DELETE', `/drafts/${id}/versions/${versionNumber}`, undefined, 'Failed to delete version'),
 }
 
+// "?referenceDocId=" tells the backend to inject the lawyer's firm style-reference doc.
+const refQ = (refId?: string | null) => (refId ? `?referenceDocId=${encodeURIComponent(refId)}` : '')
+
 export const aiApi = {
-  getSummary: (caseId: string) => send('POST', `/ai/summary/${caseId}`, undefined, 'Failed to generate summary'),
+  getSummary: (caseId: string, options?: RequestInit, refId?: string) => send('POST', `/ai/summary/${caseId}${refQ(refId)}`, undefined, 'Failed to generate summary', options),
   getRisks: (caseId: string) => send('POST', `/ai/risks/${caseId}`, undefined, 'Failed to assess case risks'),
   getRecommendations: (caseId: string) => send('POST', `/ai/recommendations/${caseId}`, undefined, 'Failed to generate recommendations'),
-  getChronology: (caseId: string) => send('POST', `/ai/chronology/${caseId}`, undefined, 'Failed to generate chronology'),
-  getContradictions: (caseId: string) => send('POST', `/ai/contradictions/${caseId}`, undefined, 'Failed to find contradictions'),
+  getChronology: (caseId: string, refId?: string) => send('POST', `/ai/chronology/${caseId}${refQ(refId)}`, undefined, 'Failed to generate chronology'),
+  getContradictions: (caseId: string, refId?: string) => send('POST', `/ai/contradictions/${caseId}${refQ(refId)}`, undefined, 'Failed to find contradictions'),
   getEvidence: (documentId: string) => send('POST', `/ai/evidence/${documentId}`, undefined, 'Failed to analyse evidence'),
   getCaseEvidence: (caseId: string) => send('POST', `/ai/case-evidence/${caseId}`, undefined, 'Failed to analyse evidence'),
-  getLegalResearch: (caseId: string) => send('POST', `/ai/research/${caseId}`, undefined, 'Failed to fetch research'),
-  getActionPlan: (caseId: string) => send('POST', `/ai/actionplan/${caseId}`, undefined, 'Failed to generate action plan'),
+  getLegalResearch: (caseId: string, refId?: string) => send('POST', `/ai/research/${caseId}${refQ(refId)}`, undefined, 'Failed to fetch research'),
+  getActionPlan: (caseId: string, refId?: string) => send('POST', `/ai/actionplan/${caseId}${refQ(refId)}`, undefined, 'Failed to generate action plan'),
   getWhatsApp: (caseId: string, data: any) => send('POST', `/ai/whatsapp/${caseId}`, data, 'Failed to generate WhatsApp update'),
-  getFinancial: (caseId: string, data?: any) => send('POST', `/ai/financial/${caseId}`, data, 'Failed to analyse financials'),
-  getReadiness: (caseId: string) => send('POST', `/ai/readiness/${caseId}`, undefined, 'Failed to generate readiness report'),
+  getFinancial: (caseId: string, data?: any, refId?: string) => send('POST', `/ai/financial/${caseId}${refQ(refId)}`, data, 'Failed to analyse financials'),
+  getReadiness: (caseId: string, refId?: string) => send('POST', `/ai/readiness/${caseId}${refQ(refId)}`, undefined, 'Failed to generate readiness report'),
   getEmergency: (caseId: string, data: any) => send('POST', `/ai/emergency/${caseId}`, data, 'Failed to generate emergency response'),
-  getPrep: (caseId: string) => send('POST', `/ai/prep/${caseId}`, undefined, 'Failed to generate prep notes'),
-  getWitness: (caseId: string, data: any) => send('POST', `/ai/witness/${caseId}`, data, 'Failed to generate witness intelligence'),
+  getPrep: (caseId: string, refId?: string) => send('POST', `/ai/prep/${caseId}${refQ(refId)}`, undefined, 'Failed to generate prep notes'),
+  getWitness: (caseId: string, data: any, refId?: string) => send('POST', `/ai/witness/${caseId}${refQ(refId)}`, data, 'Failed to generate witness intelligence'),
   translate: (data: any) => send('POST', '/ai/translate', data, 'Failed to translate'),
-  getDraft: (caseId: string, data: any) => send('POST', `/ai/draft/${caseId}`, data, 'Failed to generate draft'),
+  getDraft: (caseId: string, data: any, refId?: string) => send('POST', `/ai/draft/${caseId}${refQ(refId)}`, data, 'Failed to generate draft'),
   getCaseType: (data: any) => send('POST', '/ai/casetype', data, 'Failed to detect case type'),
-  chat: (data: any) => send('POST', '/ai/chat', data, 'Failed to get AI response'),
+
+  // Judgment Analysis (Analytics → Judgment Analysis)
+  getSimilarJudgments: (caseId: string, topK = 5) =>
+    send('GET', `/ai/judgment-analysis/${caseId}?topK=${topK}`, undefined, 'Failed to get similar judgments'),
+  compareJudgments: (caseId: string, data: {
+    judgment1Text: string; judgment1Name: string;
+    judgment2Text: string; judgment2Name: string;
+  }) => send('POST', `/ai/judgment-compare/${caseId}`, data, 'Failed to compare judgments'),
+  getApplicabilityReport: (caseId: string, data: {
+    judgmentText: string; judgmentName: string; caseName: string;
+  }) => send('POST', `/ai/judgment-applicability/${caseId}`, data, 'Failed to get applicability report'),
+  chat: (data: any, refId?: string) => send('POST', `/ai/chat${refQ(refId)}`, data, 'Failed to get AI response'),
   
   // Streaming version of chat
   chatStream: async function* (data: any): AsyncGenerator<string, void, unknown> {
