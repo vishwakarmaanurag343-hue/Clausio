@@ -133,6 +133,140 @@ public class AIPipeline : IAIPipeline
         else
         {
             ragQuery = userInput;
+            if (taskType == "LegalDraft") ragTopK = 5;
+            if (taskType == "LegalDraft")
+            {
+                var draftDocType = parameters != null && parameters.ContainsKey("DocumentType")
+                    ? parameters["DocumentType"]?.ToString() ?? ""
+                    : "";
+
+                ragQuery = draftDocType switch
+                {
+                    "Bail Application (Sessions Court)"
+                        => "bail sessions court triple test flight risk tampering personal liberty Article 21",
+                    "Bail Application (High Court)"
+                        => "bail high court section 439 personal liberty prolonged custody Article 21",
+                    "Anticipatory Bail"
+                        => "anticipatory bail section 438 apprehension arrest Gurbaksh Singh Sibbia",
+                    "Bail (NDPS Act)"
+                        => "bail NDPS section 37 twin conditions commercial quantity narcotic drugs",
+                    "Criminal Appeal"
+                        => "criminal appeal conviction acquittal reappreciation evidence reasonable doubt",
+                    "Quashing Petition"
+                        => "quashing FIR article 226 section 482 abuse process Bhajan Lal categories",
+                    "Discharge Application"
+                        => "discharge framing charges prima facie case L Muniswamy sessions court",
+                    "Criminal Revision"
+                        => "criminal revision jurisdictional error interlocutory order section 397 401",
+                    "Divorce Petition (Section 13 HMA)"
+                        => "divorce cruelty section 13 HMA irretrievable breakdown mental cruelty Samar Ghosh",
+                    "Mutual Consent Divorce (Section 13B)"
+                        => "mutual consent divorce section 13B cooling period settlement terms",
+                    "Maintenance (Section 24 HMA)"
+                        => "maintenance section 24 HMA Rajnesh Neha interim maintenance pendente lite husband income",
+                    "Child Custody Application"
+                        => "child custody welfare paramount Nil Ratan Kundu minor guardianship",
+                    "Domestic Violence Application (PWDVA)"
+                        => "domestic violence PWDVA protection order residence order monetary relief section 18 19 20",
+                    "Restitution of Conjugal Rights"
+                        => "restitution conjugal rights section 9 HMA reasonable excuse withdrawal society",
+                    "Permanent Alimony (Section 25 HMA)"
+                        => "permanent alimony section 25 HMA gross sum monthly payment income assets",
+                    "Civil Plaint / Suit"
+                        => "civil suit plaint cause of action limitation jurisdiction CPC Order 7",
+                    "Written Statement"
+                        => "written statement preliminary objections denial Order VIII CPC para-wise reply",
+                    "Interim Injunction Application"
+                        => "injunction prima facie balance of convenience irreparable injury Dalpat Kumar",
+                    "Stay Application"
+                        => "stay decree Order 41 Rule 5 balance of convenience appeal pending",
+                    "Civil Appeal"
+                        => "civil appeal reappreciation evidence first appellate court decree Section 96 CPC",
+                    "Execution Petition"
+                        => "execution decree Order 21 CPC attachment judgment debtor property",
+                    "Contempt Petition"
+                        => "contempt court wilful disobedience order Punj Lloyd civil contempt",
+                    "Specific Performance Suit"
+                        => "specific performance agreement to sell readiness willingness 2018 amendment right",
+                    "Declaratory Suit"
+                        => "declaratory suit section 34 Specific Relief Act legal character title",
+                    "Partition Suit"
+                        => "partition suit Hindu Undivided Family coparcenary share property division",
+                    "Cheque Bounce Complaint (Section 138)"
+                        => "cheque bounce section 138 NI Act dishonour demand notice limitation 30 days",
+                    "NI Act Legal Notice (15-day)"
+                        => "cheque bounce notice 15 days section 138 proviso demand payment RPAD",
+                    "Consumer Complaint"
+                        => "consumer complaint deficiency service unfair trade practice compensation forum",
+                    "Consumer Complaint Reply"
+                        => "consumer complaint reply opposite party maintainability jurisdiction limitation",
+                    "GST Appeal"
+                        => "GST appeal appellate authority section 107 CGST pre-deposit demand order",
+                    "GST Show Cause Notice Reply"
+                        => "GST show cause notice section 73 74 CGST natural justice reply fraud suppression",
+                    "GST Writ Petition (Article 226)"
+                        => "GST writ petition Article 226 jurisdiction natural justice unreasonable demand",
+                    "Income Tax Appeal (CIT(A) / ITAT)"
+                        => "income tax appeal CIT ITAT section 246A 253 assessment addition penalty",
+                    "RERA Complaint"
+                        => "RERA complaint builder delay possession section 18 interest compensation defect",
+                    "Eviction Suit"
+                        => "eviction suit tenancy rent arrears Transfer of Property Act landlord tenant",
+                    "Arbitration Section 9 (Interim Relief)"
+                        => "arbitration section 9 interim relief injunction before award Arcel India",
+                    "Arbitration Section 34 (Set Aside Award)"
+                        => "arbitration section 34 set aside award patent illegality public policy Associated Builders",
+                    "NCLT Petition (IBC Section 9)"
+                        => "NCLT insolvency section 9 IBC operational creditor demand notice default CIRP",
+                    "Succession Certificate"
+                        => "succession certificate Indian Succession Act debts securities movable",
+                    "Writ Petition (Article 226)"
+                        => "writ petition Article 226 fundamental rights mandamus certiorari prohibition",
+                    "Legal Notice"
+                        => "legal notice demand payment breach contract pre-litigation",
+                    "Affidavit"
+                        => "affidavit sworn statement deponent verification court",
+                    "Agreement / Contract"
+                        => "agreement contract breach damages specific performance terms",
+                    "Legal Opinion"
+                        => "legal opinion advice statutory interpretation legal position",
+                    "Notice / Show Cause Notice"
+                        => "show cause notice natural justice opportunity heard reply",
+                    _ => string.IsNullOrEmpty(draftDocType)
+                        ? userInput
+                        : $"{draftDocType} judgment precedent Indian court"
+                };
+
+                caseCategory = draftDocType switch
+                {
+                    var d when d.Contains("Bail") || d.Contains("Criminal") ||
+                               d.Contains("Quashing") || d.Contains("Discharge") ||
+                               d.Contains("Anticipatory") || d.Contains("NDPS")
+                        => "Criminal",
+                    var d when d.Contains("Divorce") || d.Contains("Maintenance") ||
+                               d.Contains("Custody") || d.Contains("Domestic Violence") ||
+                               d.Contains("Conjugal") || d.Contains("Alimony") ||
+                               d.Contains("HMA") || d.Contains("PWDVA")
+                        => "Family",
+                    var d when d.Contains("GST") || d.Contains("Income Tax")
+                        => "Tax",
+                    var d when d.Contains("Consumer")
+                        => "Consumer",
+                    var d when d.Contains("NI Act") || d.Contains("Cheque")
+                        => "NI Act",
+                    var d when d.Contains("Writ") || d.Contains("Article 226") ||
+                               d.Contains("Constitutional")
+                        => "Constitutional",
+                    var d when d.Contains("RERA") || d.Contains("Eviction") ||
+                               d.Contains("Civil") || d.Contains("Injunction") ||
+                               d.Contains("Execution") || d.Contains("Contempt") ||
+                               d.Contains("Partition") || d.Contains("Declaratory") ||
+                               d.Contains("Specific Performance") || d.Contains("Stay") ||
+                               d.Contains("Written Statement")
+                        => "Property",
+                    _ => (string?)null
+                };
+            }
         }
         var judgmentChunks = ragEnabled
             ? await _judgmentSearch.SearchAsync(ragQuery, ragTopK, caseCategory, cancellationToken)
@@ -145,7 +279,10 @@ public class AIPipeline : IAIPipeline
             // Precedent work needs the body of each judgment (holdings sit past the header
             // boilerplate); sized so system prompt stays under the LLM provider's TPM ceiling
             var chunkWords = taskType == "LegalResearch" ? 250 : 180;
-            judgmentContext = "\n\n=== RELEVANT SUPREME COURT JUDGMENTS (Verified) ===\n" +
+            var judgmentHeader = taskType == "LegalDraft"
+                ? $"\n\n=== VERIFIED PRECEDENTS FROM eCOURTS DATABASE ===\nSource: eCourts, Government of India (ecourts.gov.in)\nDocument Type: {(parameters != null && parameters.ContainsKey("DocumentType") ? parameters["DocumentType"]?.ToString() : "Legal Draft")}\nUse ONLY these citations. Never invent any citation.\n"
+                : "\n\n=== RELEVANT SUPREME COURT JUDGMENTS (Verified) ===\n";
+            judgmentContext = judgmentHeader +
                 string.Join("\n---\n", judgmentChunks.Select(c => string.Join(" ", c.Split(" ").Take(chunkWords)))) +
                 "\n=== END OF JUDGMENTS ===";
             _logger.LogInformation("[Pipeline] RAG found {Count} judgment chunks", judgmentChunks.Count);
