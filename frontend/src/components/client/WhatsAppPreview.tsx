@@ -10,6 +10,10 @@ interface Props {
   generating: boolean
   onRegenerate: (tone: string, language: string) => void
   channel: UpdateChannel
+  clientName?: string
+  onSent?: (channel: 'whatsapp' | 'email', preview: string) => void
+  onSendEmail?: () => Promise<void>
+  sending?: boolean
 }
 
 type ParsedUpdate = { subject: string; body: string; actionRequired: string | null }
@@ -134,12 +138,15 @@ function GeneratingIndicator() {
   )
 }
 
-export default function WhatsAppPreview({ message, generating, onRegenerate, channel }: Props) {
+export default function WhatsAppPreview({ message, generating, onRegenerate, channel, clientName, onSent, onSendEmail, sending }: Props) {
   const [translating, setTranslating] = useState(false)
   const [copied,       setCopied]     = useState(false)
   const [translated,   setTranslated] = useState('')
   const [customText,   setCustomText] = useState<string | null>(null)
   const [isEditing,    setIsEditing]  = useState(false)
+
+  const clientDisplayName = clientName || 'Client'
+  const clientInitial = clientDisplayName.charAt(0).toUpperCase()
 
   useEffect(() => {
     setCustomText(null)
@@ -181,14 +188,21 @@ export default function WhatsAppPreview({ message, generating, onRegenerate, cha
     setTimeout(() => setCopied(false), 2000)
   }
 
-  function handleSend() {
+  async function handleSend() {
     if (!activeText.trim()) return
     if (isEmail) {
+      if (onSendEmail) {
+        // Real send via the backend (Resend). Parent adds to send history on success.
+        await onSendEmail()
+        return
+      }
       const url = `mailto:?subject=${encodeURIComponent(update.subject || 'Case Update')}&body=${encodeURIComponent(activeText.replace(/\*\*([^*]+)\*\*/g, '$1'))}`
       window.location.href = url
+      onSent?.('email', activeText)
     } else {
       const waText = activeText.replace(/\*\*([^*]+)\*\*/g, '*$1*')
       window.open(`https://wa.me/?text=${encodeURIComponent(waText)}`, '_blank')
+      onSent?.('whatsapp', activeText)
     }
   }
 
@@ -287,7 +301,7 @@ export default function WhatsAppPreview({ message, generating, onRegenerate, cha
         </div>
       </div>
 
-      {/* Canvas — chat bubble for WhatsApp, letter card for Email */}
+      {/* Canvas — WhatsApp phone mockup for WhatsApp, email compose frame for Email */}
 
       <div
         style={{
@@ -295,7 +309,7 @@ export default function WhatsAppPreview({ message, generating, onRegenerate, cha
           minHeight: 0,
           background: isEmail ? '#f8fafc' : '#ece5dd',
           borderRadius: 18,
-          padding: 20,
+          padding: isEmail ? 20 : 12,
           overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',
@@ -309,166 +323,101 @@ export default function WhatsAppPreview({ message, generating, onRegenerate, cha
             Configure the update on the left and click Generate for {isEmail ? 'Email' : 'WhatsApp'}.
           </div>
         )}
-        {!generating && activeText && (
-          isEmail ? (
-            <div
-              style={{
-                background: '#ffffff',
-                border: '1px solid rgba(0,0,0,0.08)',
-                borderRadius: 18,
-                width: '100%',
-                maxWidth: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                boxShadow: '0 12px 32px rgba(15,23,42,0.08)',
-                overflow: 'hidden',
-                margin: '0 auto',
-              }}
-            >
-              {/* macOS Mail Window Header */}
-              <div style={{
-                background: '#f1f5f9',
-                padding: '10px 16px',
-                borderBottom: '1px solid #e2e8f0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}>
-                {/* Traffic Light Dots */}
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#ff5f56', border: '1px solid #e0443e' }} />
-                  <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#ffbd2e', border: '1px solid #dea123' }} />
-                  <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#27c93f', border: '1px solid #1aab29' }} />
-                </div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <i className="ti ti-mail" /> Apple Mail Preview
-                </div>
-                <div style={{ display: 'flex', gap: 12, color: '#64748b', fontSize: 14 }}>
-                  <i className="ti ti-arrow-back-up" title="Reply" style={{ cursor: 'pointer' }} />
-                  <i className="ti ti-star" title="Star" style={{ cursor: 'pointer' }} />
-                  <i className="ti ti-trash" title="Delete" style={{ cursor: 'pointer' }} />
-                </div>
-              </div>
 
-              {/* Email Envelope Header */}
-              <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', background: '#fafafa' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 15, boxShadow: '0 2px 8px rgba(37,99,235,0.3)' }}>
-                      CL
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
-                        Clausio Legal Chamber <span style={{ fontSize: 12, fontWeight: 500, color: '#64748b' }}>&lt;updates@clausio.legal&gt;</span>
-                      </div>
-                      <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                        To: Client &lt;client@case.com&gt;
-                      </div>
-                    </div>
-                  </div>
-                  <span style={{ fontSize: 11.5, color: '#94a3b8', fontWeight: 500 }}>
-                    {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · Today
-                  </span>
-                </div>
-
-                {/* Subject */}
-                <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed #e2e8f0' }}>
-                  <span style={{ fontSize: 10, fontWeight: 800, color: '#2563eb', letterSpacing: 0.8, textTransform: 'uppercase' }}>Subject</span>
-                  <h3 style={{ margin: '2px 0 0', fontSize: 16, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.01em' }}>
-                    {update.subject || 'Case Update Notification'}
-                  </h3>
-                </div>
-              </div>
-
-              {/* Email Content Body */}
-              <div style={{ padding: 20, minHeight: 180, lineHeight: 1.7, color: '#1e293b' }}>
-                {isEditing ? (
-                  <textarea
-                    value={activeText}
-                    onChange={(e) => setCustomText(e.target.value)}
-                    placeholder="Edit email message body..."
-                    style={{
-                      width: '100%', height: '100%', minHeight: 200,
-                      border: '1px solid #cbd5e1', borderRadius: 10, padding: 12,
-                      fontFamily: 'inherit', fontSize: 14, lineHeight: 1.65, color: '#0f172a',
-                      outline: 'none', background: '#ffffff', resize: 'vertical',
-                    }}
-                  />
-                ) : (
-                  <div onClick={() => setIsEditing(true)} title="Click to edit text directly" style={{ cursor: 'text' }}>
-                    <FormattedMarkdown content={activeText} />
-                  </div>
-                )}
-              </div>
-
-              {/* Action Required Banner if present */}
-              {update.actionRequired && !isEditing && (
-                <div style={{ margin: '0 20px 20px', padding: '12px 16px', borderRadius: 12, background: '#fffbeb', border: '1px solid #fde68a', fontSize: 13, color: '#b45309', display: 'flex', gap: 10, alignItems: 'center' }}>
-                  <i className="ti ti-alert-triangle" style={{ fontSize: 18, color: '#d97706' }} />
-                  <div>
-                    <strong>Action Required:</strong> {update.actionRequired}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div
-              style={{
-                background: '#dcf8c6',
-                padding: 18,
-                borderRadius: 14,
-                width: isEditing ? '100%' : 'auto',
-                maxWidth: isEditing ? '100%' : '92%',
-                marginLeft: isEditing ? '0' : 'auto',
-                flex: isEditing ? 1 : 'initial',
-                display: 'flex',
-                flexDirection: 'column',
-                minHeight: isEditing ? 0 : 'initial',
-                lineHeight: 1.6,
-                fontSize: 14,
-                color: '#111827',
-                boxShadow: '0 2px 6px rgba(0,0,0,.08)',
-                position: 'relative',
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-              }}
-            >
-              {isEditing ? (
-                <textarea
-                  value={activeText}
-                  onChange={(e) => setCustomText(e.target.value)}
-                  placeholder="Edit message here..."
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    flex: 1,
-                    minHeight: 0,
-                    border: 'none',
-                    outline: 'none',
-                    background: 'transparent',
-                    fontFamily: 'inherit',
-                    fontSize: 14,
-                    lineHeight: 1.6,
-                    color: '#111827',
-                    resize: 'none',
-                  }}
-                />
-              ) : (
-                <div
-                  onClick={() => setIsEditing(true)}
-                  title="Click to edit text directly"
-                  style={{ cursor: 'text' }}
-                >
-                  <FormattedMarkdown content={activeText} />
-                </div>
-              )}
-              {update.actionRequired && !isEditing && (
-                <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px dashed #bcd9a5', fontSize: 12.5, color: '#3f6212' }}>
-                  ⚠ <strong>Action required:</strong> {update.actionRequired}
-                </div>
-              )}
-            </div>
-          )
+        {/* Edit mode — plain textarea for either channel */}
+        {!generating && activeText && isEditing && (
+          <textarea
+            value={activeText}
+            onChange={(e) => setCustomText(e.target.value)}
+            placeholder="Edit message here..."
+            style={{
+              width: '100%', flex: 1, minHeight: 240,
+              border: '1px solid #cbd5e1', borderRadius: 12, padding: 14,
+              fontFamily: 'inherit', fontSize: 14, lineHeight: 1.6, color: '#0f172a',
+              outline: 'none', background: '#fff', resize: 'none',
+            }}
+          />
         )}
+
+        {/* WhatsApp phone mockup */}
+        {!generating && activeText && !isEditing && channel === 'whatsapp' && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, overflowY: 'auto', padding: '12px 0' }}>
+            <div style={{ width: 280, background: '#1a1a1a', borderRadius: 36, padding: 8, boxShadow: '0 24px 60px rgba(0,0,0,0.25), inset 0 0 0 2px #333' }}>
+              <div style={{ background: '#ECE5DD', borderRadius: 30, overflow: 'hidden', minHeight: 400, display: 'flex', flexDirection: 'column' }}>
+                {/* WA Header */}
+                <div style={{ background: '#075E54', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#25D366', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+                    {clientInitial}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>{clientDisplayName}</div>
+                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>online</div>
+                  </div>
+                </div>
+
+                {/* Chat body */}
+                <div style={{ flex: 1, padding: '14px 10px', background: '#ECE5DD', minHeight: 280, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: 8 }}>
+                  <div
+                    onClick={() => setIsEditing(true)}
+                    title="Click to edit text directly"
+                    style={{ background: '#DCF8C6', borderRadius: '12px 12px 2px 12px', padding: '8px 10px', maxWidth: '88%', alignSelf: 'flex-end', boxShadow: '0 1px 2px rgba(0,0,0,0.13)', cursor: 'text' }}
+                  >
+                    <div style={{ fontSize: 12, color: '#111', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                      {activeText.replace(/\*\*([^*]+)\*\*/g, '$1').length > 300
+                        ? activeText.replace(/\*\*([^*]+)\*\*/g, '$1').slice(0, 300) + '...'
+                        : activeText.replace(/\*\*([^*]+)\*\*/g, '$1')}
+                    </div>
+                    <div style={{ fontSize: 10, color: '#8696a0', textAlign: 'right', marginTop: 4 }}>
+                      {new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                      {' ✓✓'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* WA input bar */}
+                <div style={{ background: '#F0F0F0', padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ flex: 1, background: '#fff', borderRadius: 20, padding: '8px 14px', fontSize: 12, color: '#aaa' }}>Type a message</div>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#25D366', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 10, textAlign: 'center' }}>Preview only — click Send to open WhatsApp</p>
+          </div>
+        )}
+
+        {/* Email compose frame */}
+        {!generating && activeText && !isEditing && channel === 'email' && (
+          <div style={{ flex: 1, border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+            <div style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>New Message</span>
+            </div>
+            <div style={{ padding: '8px 16px', borderBottom: '1px solid #f1f5f9', fontSize: 13, color: '#64748b', flexShrink: 0 }}>
+              <strong>To: </strong>{clientDisplayName}
+            </div>
+            <div style={{ padding: '8px 16px', borderBottom: '1px solid #f1f5f9', fontSize: 13, color: '#0f172a', flexShrink: 0 }}>
+              <strong style={{ color: '#64748b' }}>Subject: </strong>{update.subject || 'Case Update'}
+            </div>
+            <div
+              onClick={() => setIsEditing(true)}
+              title="Click to edit text directly"
+              style={{ flex: 1, padding: 16, fontSize: 13, color: '#374151', lineHeight: 1.7, overflowY: 'auto', cursor: 'text' }}
+            >
+              {activeText
+                ? <FormattedMarkdown content={activeText} />
+                : <span style={{ color: '#94a3b8' }}>Generated email will appear here...</span>}
+            </div>
+            {update.actionRequired && (
+              <div style={{ margin: 16, marginTop: 0, padding: '12px 16px', borderRadius: 12, background: '#fffbeb', border: '1px solid #fde68a', fontSize: 13, color: '#b45309', display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
+                <i className="ti ti-alert-triangle" style={{ fontSize: 18, color: '#d97706' }} />
+                <div><strong>Action Required:</strong> {update.actionRequired}</div>
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
 
       {/* Footer */}
@@ -510,17 +459,17 @@ export default function WhatsAppPreview({ message, generating, onRegenerate, cha
 
         <button
           onClick={handleSend}
-          disabled={!activeText}
+          disabled={!activeText || (isEmail && !!sending)}
           style={{
             ...primaryButton,
             background: isEmail ? '#2563eb' : '#16a34a',
             boxShadow: isEmail ? '0 10px 25px rgba(37,99,235,.25)' : '0 10px 25px rgba(22,163,74,.25)',
-            opacity: activeText ? 1 : 0.6,
-            cursor: activeText ? 'pointer' : 'not-allowed',
+            opacity: (!activeText || (isEmail && sending)) ? 0.6 : 1,
+            cursor: (!activeText || (isEmail && sending)) ? 'not-allowed' : 'pointer',
           }}
         >
           <i className={isEmail ? 'ti ti-mail-forward' : 'ti ti-send'} />
-          Send via {isEmail ? 'Email' : 'WhatsApp'}
+          {isEmail ? (sending ? 'Sending...' : 'Send Email') : 'Send via WhatsApp'}
         </button>
       </div>
     </div>

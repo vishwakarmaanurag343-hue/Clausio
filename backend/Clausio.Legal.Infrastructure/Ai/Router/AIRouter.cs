@@ -235,7 +235,12 @@ public class AIRouter : IAIRouter
             "analysis" => 40,
             "contradiction" => 45,
             "actionplan" => 35,
-            "summarization" => 30,
+            // Analysis-page whole-record tasks — a full case brief / chronology / evidence
+            // review over a long file needs the DEEP model's reasoning and output budget.
+            "summarization" => 45,
+            "chronology" => 45,
+            "timeline" => 45,
+            "evidence" => 45,
             "hearingprep" => 40,
             "witnessprep" => 35,
             "prep" => 25,

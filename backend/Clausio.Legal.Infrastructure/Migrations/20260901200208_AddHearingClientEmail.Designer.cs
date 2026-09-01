@@ -3,6 +3,7 @@ using System;
 using Clausio.Legal.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -12,9 +13,11 @@ using Pgvector;
 namespace Clausio.Legal.Infrastructure.Migrations
 {
     [DbContext(typeof(ClausioDbContext))]
-    partial class ClausioDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260901200208_AddHearingClientEmail")]
+    partial class AddHearingClientEmail
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

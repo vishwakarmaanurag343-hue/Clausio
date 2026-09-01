@@ -11,6 +11,9 @@ public class Hearing : BaseEntity
     public string? OpposingAdmission { get; set; }
     public string? NextObjective { get; set; }
 
+    /// <summary>Optional per-hearing recipient for automated + manual reminder emails. Overrides the case client's email when set.</summary>
+    public string? ClientReminderEmail { get; set; }
+
     public Guid CaseId { get; set; }
     public Case? Case { get; set; }
 

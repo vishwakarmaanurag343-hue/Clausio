@@ -3,6 +3,7 @@ using System;
 using Clausio.Legal.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -12,9 +13,11 @@ using Pgvector;
 namespace Clausio.Legal.Infrastructure.Migrations
 {
     [DbContext(typeof(ClausioDbContext))]
-    partial class ClausioDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260831074615_AddSubscriptionTables")]
+    partial class AddSubscriptionTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -747,9 +750,6 @@ namespace Clausio.Legal.Infrastructure.Migrations
 
                     b.Property<Guid>("CaseId")
                         .HasColumnType("uuid");
-
-                    b.Property<string>("ClientReminderEmail")
-                        .HasColumnType("text");
 
                     b.Property<string>("CourtHall")
                         .HasColumnType("text");
@@ -1582,94 +1582,6 @@ namespace Clausio.Legal.Infrastructure.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("Clausio.Legal.Core.Entities.UserNotificationSettings", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("ClientMessage")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("ClientPortal")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("DeadlineReminders")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("DesktopNotif")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("DigestFrequency")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("DocumentUpload")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("DraftCompleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("EmailNotif")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("FinancialAnalysis")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("HearingReminderHours")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("InvoiceGenerated")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("NewCaseAssignment")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("PaymentReceived")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("ReadinessReport")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("ReminderTime")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("SmsNotif")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("StrategyGenerated")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("SubscriptionRenew")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("UpcomingHearings")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("WhatsappDelivery")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("WhatsappNotif")
-                        .HasColumnType("boolean");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId")
-                        .IsUnique();
-
-                    b.ToTable("UserNotificationSettings");
-                });
-
             modelBuilder.Entity("Clausio.Legal.Core.Entities.UserPagePermission", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1761,8 +1673,7 @@ namespace Clausio.Legal.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId")
-                        .IsUnique();
+                    b.HasIndex("UserId");
 
                     b.ToTable("UserSubscriptions");
                 });
@@ -2040,17 +1951,6 @@ namespace Clausio.Legal.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Case");
-                });
-
-            modelBuilder.Entity("Clausio.Legal.Core.Entities.UserNotificationSettings", b =>
-                {
-                    b.HasOne("Clausio.Legal.Core.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Clausio.Legal.Core.Entities.UserSubscription", b =>

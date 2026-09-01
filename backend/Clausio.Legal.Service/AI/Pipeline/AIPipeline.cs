@@ -591,8 +591,10 @@ public class AIPipeline : IAIPipeline
     {
         int score = 0;
         var lowerTask = taskType.ToLowerInvariant();
-        if (lowerTask.Contains("draft") || lowerTask.Contains("research") || lowerTask.Contains("actionplan") || lowerTask.Contains("contradiction")) score += 50;
-        else if (lowerTask.Contains("analysis") || lowerTask.Contains("summarization") || lowerTask.Contains("hearingprep") || lowerTask.Contains("witnessprep") || lowerTask.Contains("riskassessment") || lowerTask.Contains("recommendation") || lowerTask.Contains("chronology") || lowerTask.Contains("evidence") || lowerTask.Contains("readiness") || lowerTask.Contains("emergency") || lowerTask.Contains("financialprofile")) score += 30;
+        // Whole-record Analysis-page tasks reason over the entire case file — always DEEP.
+        if (lowerTask.Contains("summarization") || lowerTask.Contains("chronology") || lowerTask.Contains("timeline") || lowerTask.Contains("evidence")) score += 60;
+        else if (lowerTask.Contains("draft") || lowerTask.Contains("research") || lowerTask.Contains("actionplan") || lowerTask.Contains("contradiction")) score += 50;
+        else if (lowerTask.Contains("analysis") || lowerTask.Contains("hearingprep") || lowerTask.Contains("witnessprep") || lowerTask.Contains("riskassessment") || lowerTask.Contains("recommendation") || lowerTask.Contains("readiness") || lowerTask.Contains("emergency") || lowerTask.Contains("financialprofile")) score += 30;
 
         if (userInput.Length > 2500) score += 35;
         else if (userInput.Length > 800) score += 15;

@@ -11,7 +11,7 @@ namespace Clausio.Legal.API.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/ai")]
-public class AiController(IAiService aiService, IJudgmentAnalysisService judgmentAnalysis) : ControllerBase
+public class AiController(IAiService aiService, IJudgmentAnalysisService judgmentAnalysis, IEmailService emailService) : ControllerBase
 {
     // ✅ Returns { summary: "..." } — matches frontend aiApi.getSummary()
     [HttpPost("summary/{caseId:guid}")]
@@ -115,6 +115,48 @@ public class AiController(IAiService aiService, IJudgmentAnalysisService judgmen
     {
         var result = await aiService.DraftClientUpdateAsync(caseId, request, cancellationToken);
         return Ok(new { message = result });
+    }
+
+    // ✅ Sends a client update straight to the client's inbox via Resend. Returns { success, message } or 400/500.
+    [HttpPost("send-email/{caseId:guid}")]
+    public async Task<IActionResult> SendEmail(Guid caseId, [FromBody] SendEmailRequestDto dto, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(dto.ToEmail))
+            return BadRequest(new { error = "Email is required." });
+        if (string.IsNullOrWhiteSpace(dto.Body))
+            return BadRequest(new { error = "Body is required." });
+
+        var subject = string.IsNullOrWhiteSpace(dto.Subject)
+            ? "Case Update from Your Advocate"
+            : dto.Subject;
+
+        var bodyHtml = dto.Body
+            .Replace("\n", "<br/>")
+            .Replace("  ", "&nbsp;&nbsp;");
+
+        var html = $"""
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family:Arial,sans-serif;color:#0f172a;max-width:600px;margin:0 auto;padding:20px;">
+          <div style="background:#2563eb;padding:20px;border-radius:8px 8px 0 0;">
+            <h2 style="color:#fff;margin:0;font-size:18px;">⚖️ {subject}</h2>
+          </div>
+          <div style="background:#fff;padding:24px;border:1px solid #e2e8f0;border-radius:0 0 8px 8px;font-size:15px;line-height:1.7;">
+            {bodyHtml}
+          </div>
+          <p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:16px;">
+            Sent via Clausio Legal Platform
+          </p>
+        </body>
+        </html>
+        """;
+
+        var success = await emailService.SendEmailAsync(
+            dto.ToEmail, dto.ToName ?? "", subject, html, ct);
+
+        return success
+            ? Ok(new { success = true, message = "Email sent successfully." })
+            : StatusCode(500, new { error = "Failed to send email." });
     }
 
     // ✅ Returns { analysis: "<JSON: { financialProfile, flaggedDiscrepancies[], summary }>" } — matches frontend aiApi.getFinancial()

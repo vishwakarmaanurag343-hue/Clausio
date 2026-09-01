@@ -35,6 +35,13 @@ public class ClientUpdateRequestDto
     public string? Channel { get; set; } = "whatsapp";
     public string? Tone { get; set; }
     public string? Language { get; set; }
+
+    // Advocate-selected content toggles for the client update.
+    public bool IncludeHearing { get; set; } = true;
+    public bool IncludeNextDate { get; set; } = true;
+    public bool IncludeActionItem { get; set; } = false;
+    public bool IncludeFeeReminder { get; set; } = false;
+    public string? AdditionalInstructions { get; set; }
 }
 
 // ✅ Updated — each AI feature returns correct field name

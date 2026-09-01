@@ -299,6 +299,28 @@ export const adminApi = {
   getMyPermissions: () => send('GET', '/admin/my-permissions', undefined, 'Failed to load permissions'),
 }
 
+// Settings → Notifications tab (api/notification-settings → NotificationSettingsController)
+export const notificationApi = {
+  get:    () => send('GET', '/notification-settings', undefined, 'Failed to load notification settings'),
+  update: (data: any) => send('PUT', '/notification-settings', data, 'Failed to save notification settings'),
+}
+
+// Settings → Team tab (api/team → TeamController)
+export const teamApi = {
+  getMembers: () => send('GET', '/team/members', undefined, 'Failed to load team'),
+  invite: (data: { email: string; firstName?: string; lastName?: string; phone?: string; role?: string }) =>
+    send('POST', '/team/invite', data, 'Failed to send invitation'),
+  updateRole: (id: string, role: string) =>
+    send('PUT', `/team/members/${id}/role`, { role }, 'Failed to update role'),
+  removeMember: (id: string) =>
+    send('DELETE', `/team/members/${id}`, undefined, 'Failed to remove member'),
+}
+
+// Settings → Billing tab (api/settings/billing → SettingsBillingController)
+export const settingsBillingApi = {
+  getSummary: () => send('GET', '/settings/billing/summary', undefined, 'Failed to load billing summary'),
+}
+
 // Floating Notes panel — free-form notepad synced per user (api/notes → NotepadController)
 export const notepadApi = {
   getForCase: (caseId: string) =>
@@ -435,6 +457,20 @@ export const draftsApi = {
 
 // "?referenceDocId=" tells the backend to inject the lawyer's firm style-reference doc.
 const refQ = (refId?: string | null) => (refId ? `?referenceDocId=${encodeURIComponent(refId)}` : '')
+
+// Client page — send a generated update straight to the client's inbox (api/ai/send-email/:caseId → AiController).
+export const emailApi = {
+  sendClientEmail: (
+    caseId: string,
+    data: { toEmail: string; toName?: string; subject: string; body: string },
+  ) => send('POST', `/ai/send-email/${caseId}`, data, 'Failed to send email'),
+}
+
+// Manual "send hearing reminder now" (api/hearings/:id/send-reminder → HearingRemindersController).
+export const hearingRemindersApi = {
+  sendManual: (hearingId: string) =>
+    send('POST', `/hearings/${hearingId}/send-reminder`, undefined, 'Failed to send reminder'),
+}
 
 export const aiApi = {
   getSummary: (caseId: string, options?: RequestInit, refId?: string) => send('POST', `/ai/summary/${caseId}${refQ(refId)}`, undefined, 'Failed to generate summary', options),

@@ -20,18 +20,24 @@ public class OpenRouterProvider : ILLMProvider
     private readonly ILogger<OpenRouterProvider> _logger;
     private readonly string _baseUrl;
     private readonly string _apiKey;
+    private readonly int _completionMaxTokens;
 
     public OpenRouterProvider(IConfiguration config, ILogger<OpenRouterProvider> logger, HttpClient httpClient)
     {
         _logger = logger;
         _http = httpClient;
-        _apiKey = config["AI:Groq:ApiKey"] 
-               ?? config["AI:FastProvider:ApiKey"] 
+        _apiKey = config["AI:Groq:ApiKey"]
+               ?? config["AI:FastProvider:ApiKey"]
                ?? throw new InvalidOperationException("AI:Groq:ApiKey missing");
-        
-        _baseUrl = config["AI:Groq:BaseUrl"] 
-                ?? config["AI:FastProvider:BaseUrl"] 
+
+        _baseUrl = config["AI:Groq:BaseUrl"]
+                ?? config["AI:FastProvider:BaseUrl"]
                 ?? "https://api.groq.com/openai/v1";
+
+        // Non-streaming completions (the Analysis-page briefs, chronology, evidence review,
+        // non-stream chat) need room for a multi-page structured answer — a 4096 cap was
+        // truncating case summaries to a single page.
+        _completionMaxTokens = int.TryParse(config["AI:AnalysisMaxTokens"], out var mt) && mt > 0 ? mt : 8192;
         
         _http.DefaultRequestHeaders.Add("User-Agent", "ClausioLegalAI/1.0");
         _http.Timeout = TimeSpan.FromSeconds(60);
@@ -109,7 +115,7 @@ public class OpenRouterProvider : ILLMProvider
         var requestBody = new Dictionary<string, object>
         {
             ["model"] = model,
-            ["max_tokens"] = 4096,
+            ["max_tokens"] = _completionMaxTokens,
             ["temperature"] = 0.1,
             ["stream"] = stream,
             ["messages"] = new[]

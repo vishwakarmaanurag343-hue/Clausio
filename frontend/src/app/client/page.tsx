@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useCaseStore } from '@/lib/store'
-import { casesApi, aiApi } from '@/lib/api'
+import { casesApi, aiApi, emailApi, parseAiJson } from '@/lib/api'
 
-import WhatsAppUpdate, { type UpdateChannel } from '@/components/client/WhatsAppUpdate'
+import WhatsAppUpdate, { type UpdateChannel, type UpdateOptions } from '@/components/client/WhatsAppUpdate'
 import WhatsAppPreview from '@/components/client/WhatsAppPreview'
 import GenerateUpdateModal from '@/components/client/GenerateUpdateModal'
 
@@ -17,23 +17,47 @@ export default function ClientPage() {
   const [caseData,  setCaseData]  = useState<any>(null)
   const [message,   setMessage]   = useState('')
   const [generating, setGenerating] = useState(false)
+  const [sending,    setSending]    = useState(false)
+  const [clientEmail, setClientEmail] = useState('')
+  const [manualEmail, setManualEmail] = useState('')
   const [error,      setError]      = useState('')
+
+  const [sendHistory, setSendHistory] = useState<Array<{
+    id: string
+    channel: 'whatsapp' | 'email'
+    preview: string
+    sentAt: Date
+  }>>([])
 
   useEffect(() => {
     if (!selectedCaseId) return
     casesApi.getById(selectedCaseId)
-      .then(setCaseData)
+      .then(data => {
+        setCaseData(data)
+        // Client follows the selected case — pull their email for direct send.
+        setClientEmail(data?.client?.email || '')
+      })
       .catch(err => console.error(err))
   }, [selectedCaseId])
 
-  const generate = useCallback(async (tone: string, language: string) => {
-    if (!selectedCaseId) { setError('Select a case first.'); return }
+  const generate = useCallback(async (tone: string, language: string, options?: UpdateOptions) => {
+    if (!selectedCaseId) {
+      setError('Select a case first.')
+      return
+    }
     setGenerating(true)
     setError('')
     try {
-      // Channel rides along — backend persona is shared, only the format changes.
-      const res = await aiApi.getWhatsApp(selectedCaseId, { tone, language, channel })
-        setMessage(res.message ?? res.result ?? '')
+      const res = await aiApi.getWhatsApp(selectedCaseId, {
+        tone,
+        language,
+        channel,
+        includeHearing:    options?.includeHearing    ?? true,
+        includeNextDate:   options?.includeNextDate   ?? true,
+        includeActionItem: options?.includeActionItem ?? false,
+        includeFeeReminder: options?.includeFeeReminder ?? false,
+      })
+      setMessage(res.message ?? res.result ?? '')
     } catch (err: any) {
       setError(err.message || 'Failed to generate client update')
     } finally {
@@ -41,9 +65,62 @@ export default function ClientPage() {
     }
   }, [selectedCaseId, channel])
 
+  const handleSent = useCallback((ch: 'whatsapp' | 'email', preview: string) => {
+    setSendHistory(prev => [
+      {
+        id: Date.now().toString(),
+        channel: ch,
+        preview: preview.slice(0, 80),
+        sentAt: new Date(),
+      },
+      ...prev.slice(0, 4),
+    ])
+  }, [])
+
   const clientName = caseData?.client
     ? `${caseData.client.firstName ?? ''} ${caseData.client.lastName ?? ''}`.trim()
     : 'No client'
+
+  const handleSendEmail = useCallback(async () => {
+    if (!selectedCaseId) {
+      alert('Select a case first.')
+      return
+    }
+    if (!manualEmail && !clientEmail) {
+      alert('Please enter client email address.')
+      return
+    }
+    if (!message) {
+      alert('Generate a message first.')
+      return
+    }
+
+    const toEmail = manualEmail || clientEmail
+
+    setSending(true)
+    try {
+      // Try to parse subject/body from the AI output; fall back to plain text.
+      let subject = 'Case Update from Your Advocate'
+      let body = message
+      const parsed = parseAiJson<any>(message)
+      if (parsed?.subject) subject = String(parsed.subject)
+      if (parsed?.body) body = String(parsed.body)
+
+      await emailApi.sendClientEmail(selectedCaseId, {
+        toEmail,
+        toName: clientName && clientName !== 'No client' ? clientName : '',
+        subject,
+        body,
+      })
+
+      handleSent('email', body)
+      alert(`✅ Email sent to ${toEmail}`)
+    } catch (err: any) {
+      alert(err.message || 'Failed to send. Try again.')
+    } finally {
+      setSending(false)
+    }
+  }, [selectedCaseId, clientEmail, manualEmail, message, clientName, handleSent])
 
   return (
     <>
@@ -99,19 +176,8 @@ export default function ClientPage() {
             </TabButton>
 
             {/* Channel picker — same persona, different format */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 4 }}>
-              <select
-                value={channel}
-                onChange={(e) => setChannel(e.target.value as UpdateChannel)}
-                style={{
-                  padding: '9px 14px', borderRadius: 10, border: '1px solid #e2e8f0',
-                  background: '#fff', color: '#334155', fontSize: 13, fontWeight: 600,
-                  fontFamily: 'inherit', cursor: 'pointer', outline: 'none',
-                }}
-              >
-                <option value="whatsapp">🟢 WhatsApp</option>
-                <option value="email">✉ Email</option>
-              </select>
+            <div style={{ marginLeft: 4 }}>
+              <ChannelSwitcher channel={channel} setChannel={setChannel} />
             </div>
           </div>
 
@@ -119,6 +185,42 @@ export default function ClientPage() {
           {error && (
             <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626', marginBottom: 16, flexShrink: 0 }}>
               {error}
+            </div>
+          )}
+
+          {channel === 'email' && (
+            <div style={{ marginBottom: 16, flexShrink: 0 }}>
+              <label style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: '#64748b',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                display: 'block',
+                marginBottom: 6,
+              }}>
+                Send To (Email Address)
+              </label>
+              <input
+                type="email"
+                placeholder={clientEmail || 'client@email.com'}
+                value={manualEmail}
+                onChange={(e) => setManualEmail(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: 10,
+                  border: '1px solid #e2e8f0',
+                  fontSize: 14,
+                  fontFamily: 'inherit',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              />
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+                Type the client email address here. Email will be sent directly to this address.
+                {clientEmail && !manualEmail && ` (Defaulting to ${clientEmail})`}
+              </div>
             </div>
           )}
 
@@ -134,7 +236,44 @@ export default function ClientPage() {
             >
               <WhatsAppUpdate onGenerate={generate} generating={generating} channel={channel} />
 
-              <WhatsAppPreview message={message} generating={generating} onRegenerate={generate} channel={channel} />
+              <WhatsAppPreview
+                message={message}
+                generating={generating}
+                onRegenerate={generate}
+                channel={channel}
+                clientName={clientName}
+                onSent={handleSent}
+                onSendEmail={handleSendEmail}
+                sending={sending}
+              />
+            </div>
+          )}
+
+          {sendHistory.length > 0 && (
+            <div style={{ marginTop: 16, flexShrink: 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+                Sent this session
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {sendHistory.map(item => (
+                  <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                    <span style={{
+                      padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                      background: item.channel === 'whatsapp' ? '#dcfce7' : '#dbeafe',
+                      color: item.channel === 'whatsapp' ? '#16a34a' : '#2563eb',
+                      flexShrink: 0,
+                    }}>
+                      {item.channel === 'whatsapp' ? 'WhatsApp' : 'Email'}
+                    </span>
+                    <span style={{ fontSize: 12, color: '#64748b', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {item.preview}...
+                    </span>
+                    <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>
+                      {item.sentAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -172,25 +311,7 @@ export default function ClientPage() {
             >
               Client Update
             </button>
-            <select
-              value={channel}
-              onChange={(e) => setChannel(e.target.value as UpdateChannel)}
-              style={{
-                padding: '8px 10px',
-                borderRadius: 20,
-                border: 'none',
-                background: '#e2e8f0',
-                color: '#0f172a',
-                fontSize: 11,
-                fontWeight: 700,
-                fontFamily: 'inherit',
-                cursor: 'pointer',
-                outline: 'none',
-              }}
-            >
-              <option value="whatsapp">🟢 WhatsApp</option>
-              <option value="email">✉ Email</option>
-            </select>
+            <ChannelSwitcher channel={channel} setChannel={setChannel} />
           </div>
 
           {/* Main Solid Grey Section */}
@@ -248,9 +369,21 @@ export default function ClientPage() {
               }}
             >
               {[
-                { title: 'Status', value: 'Active', sub: 'Client' },
-                { title: 'Updates', value: '4', sub: 'Sent' },
-                { title: 'Pending', value: '1', sub: 'Draft' },
+                {
+                  title: 'Client',
+                  value: clientName && clientName !== 'No client' ? clientName.split(' ')[0] : '—',
+                  sub: 'Selected',
+                },
+                {
+                  title: 'Channel',
+                  value: channel === 'whatsapp' ? '💬' : '✉️',
+                  sub: channel === 'whatsapp' ? 'WhatsApp' : 'Email',
+                },
+                {
+                  title: 'Sent',
+                  value: String(sendHistory.length),
+                  sub: 'This session',
+                },
               ].map((item, idx) => (
                 <div
                   key={idx}
@@ -277,7 +410,16 @@ export default function ClientPage() {
               {activeTab === 'update' && (
                 <>
                   <WhatsAppUpdate onGenerate={generate} generating={generating} channel={channel} />
-                  <WhatsAppPreview message={message} generating={generating} onRegenerate={generate} channel={channel} />
+                  <WhatsAppPreview
+                    message={message}
+                    generating={generating}
+                    onRegenerate={generate}
+                    channel={channel}
+                    clientName={clientName}
+                    onSent={handleSent}
+                    onSendEmail={handleSendEmail}
+                    sending={sending}
+                  />
                 </>
               )}
             </div>
@@ -299,6 +441,73 @@ export default function ClientPage() {
         />
       )}
     </>
+  )
+}
+
+/* ================= CHANNEL SWITCHER ================= */
+
+function ChannelSwitcher({
+  channel,
+  setChannel,
+}: {
+  channel: UpdateChannel
+  setChannel: (c: UpdateChannel) => void
+}) {
+  return (
+    <div style={{
+      display: 'flex',
+      background: 'rgba(0,0,0,0.04)',
+      borderRadius: 12,
+      padding: 4,
+      gap: 4,
+    }}>
+      {[
+        {
+          value: 'whatsapp' as const,
+          label: 'WhatsApp',
+          activeColor: '#25D366',
+          icon: (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+            </svg>
+          ),
+        },
+        {
+          value: 'email' as const,
+          label: 'Email',
+          activeColor: '#2563eb',
+          icon: (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="2" y="4" width="20" height="16" rx="2"/>
+              <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+            </svg>
+          ),
+        },
+      ].map((opt) => (
+        <button
+          key={opt.value}
+          onClick={() => setChannel(opt.value)}
+          style={{
+            padding: '8px 16px',
+            borderRadius: 9,
+            border: 'none',
+            background: channel === opt.value ? opt.activeColor : 'transparent',
+            color: channel === opt.value ? '#fff' : '#64748b',
+            fontWeight: 700,
+            fontSize: 13,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            transition: 'all 0.2s ease',
+          }}
+        >
+          {opt.icon}
+          {opt.label}
+        </button>
+      ))}
+    </div>
   )
 }
 

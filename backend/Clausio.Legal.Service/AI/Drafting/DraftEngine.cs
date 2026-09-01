@@ -54,6 +54,16 @@ public class DraftEngine : IDraftEngine
         _logger.LogInformation("[DraftEngine] Generating initial draft...");
         var initialDraft = await _aiRouter.CompleteAsync(systemPrompt, instructions, "LegalDraft", cancellationToken);
 
+        // Client updates are short plain-language messages, not legal documents.
+        // The DraftSelfReview validator judges them as "incomplete / missing sections"
+        // and the refinement pass then pads them with hearing recaps and content the
+        // advocate did not tick. Skip the whole validation loop for this template.
+        if (templateName == "ClientUpdate")
+        {
+            _logger.LogInformation("[DraftEngine] ClientUpdate — skipping legal-draft validation pipeline.");
+            return initialDraft;
+        }
+
         // Step 3: Execute Draft Validation Pipeline
         _logger.LogInformation("[DraftEngine] Executing Draft Validation Pipeline...");
         var (passed, score, recommendation, feedback) = await _validationPipeline.ValidateDraftAsync(initialDraft, documentType, cancellationToken);
@@ -166,11 +176,11 @@ public class DraftEngine : IDraftEngine
                 => "Drafts/legal_opinion",
             "Notice / Show Cause Notice"
                 => "Drafts/notice",
-            var t when t.Contains("risk")
+            var t when t.Contains("risk", StringComparison.OrdinalIgnoreCase)
                 => "Analysis/RiskAssessment",
-            var t when t.Contains("clause")
+            var t when t.Contains("clause", StringComparison.OrdinalIgnoreCase)
                 => "Analysis/ClauseAnalysis",
-            var t when t.Contains("client update")
+            var t when t.Contains("client update", StringComparison.OrdinalIgnoreCase)
                 => "ClientUpdate",
             _ => "LegalDraft"
         };

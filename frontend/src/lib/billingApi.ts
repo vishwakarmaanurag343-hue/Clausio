@@ -42,3 +42,32 @@ export const billingApi = {
   createExpense: (data: any)                  => req<any>('POST',   '/billing/expenses', data),
   deleteExpense: (id: string)                 => req<void>('DELETE',`/billing/expenses/${id}`),
 }
+
+export const subscriptionApi = {
+  getStatus: () =>
+    req<any>('GET', '/subscription/status'),
+
+  getPlans: () =>
+    req<any[]>('GET', '/subscription/plans'),
+
+  createOrder: (data: {
+    planName: string
+    isAnnual: boolean
+  }) =>
+    req<any>('POST', '/subscription/create-order', data),
+
+  verifyPayment: (data: {
+    razorpayOrderId: string
+    razorpayPaymentId: string
+    razorpaySignature: string
+    planName: string
+    isAnnual: boolean
+  }) =>
+    req<any>('POST', '/subscription/verify-payment', data),
+
+  getBillingHistory: () =>
+    req<any[]>('GET', '/subscription/billing-history'),
+
+  cancel: (reason: string) =>
+    req<any>('POST', '/subscription/cancel', { reason }),
+}

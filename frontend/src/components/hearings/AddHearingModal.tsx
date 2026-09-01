@@ -35,6 +35,7 @@ export default function AddHearingModal({ onClose, onSaved }: Props) {
   const [whatHappened,     setWhatHappened]     = useState('')
   const [judgeObservation, setJudgeObservation] = useState('')
   const [nextHearingDate,  setNextHearingDate]  = useState('')
+  const [clientReminderEmail, setClientReminderEmail] = useState('')
   const [orders,           setOrders]           = useState<OrderRow[]>([{ ...emptyOrderRow }])
   const [saving,           setSaving]           = useState(false)
   const [error,            setError]            = useState('')
@@ -75,6 +76,7 @@ export default function AddHearingModal({ onClose, onSaved }: Props) {
         whatHappened,
         judgeObservation,
         nextObjective: nextHearingDate ? `Next hearing: ${nextHearingDate}` : '',
+        clientReminderEmail: clientReminderEmail.trim() || undefined,
         orders:        cleanOrders,
       })
 
@@ -178,6 +180,22 @@ export default function AddHearingModal({ onClose, onSaved }: Props) {
             <Field label="Next Hearing Date">
               <input type="date" value={nextHearingDate} onChange={(e) => setNextHearingDate(e.target.value)} style={inputStyle} />
             </Field>
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>
+              Client Email for Reminders
+              <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 400, marginLeft: 6 }}>
+                (optional — system will send hearing reminders to this email)
+              </span>
+            </label>
+            <input
+              type="email"
+              placeholder="client@gmail.com"
+              value={clientReminderEmail}
+              onChange={(e) => setClientReminderEmail(e.target.value)}
+              style={inputStyle}
+            />
           </div>
 
           {/* Court orders passed at this hearing — saved to the case's Court Orders & Diary */}

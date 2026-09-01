@@ -7,6 +7,7 @@ import InvoiceManager  from '@/components/billing/InvoiceManager'
 import PaymentTracker  from '@/components/billing/PaymentTracker'
 import ExpenseTracker  from '@/components/billing/ExpenseTracker'
 import ClientBilling   from '@/components/billing/ClientBilling'
+import Subscription    from '@/components/billing/Subscription'
 
 const TABS = [
   { name: 'Overview',       icon: 'ti-layout-dashboard', live: true  },
@@ -14,7 +15,7 @@ const TABS = [
   { name: 'Payments',       icon: 'ti-credit-card',      live: true  },
   { name: 'Expenses',       icon: 'ti-cash',             live: true  },
   { name: 'Client Billing', icon: 'ti-users',            live: true  },
-  { name: 'Subscription',   icon: 'ti-star',             live: false },
+  { name: 'Subscription',   icon: 'ti-star',             live: true  },
 ]
 
 export default function BillingPage() {
@@ -50,6 +51,14 @@ export default function BillingPage() {
   }, [])
 
   useEffect(() => { reload() }, [reload])
+
+  // Deep-link support: /billing?tab=Subscription selects that tab on load.
+  useEffect(() => {
+    try {
+      const tab = new URLSearchParams(window.location.search).get('tab')
+      if (tab && TABS.some(t => t.name === tab && t.live)) setActiveTab(tab)
+    } catch {}
+  }, [])
 
   return (
     <div className="glass-panel mobile-billing-container" style={{ flex: 1, overflowY: 'auto', margin: '16px', padding: 20, borderRadius: 24, display: 'flex', flexDirection: 'column' }}>
@@ -99,7 +108,7 @@ export default function BillingPage() {
         {activeTab === 'Payments'       && <PaymentTracker  cases={cases} onRefresh={reload} />}
         {activeTab === 'Expenses'       && <ExpenseTracker  cases={cases} onRefresh={reload} />}
         {activeTab === 'Client Billing' && <ClientBilling   cases={cases} clients={clients} loading={loading} />}
-        {activeTab === 'Subscription'   && <SubscriptionComingSoon />}
+        {activeTab === 'Subscription'   && <Subscription />}
       </div>
 
       {/* ── MOBILE BILLING VIEW ── */}
@@ -127,7 +136,7 @@ export default function BillingPage() {
             {activeTab === 'Payments'       && <PaymentTracker  cases={cases} onRefresh={reload} />}
             {activeTab === 'Expenses'       && <ExpenseTracker  cases={cases} onRefresh={reload} />}
             {activeTab === 'Client Billing' && <ClientBilling   cases={cases} clients={clients} loading={loading} />}
-            {activeTab === 'Subscription'   && <SubscriptionComingSoon />}
+            {activeTab === 'Subscription'   && <Subscription />}
           </div>
         </div>
       </div>
@@ -145,19 +154,3 @@ function Chip({ label, value, color }: { label: string; value: string; color: st
   )
 }
 
-function SubscriptionComingSoon() {
-  return (
-    <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-      <div style={{ width: 72, height: 72, borderRadius: 20, background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-        <i className="ti ti-star" style={{ fontSize: 36, color: '#d97706' }} />
-      </div>
-      <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#0f172a' }}>Subscription Management</h2>
-      <p style={{ marginTop: 8, color: '#64748b', fontSize: 14, maxWidth: 360, margin: '10px auto 0', lineHeight: 1.6 }}>
-        Manage your Clausio plan, upgrade or download tax invoices.
-      </p>
-      <div style={{ marginTop: 24, padding: '10px 16px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, display: 'inline-block', fontSize: 12, color: '#1e40af', fontWeight: 600 }}>
-        Contact support@clausio.io to manage your subscription
-      </div>
-    </div>
-  )
-}

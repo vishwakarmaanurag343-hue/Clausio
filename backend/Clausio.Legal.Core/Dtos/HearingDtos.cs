@@ -10,6 +10,7 @@ public class CreateHearingDto
     public string? JudgeObservation { get; set; }
     public string? OpposingAdmission { get; set; }
     public string? NextObjective { get; set; }
+    public string? ClientReminderEmail { get; set; }
     public List<CreateHearingOrderDto>? Orders { get; set; }
 }
 

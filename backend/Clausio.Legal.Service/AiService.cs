@@ -42,14 +42,16 @@ public class AiService : IAiService
     }
 
     /// <summary>
-    /// Courtroom-grade four-section working brief for the Analysis page. Dedicated
-    /// Summary persona/template returns strict { summary:[{parties, reliefSought,
-    /// keyFacts, proceduralHistory}] } JSON — every sentence grounded in the uploaded
-    /// documents, each section written as a full plain-Indian-English paragraph.
+    /// Courtroom-grade multi-page working brief for the Analysis page. Dedicated Summary
+    /// persona/template returns strict { summary:[{ caseTitle, caseType, court, stage,
+    /// overview, issuesForDetermination[], parties, reliefSought, clientCase, opposingCase,
+    /// keyFacts, proceduralHistory, evidenceOverview, applicableLaw, strengths[],
+    /// weaknesses[], currentPosition, nextSteps[], openQuestions[] }] } JSON — every
+    /// sentence grounded in the uploaded documents, the whole record fed to the model.
     /// </summary>
     public Task<string> SummarizeCaseAsync(Guid caseId, CancellationToken cancellationToken = default)
         => _pipeline.ExecuteAsync(caseId,
-            "Condense this case file into the four-section working brief strictly per the system instructions — parties, relief sought, key facts and procedural history. Ground every sentence in the uploaded documents, write each section as a full plain-Indian-English paragraph an advocate can read aloud, and say plainly where the record is silent.",
+            "Condense this entire case file into the full working brief strictly per the system instructions and its JSON schema. Read every uploaded document. Ground every sentence in the record, write each section as full plain-Indian-English prose an advocate can rely on, be candid about weaknesses, and say plainly where the record is silent. A long file deserves a long brief.",
             "Summarization", null, cancellationToken);
 
     /// <summary>
@@ -86,7 +88,7 @@ public class AiService : IAiService
     /// </summary>
     public Task<string> AnalyzeCaseEvidenceAsync(Guid caseId, CancellationToken cancellationToken = default)
         => _pipeline.ExecuteAsync(caseId,
-            "Review every uploaded document strictly per the system instructions. Rank each by how directly it supports or undermines a specific claim in this dispute, state plainly what each document actually shows, and flag only specific evidence the record shows was needed but was never uploaded.",
+            "Review every uploaded document strictly per the system instructions and its JSON schema. Give one entry per document with its type, date, admissibility and mode of proof, what it shows and does not prove, any contradiction with another document, and the exact words to use in court. Add the overall evidence picture and flag only specific evidence the record shows was needed but never uploaded.",
             "Evidence", null, cancellationToken);
 
     public Task<string> ResearchAsync(Guid caseId, CancellationToken cancellationToken = default)

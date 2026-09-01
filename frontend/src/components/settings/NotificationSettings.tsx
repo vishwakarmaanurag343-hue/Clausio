@@ -1,50 +1,114 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-
-const STORAGE_KEY = 'clausio_notification_settings'
+import { notificationApi } from '@/lib/api'
 
 const DEFAULT = {
-  emailNotif:        true,
-  desktopNotif:      true,
-  whatsappNotif:     false,
-  smsNotif:          false,
-  upcomingHearings:  true,
-  deadlineReminders: true,
-  newCaseAssignment: true,
-  documentUpload:    false,
-  draftCompleted:    true,
-  strategyGenerated: true,
-  financialAnalysis: false,
-  readinessReport:   true,
-  clientMessage:     true,
-  whatsappDelivery:  false,
-  clientPortal:      true,
-  invoiceGenerated:  true,
-  paymentReceived:   true,
-  subscriptionRenew: true,
-  digestFrequency:   'Daily',
-  reminderTime:      '09:00',
+  emailNotif:           true,
+  desktopNotif:         true,
+  whatsappNotif:        false,
+  smsNotif:             false,
+  upcomingHearings:     true,
+  deadlineReminders:    true,
+  newCaseAssignment:    true,
+  documentUpload:       false,
+  draftCompleted:       true,
+  strategyGenerated:    true,
+  financialAnalysis:    false,
+  readinessReport:      true,
+  clientMessage:        true,
+  whatsappDelivery:     false,
+  clientPortal:         true,
+  invoiceGenerated:     true,
+  paymentReceived:      true,
+  subscriptionRenew:    true,
+  digestFrequency:      'Daily',
+  reminderTime:         '09:00',
+  hearingReminderHours: 24,
 }
 
 export default function NotificationSettings() {
-  const [s,     setS]     = useState(DEFAULT)
-  const [saved, setSaved] = useState(false)
+  const [s,       setS]       = useState<typeof DEFAULT>(DEFAULT)
+  const [loading, setLoading] = useState(true)
+  const [error,   setError]   = useState('')
+  const [saving,  setSaving]  = useState(false)
+  const [saved,   setSaved]   = useState(false)
+  const [saveErr, setSaveErr] = useState('')
 
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) setS({ ...DEFAULT, ...JSON.parse(stored) })
-  }, [])
+  useEffect(() => { load() }, [])
+
+  async function load() {
+    setLoading(true)
+    setError('')
+    try {
+      const data = await notificationApi.get()
+      // Backend returns PascalCase entity keys — merge onto camelCase defaults
+      setS({
+        emailNotif:           data.emailNotif           ?? DEFAULT.emailNotif,
+        desktopNotif:         data.desktopNotif         ?? DEFAULT.desktopNotif,
+        whatsappNotif:        data.whatsappNotif        ?? DEFAULT.whatsappNotif,
+        smsNotif:             data.smsNotif             ?? DEFAULT.smsNotif,
+        upcomingHearings:     data.upcomingHearings     ?? DEFAULT.upcomingHearings,
+        deadlineReminders:    data.deadlineReminders    ?? DEFAULT.deadlineReminders,
+        newCaseAssignment:    data.newCaseAssignment    ?? DEFAULT.newCaseAssignment,
+        documentUpload:       data.documentUpload       ?? DEFAULT.documentUpload,
+        draftCompleted:       data.draftCompleted       ?? DEFAULT.draftCompleted,
+        strategyGenerated:    data.strategyGenerated    ?? DEFAULT.strategyGenerated,
+        financialAnalysis:    data.financialAnalysis    ?? DEFAULT.financialAnalysis,
+        readinessReport:      data.readinessReport      ?? DEFAULT.readinessReport,
+        clientMessage:        data.clientMessage        ?? DEFAULT.clientMessage,
+        whatsappDelivery:     data.whatsappDelivery     ?? DEFAULT.whatsappDelivery,
+        clientPortal:         data.clientPortal         ?? DEFAULT.clientPortal,
+        invoiceGenerated:     data.invoiceGenerated     ?? DEFAULT.invoiceGenerated,
+        paymentReceived:      data.paymentReceived      ?? DEFAULT.paymentReceived,
+        subscriptionRenew:    data.subscriptionRenew    ?? DEFAULT.subscriptionRenew,
+        digestFrequency:      data.digestFrequency      ?? DEFAULT.digestFrequency,
+        reminderTime:         data.reminderTime         ?? DEFAULT.reminderTime,
+        hearingReminderHours: data.hearingReminderHours ?? DEFAULT.hearingReminderHours,
+      })
+    } catch (err: any) {
+      setError(err.message || 'Failed to load notification settings')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   function update(key: string, value: any) {
     setS(prev => ({ ...prev, [key]: value }))
     setSaved(false)
+    setSaveErr('')
   }
 
-  function handleSave() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(s))
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+  async function handleSave() {
+    setSaving(true)
+    setSaveErr('')
+    try {
+      await notificationApi.update(s)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch (err: any) {
+      setSaveErr(err.message || 'Failed to save notification settings')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>
+        <i className="ti ti-loader animate-spin" style={{ fontSize: 30, color: '#2563eb' }} />
+        <p style={{ marginTop: 12, fontSize: 13 }}>Loading notification settings…</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: 20, background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 12, color: '#dc2626', textAlign: 'center' }}>
+        {error}
+        <button onClick={load} style={{ display: 'block', margin: '12px auto 0', padding: '8px 16px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Retry</button>
+      </div>
+    )
   }
 
   return (
@@ -55,6 +119,7 @@ export default function NotificationSettings() {
       </div>
 
       {saved && <Banner message="Notification settings saved." />}
+      {saveErr && <ErrorBanner message={saveErr} />}
 
       <Section title="Delivery Channels">
         <Toggle title="Email Notifications"   subtitle="Receive updates via email."                    value={s.emailNotif}    onChange={v => update('emailNotif', v)} />
@@ -103,12 +168,22 @@ export default function NotificationSettings() {
             <label style={labelStyle}>Reminder Time</label>
             <input type="time" value={s.reminderTime} onChange={e => update('reminderTime', e.target.value)} style={inputStyle} />
           </div>
+          <div>
+            <label style={labelStyle}>Notify me before each hearing</label>
+            <select value={s.hearingReminderHours} onChange={e => update('hearingReminderHours', Number(e.target.value))} style={inputStyle}>
+              <option value={1}>1 hour</option>
+              <option value={2}>2 hours</option>
+              <option value={6}>6 hours</option>
+              <option value={24}>24 hours</option>
+              <option value={48}>48 hours</option>
+            </select>
+          </div>
         </div>
       </Section>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 28 }}>
-        <button onClick={handleSave} style={saveBtn}>
-          <i className="ti ti-device-floppy" /> Save Notification Settings
+        <button onClick={handleSave} disabled={saving} style={{ ...saveBtn, opacity: saving ? 0.6 : 1, cursor: saving ? 'default' : 'pointer' }}>
+          <i className="ti ti-device-floppy" /> {saving ? 'Saving…' : 'Save Notification Settings'}
         </button>
       </div>
     </div>
@@ -142,6 +217,10 @@ function Banner({ message }: { message: string }) {
   return <div style={{ marginBottom: 20, padding: '10px 14px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, fontSize: 13, color: '#15803d' }}>✓ {message}</div>
 }
 
-const saveBtn: React.CSSProperties = { background: '#2563eb', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 24px', cursor: 'pointer', fontWeight: 600, fontSize: 14, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 8 }
+function ErrorBanner({ message }: { message: string }) {
+  return <div style={{ marginBottom: 20, padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626' }}>✗ {message}</div>
+}
+
+const saveBtn: React.CSSProperties = { background: '#2563eb', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 24px', fontWeight: 600, fontSize: 14, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 8 }
 const labelStyle: React.CSSProperties = { display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 600, color: '#374151' }
 const inputStyle: React.CSSProperties = { width: '100%', height: 40, border: '1px solid #e2e8f0', borderRadius: 8, padding: '0 12px', fontSize: 13, outline: 'none', background: '#fff', boxSizing: 'border-box', fontFamily: 'inherit' }

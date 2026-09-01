@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useCaseStore } from '@/lib/store'
-import { hearingsApi, aiApi } from '@/lib/api'
+import { hearingsApi, aiApi, hearingRemindersApi } from '@/lib/api'
 import PrepBriefCard, { parsePrepBrief, type PrepBrief } from './PrepBriefCard'
 import AddToCalButton from '@/components/calendar/AddToCalButton'
 
@@ -24,6 +24,19 @@ export default function HearingHistory({ refresh }: Props) {
   const [aiError,     setAiError]     = useState('')
   const [aiHearingId, setAiHearingId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [reminderId,  setReminderId]  = useState<string | null>(null)
+
+  async function sendReminder(hearingId: string) {
+    setReminderId(hearingId)
+    try {
+      const res = await hearingRemindersApi.sendManual(hearingId)
+      alert(`✅ ${res.message}`)
+    } catch (err: any) {
+      alert(err.message || 'Failed to send reminder')
+    } finally {
+      setReminderId(null)
+    }
+  }
 
   const load = useCallback(() => {
     if (!selectedCaseId) { setHearings([]); setLoading(false); return }
@@ -152,6 +165,16 @@ export default function HearingHistory({ refresh }: Props) {
 
                         {/* Add to Google Calendar */}
                         <AddToCalButton kind="hearing" caseId={selectedCaseId ?? ''} id={hearing.id} title="Add hearing to Google Calendar" />
+
+                        {/* Send hearing reminder email to client */}
+                        <button
+                          onClick={() => sendReminder(hearing.id)}
+                          disabled={reminderId === hearing.id}
+                          title="Send hearing reminder email to client"
+                          style={{ fontSize: 10, padding: '4px 8px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', color: '#2563eb', cursor: reminderId === hearing.id ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}
+                        >
+                          📧 {reminderId === hearing.id ? 'Sending...' : 'Send Reminder'}
+                        </button>
 
                         {/* AI Prep button */}
                         <button

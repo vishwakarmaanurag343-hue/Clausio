@@ -169,6 +169,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<ICaseService, CaseService>();
 builder.Services.AddScoped<IBillingService, BillingService>();
+builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 builder.Services.AddScoped<IActionPlanService, ActionPlanService>();
 builder.Services.AddScoped<IContradictionService, ContradictionService>();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
@@ -185,6 +186,12 @@ builder.Services.AddScoped<ITimelineService, TimelineService>();
 builder.Services.AddScoped<IReadinessService, ReadinessService>();
 builder.Services.AddScoped<IStatsService, StatsService>();
 builder.Services.AddScoped<IAiService, AiService>();
+
+// Email (Resend) + automated hearing reminder emails
+builder.Services.AddHttpClient("Resend");
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddHostedService<HearingReminderService>();
+
 builder.Services.AddScoped<Clausio.Legal.Service.DocumentClassifierService>();
 builder.Services.AddScoped<Clausio.Legal.Service.JudgmentSearchService>();
 builder.Services.AddScoped<Clausio.Legal.Service.IJudgmentAnalysisService, Clausio.Legal.Service.JudgmentAnalysisService>();

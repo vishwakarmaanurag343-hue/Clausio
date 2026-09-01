@@ -27,6 +27,9 @@ public class ClausioDbContext(DbContextOptions<ClausioDbContext> options) : DbCo
     public DbSet<CaseNote> CaseNotes => Set<CaseNote>();
     public DbSet<UserPagePermission> UserPagePermissions => Set<UserPagePermission>();
     public DbSet<PromptReferenceDoc> PromptReferenceDocs => Set<PromptReferenceDoc>();
+    public DbSet<UserSubscription> UserSubscriptions => Set<UserSubscription>();
+    public DbSet<SubscriptionBillingHistory> SubscriptionBillingHistories => Set<SubscriptionBillingHistory>();
+    public DbSet<UserNotificationSettings> UserNotificationSettings => Set<UserNotificationSettings>();
     public DbSet<CalendarIntegration> CalendarIntegrations => Set<CalendarIntegration>();
     public DbSet<CalendarEventLink> CalendarEventLinks => Set<CalendarEventLink>();
     public DbSet<ClientMeeting> ClientMeetings => Set<ClientMeeting>();
@@ -80,6 +83,10 @@ public class ClausioDbContext(DbContextOptions<ClausioDbContext> options) : DbCo
             e.HasIndex(x => new { x.UserId, x.PageKey }).IsUnique());
 
         modelBuilder.Entity<PromptReferenceDoc>(e => e.HasIndex(x => x.UserId));
+
+        modelBuilder.Entity<UserSubscription>(e => e.HasIndex(x => x.UserId).IsUnique());
+        modelBuilder.Entity<SubscriptionBillingHistory>(e => e.HasIndex(x => x.UserId));
+        modelBuilder.Entity<UserNotificationSettings>(e => e.HasIndex(x => x.UserId).IsUnique());
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ClausioDbContext).Assembly);
         base.OnModelCreating(modelBuilder);

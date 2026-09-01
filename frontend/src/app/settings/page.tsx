@@ -9,6 +9,9 @@ import AISettings           from '@/components/settings/AISettings'
 import LegalSettings        from '@/components/settings/LegalSettings'
 import AboutClausio         from '@/components/settings/AboutClausio'
 import IntegrationsSettings from '@/components/settings/IntegrationsSettings'
+import NotificationSettings from '@/components/settings/NotificationSettings'
+import TeamSettings         from '@/components/settings/TeamSettings'
+import BillingSettings      from '@/components/settings/BillingSettings'
 
 const SECTIONS = [
   {
@@ -27,11 +30,11 @@ const SECTIONS = [
     ],
   },
   {
-    group: 'Coming Soon',
+    group: 'Workspace',
     items: [
-      { name: 'Notifications', icon: 'ti-bell',        live: false },
-      { name: 'Team',          icon: 'ti-users',       live: false },
-      { name: 'Billing',       icon: 'ti-credit-card', live: false },
+      { name: 'Notifications', icon: 'ti-bell',        live: true },
+      { name: 'Team',          icon: 'ti-users',       live: true },
+      { name: 'Billing',       icon: 'ti-credit-card', live: true },
     ],
   },
   {
@@ -66,6 +69,9 @@ function SettingsContent() {
       case 'Legal':        return <LegalSettings />
       case 'About':        return <AboutClausio />
       case 'Integrations': return <IntegrationsSettings />
+      case 'Notifications': return <NotificationSettings />
+      case 'Team':         return <TeamSettings />
+      case 'Billing':      return <BillingSettings />
       default:             return <ComingSoon name={active} />
     }
   }

@@ -4,8 +4,15 @@ import { useState } from 'react'
 
 export type UpdateChannel = 'whatsapp' | 'email'
 
+export interface UpdateOptions {
+  includeHearing: boolean
+  includeNextDate: boolean
+  includeActionItem: boolean
+  includeFeeReminder: boolean
+}
+
 interface Props {
-  onGenerate: (tone: string, language: string) => void
+  onGenerate: (tone: string, language: string, options: UpdateOptions) => void
   generating: boolean
   channel: UpdateChannel
 }
@@ -131,7 +138,12 @@ export default function WhatsAppUpdate({ onGenerate, generating, channel }: Prop
       {/* Generate */}
 
       <button
-        onClick={() => onGenerate(tone, language)}
+        onClick={() => onGenerate(tone, language, {
+          includeHearing,
+          includeNextDate,
+          includeActionItem,
+          includeFeeReminder,
+        })}
         disabled={generating}
         style={{
           width: '100%',

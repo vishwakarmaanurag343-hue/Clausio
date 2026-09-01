@@ -37,6 +37,7 @@ public class HearingService(
             JudgeObservation = dto.JudgeObservation,
             OpposingAdmission = dto.OpposingAdmission,
             NextObjective = dto.NextObjective,
+            ClientReminderEmail = string.IsNullOrWhiteSpace(dto.ClientReminderEmail) ? null : dto.ClientReminderEmail.Trim(),
         };
 
         if (dto.Orders is not null)

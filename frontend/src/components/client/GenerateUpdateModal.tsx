@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import type { UpdateOptions } from '@/components/client/WhatsAppUpdate'
 
 interface Props {
   onClose: () => void
-  onGenerate: (tone: string, language: string) => Promise<void>
+  onGenerate: (tone: string, language: string, options?: UpdateOptions) => Promise<void>
 }
 
 export default function GenerateUpdateModal({

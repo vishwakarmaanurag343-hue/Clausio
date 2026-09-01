@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Clausio.Legal.Core.Interfaces.Memory;
 using Clausio.Legal.Core.Interfaces.Retrieval;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Clausio.Legal.Service.Memory;
@@ -16,19 +17,28 @@ public class ContextEngine : IContextEngine
     private readonly IContextRanker _contextRanker;
     private readonly Clausio.Legal.Infrastructure.ClausioDbContext _db;
     private readonly ILogger<ContextEngine> _logger;
+    private readonly IConfiguration _config;
+
+    // The Analysis-page tasks that must see the WHOLE case record, not query-relevant
+    // snippets — a case brief / chronology / evidence review of a 200-page pleading is
+    // worthless if the model only receives the first three pages.
+    private static readonly System.Collections.Generic.HashSet<string> WholeRecordTasks =
+        new(StringComparer.OrdinalIgnoreCase) { "Summarization", "Chronology", "Timeline", "Evidence" };
 
     public ContextEngine(
-        IMemoryStore memoryStore, 
-        IRetrievalEngine retrievalEngine, 
+        IMemoryStore memoryStore,
+        IRetrievalEngine retrievalEngine,
         IContextRanker contextRanker,
         Clausio.Legal.Infrastructure.ClausioDbContext db,
-        ILogger<ContextEngine> logger)
+        ILogger<ContextEngine> logger,
+        IConfiguration config)
     {
         _memoryStore = memoryStore;
         _retrievalEngine = retrievalEngine;
         _contextRanker = contextRanker;
         _db = db;
         _logger = logger;
+        _config = config;
     }
 
     public async Task<string> BuildChatContextAsync(Guid caseId, string userQuery, CancellationToken cancellationToken = default)
@@ -233,9 +243,14 @@ public class ContextEngine : IContextEngine
             }
         }
 
-        // Broad retrieval for analysis
-        var query = $"All critical facts and evidence for {analysisType}";
-        var relevantChunks = await _retrievalEngine.GetContextAsync(query, caseId, cancellationToken);
+        var isWholeRecord = WholeRecordTasks.Contains(analysisType);
+
+        // Whole-record tasks (case brief / chronology / evidence review) skip snippet
+        // retrieval — they must reason over the ENTIRE file, not query-relevant fragments.
+        var relevantChunks = isWholeRecord
+            ? null
+            : await _retrievalEngine.GetContextAsync($"All critical facts and evidence for {analysisType}", caseId, cancellationToken);
+
         if (relevantChunks != null && relevantChunks.Any())
         {
             sb.AppendLine("<retrieved_evidence>");
@@ -247,26 +262,37 @@ public class ContextEngine : IContextEngine
         }
         else
         {
-            var recentDocs = _db.Documents
+            var docs = _db.Documents
                 .Where(d => d.CaseId == caseId && !string.IsNullOrWhiteSpace(d.ExtractedText) && !d.ExtractedText.StartsWith("Error") && !d.ExtractedText.StartsWith("--- MOCK"))
                 .OrderByDescending(d => d.CreatedAt)
                 .ToList()
                 .DistinctBy(d => d.ExtractedText.Trim())
-                .Take(10)
+                .Take(isWholeRecord ? 25 : 10)
                 .ToList();
 
-            if (recentDocs.Any())
+            if (docs.Any())
             {
                 sb.AppendLine("<retrieved_evidence>");
-                foreach (var doc in recentDocs)
+                foreach (var doc in docs)
                 {
-                    sb.AppendLine($"[Document: {doc.FileName}] {doc.ExtractedText}");
+                    sb.AppendLine($"[Document: {doc.FileName}]");
+                    sb.AppendLine(doc.ExtractedText);
+                    sb.AppendLine();
                 }
                 sb.AppendLine("</retrieved_evidence>");
             }
         }
 
-        return await _contextRanker.ScoreRankAndCompressAsync(sb.ToString(), 2000);
+        // Whole-record tasks get a far larger context budget (config AI:AnalysisContextTokens,
+        // default 16000 ≈ 64k chars ≈ 24 pages); every other analysis type stays lean at 2000.
+        var budget = 2000;
+        if (isWholeRecord)
+        {
+            budget = int.TryParse(_config["AI:AnalysisContextTokens"], out var configured) && configured > 0
+                ? configured
+                : 16000;
+        }
+        return await _contextRanker.ScoreRankAndCompressAsync(sb.ToString(), budget);
     }
 
     /// <summary>
