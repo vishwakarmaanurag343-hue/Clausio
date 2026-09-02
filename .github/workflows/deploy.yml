@@ -39,6 +39,11 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
+      - name: Test EC2 Port 22 Reachability
+        run: |
+          echo "Testing SSH port 22 reachability on ${{ secrets.EC2_HOST }}..."
+          nc -zv -w 10 ${{ secrets.EC2_HOST }} 22 || echo "WARNING: Port 22 unreachable. Ensure EC2 Security Group allows inbound SSH traffic from 0.0.0.0/0"
+
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1
         with:
@@ -46,7 +51,8 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
-          timeout: 30s
+          timeout: 60s
+          command_timeout: 10m
           debug: true
           script: |
             aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
