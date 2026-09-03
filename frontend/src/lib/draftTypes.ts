@@ -149,6 +149,12 @@ const DRAFT_TYPES_BY_CASE: Record<string, DraftType[]> = {
     { label: 'Succession Certificate',        description: 'Application for succession certificate under Indian Succession Act 1925', sections: ['Section 372 Indian Succession Act 1925'] },
   ],
 
+  // ── COMPANY LAW ───────────────────────────────────────────────
+  company_law: [
+    { label: 'Reply to Legal Notice', description: 'Formal reply to legal notice — deny allegations, reserve all rights', sections: ['Section 80 CPC'] },
+    { label: 'NCLT Petition (Section 241/242 — Oppression)', description: 'NCLT petition under Section 241-242 Companies Act 2013 for minority shareholder oppression', sections: ['Section 241 Companies Act', 'Section 242 Companies Act'] },
+  ],
+
   // ── PROPERTY ────────────────────────────────────────────────
   property: [
     { label: 'Eviction Suit',                 description: 'Suit for eviction and recovery of rent',                          sections: ['Transfer of Property Act 1882'] },

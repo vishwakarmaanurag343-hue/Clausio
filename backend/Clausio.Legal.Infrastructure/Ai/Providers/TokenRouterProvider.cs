@@ -26,9 +26,9 @@ public class TokenRouterProvider : ILLMProvider
     {
         _logger = logger;
         _http = httpClient;
-        _apiKey = config["AI:Groq:ApiKey"]
+        _apiKey = config["AI:OpenRouter:ApiKey"]
                ?? config["AI:DeepProvider:ApiKey"]
-               ?? throw new InvalidOperationException("AI:Groq:ApiKey missing");
+               ?? throw new InvalidOperationException("AI:OpenRouter:ApiKey missing");
 
         _baseUrl = config["AI:Groq:BaseUrl"]
                 ?? config["AI:DeepProvider:BaseUrl"]

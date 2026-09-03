@@ -26,9 +26,9 @@ public class OpenRouterProvider : ILLMProvider
     {
         _logger = logger;
         _http = httpClient;
-        _apiKey = config["AI:Groq:ApiKey"]
+        _apiKey = config["AI:OpenRouter:ApiKey"]
                ?? config["AI:FastProvider:ApiKey"]
-               ?? throw new InvalidOperationException("AI:Groq:ApiKey missing");
+               ?? throw new InvalidOperationException("AI:OpenRouter:ApiKey missing");
 
         _baseUrl = config["AI:Groq:BaseUrl"]
                 ?? config["AI:FastProvider:BaseUrl"]

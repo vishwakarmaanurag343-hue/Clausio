@@ -224,6 +224,10 @@ public class AIPipeline : IAIPipeline
                         => "writ petition Article 226 fundamental rights mandamus certiorari prohibition",
                     "Legal Notice"
                         => "legal notice demand payment breach contract pre-litigation",
+"Reply to Legal Notice"
+    => "reply legal notice oppression mismanagement company law Companies Act 2013 minority shareholder",
+"NCLT Petition (Section 241/242 — Oppression)"
+    => "NCLT oppression mismanagement section 241 242 Companies Act minority shareholder petition Cyrus Mistry Needle Industries",
                     "Affidavit"
                         => "affidavit sworn statement deponent verification court",
                     "Agreement / Contract"
@@ -264,6 +268,10 @@ public class AIPipeline : IAIPipeline
                                d.Contains("Specific Performance") || d.Contains("Stay") ||
                                d.Contains("Written Statement")
                         => "Property",
+                    var d when d.Contains("Reply to Legal Notice")
+                        => "Corporate Law",
+                    var d when d.Contains("Oppression")
+                        => "Corporate Law",
                     _ => (string?)null
                 };
             }

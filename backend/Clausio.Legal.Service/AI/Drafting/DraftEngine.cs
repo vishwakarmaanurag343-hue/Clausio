@@ -168,6 +168,10 @@ public class DraftEngine : IDraftEngine
                 => "Drafts/writ_petition",
             "Legal Notice"
                 => "Drafts/legal_notice",
+"Reply to Legal Notice"
+    => "reply_to_legal_notice_v1",
+"NCLT Petition (Section 241/242 — Oppression)"
+    => "nclt_petition_oppression_v1",
             "Affidavit"
                 => "Drafts/affidavit",
             "Agreement / Contract"
