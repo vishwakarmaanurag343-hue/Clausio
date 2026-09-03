@@ -71,3 +71,17 @@ export const subscriptionApi = {
   cancel: (reason: string) =>
     req<any>('POST', '/subscription/cancel', { reason }),
 }
+
+export const subscriptionCheckApi = {
+  check: () =>
+    req<{
+      isActive: boolean
+      canUseAI: boolean
+      planName: string
+      status: string
+      daysRemaining: number
+      isTrial: boolean
+      showWarning: boolean
+      message: string | null
+    }>('GET', '/subscription/check'),
+}

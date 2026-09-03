@@ -23,14 +23,14 @@ export default function AnalyticsTabs({ activeTab, onChange }: Props) {
         return (
           <button
             key={tab.name}
-            onClick={() => onChange(tab.name)}
+            onClick={() => !isSoon && onChange(tab.name)}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '10px 16px',
               border: 'none',
               borderBottom: isActive ? '2px solid #2563eb' : '2px solid transparent',
               marginBottom: -1,
-              cursor: 'pointer',
+              cursor: isSoon ? 'default' : 'pointer',
               fontFamily: 'inherit',
               fontSize: 13,
               fontWeight: 600,

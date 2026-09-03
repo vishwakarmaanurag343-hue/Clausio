@@ -157,9 +157,9 @@ public class SubscriptionService(
                 PlanName = "Free Trial",
                 Status = "Trial",
                 StartDate = DateTime.UtcNow,
-                EndDate = DateTime.UtcNow.AddDays(14),
-                MaxCases = 5,
-                MaxDraftsPerMonth = 10,
+                EndDate = DateTime.UtcNow.AddDays(5),
+                MaxCases = 3,
+                MaxDraftsPerMonth = 5,
                 MaxTeamMembers = 1,
                 MaxStorageBytes = 1073741824 // 1 GB
             };

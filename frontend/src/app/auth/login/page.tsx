@@ -64,6 +64,17 @@ export default function LoginPage() {
       const isMobile = window.innerWidth <= 768
       router.push(isMobile ? '/chat' : '/dashboard')
     } catch (err: any) {
+      if (typeof err?.message === 'string' && err.message.includes('EMAIL_NOT_VERIFIED')) {
+        const errorMessage: string = err.message
+        const unverifiedEmail = errorMessage.includes(':')
+          ? errorMessage.split(':').slice(1).join(':')
+          : email
+        window.location.href =
+          `http://localhost:3000/signup` +
+          `?email=${encodeURIComponent(unverifiedEmail.trim())}` +
+          `&step=otp`
+        return
+      }
       setError(err.message || 'Invalid email or password.')
     } finally { setLoading(false) }
   }

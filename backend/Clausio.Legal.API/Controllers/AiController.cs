@@ -1,3 +1,4 @@
+using Clausio.Legal.API.Filters;
 using Clausio.Legal.Core.Dtos;
 using Clausio.Legal.Service;
 using Clausio.Legal.Service.DocumentIntelligence;
@@ -11,6 +12,7 @@ namespace Clausio.Legal.API.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/ai")]
+[RequireActiveSubscription]
 public class AiController(IAiService aiService, IJudgmentAnalysisService judgmentAnalysis, IEmailService emailService) : ControllerBase
 {
     // ✅ Returns { summary: "..." } — matches frontend aiApi.getSummary()
@@ -100,6 +102,10 @@ public class AiController(IAiService aiService, IJudgmentAnalysisService judgmen
                 await Response.WriteAsync(data, cancellationToken);
                 await Response.Body.FlushAsync(cancellationToken);
             }
+            
+            // ✅ Send explicit [DONE] signal to end the stream
+            await Response.WriteAsync("data: [DONE]\n\n", cancellationToken);
+            await Response.Body.FlushAsync(cancellationToken);
         }
         catch (Exception ex)
         {

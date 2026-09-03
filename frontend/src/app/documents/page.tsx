@@ -30,6 +30,19 @@ function fmtDate(d?: string | null) {
   try { return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) } catch { return '' }
 }
 
+// OCR status → badge shown next to each document name so lawyers know at a glance
+// whether a document is ready for AI analysis / drafting.
+function ocrBadgeFor(doc: any): { text: string; bg: string; color: string; border: string } {
+  const s = doc?.ocrStatus || doc?.OcrStatus || 'Unknown'
+  if (s === 'Completed' || s === 'Done')
+    return { text: '✓ Ready for AI', bg: '#f0fdf4', color: '#16a34a', border: '#86efac' }
+  if (s === 'Failed')
+    return { text: '✗ OCR Failed', bg: '#fef2f2', color: '#dc2626', border: '#fca5a5' }
+  return { text: '⏳ Processing...', bg: '#fefce8', color: '#a16207', border: '#fde047' }
+}
+
+const isOcrReady = (d: any) => d?.ocrStatus === 'Completed' || d?.ocrStatus === 'Done'
+
 export default function DocumentsPage() {
   const { selectedCaseId } = useCaseStore()
   const [documents,   setDocuments]   = useState<any[]>([])
@@ -61,6 +74,16 @@ export default function DocumentsPage() {
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !selectedCaseId) return
+
+    // Check file size — 100MB limit (matches backend Kestrel/multipart limit)
+    const maxSize = 100 * 1024 * 1024
+    if (file.size > maxSize) {
+      setError(`File too large. Maximum size is 100MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB.`)
+      e.target.value = ''
+      return
+    }
+
+    setError('')
     setUploading(true)
     try {
       await documentsApi.upload(selectedCaseId, file, 'Uploaded Document')
@@ -161,6 +184,30 @@ export default function DocumentsPage() {
         </div>
       )}
 
+      {selectedCaseId && documents.length > 0 && (() => {
+        const totalDocs = documents.length
+        const readyDocs = documents.filter(isOcrReady).length
+        const failedDocs = documents.filter(d => d.ocrStatus === 'Failed').length
+        const processingDocs = totalDocs - readyDocs - failedDocs
+        return (
+          <div style={{ display: 'flex', gap: 12, padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0', marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{totalDocs} Documents</span>
+            {readyDocs > 0 && (
+              <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 600 }}>✓ {readyDocs} ready for AI</span>
+            )}
+            {processingDocs > 0 && (
+              <span style={{ fontSize: 12, color: '#a16207', fontWeight: 600 }}>⏳ {processingDocs} processing</span>
+            )}
+            {failedDocs > 0 && (
+              <span style={{ fontSize: 12, color: '#dc2626', fontWeight: 600 }}>✗ {failedDocs} failed</span>
+            )}
+            {processingDocs > 0 && (
+              <span style={{ fontSize: 11, color: '#64748b' }}>· Refresh page to update status</span>
+            )}
+          </div>
+        )
+      })()}
+
       {selectedCaseId && (
         <>
           {/* ── FILTERS: category tabs + filing filter ── */}
@@ -240,6 +287,14 @@ export default function DocumentsPage() {
                         <span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 380 }}>
                           {doc.fileName}
                         </span>
+                        {(() => {
+                          const b = ocrBadgeFor(doc)
+                          return (
+                            <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: b.bg, color: b.color, border: `1px solid ${b.border}`, whiteSpace: 'nowrap' }}>
+                              {b.text}
+                            </span>
+                          )
+                        })()}
                         {/* EXHIBIT — prominent only when filed; otherwise pending badge */}
                         {isFiled ? (
                           doc.exhibitLabel && (
@@ -268,10 +323,6 @@ export default function DocumentsPage() {
                         {sizeKB > 0 && (
                           <span style={{ fontSize: 11, color: '#94a3b8' }}>{sizeKB} KB</span>
                         )}
-                        {/* OCR status */}
-                        <span style={{ fontSize: 11, color: doc.ocrStatus === 'Completed' ? '#16a34a' : '#d97706', fontWeight: 500 }}>
-                          {doc.ocrStatus === 'Completed' ? '✓ Text extracted' : '⏳ Processing'}
-                        </span>
                         {/* Filing meta when filed */}
                         {isFiled && (
                           <span style={{ fontSize: 11, fontWeight: 600, color: '#16a34a', display: 'inline-flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>

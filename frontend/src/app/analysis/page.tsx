@@ -102,6 +102,15 @@ function briefToText(sc: SummaryCards): { header: string; sections: [string, str
   return { header, sections }
 }
 
+// Turn a raw API/network error into an advocate-readable message.
+function friendlyAnalysisError(err: any, fallback: string): string {
+  const msg = err?.message || ''
+  if (msg.includes('INSUFFICIENT_CREDITS')) return 'You have run out of AI credits. Contact support@clausiotech.com.'
+  if (/timeout/i.test(msg)) return 'The AI took too long to respond. This happens with large cases. Please try again.'
+  if (msg.toLowerCase().includes('context') || msg.includes('16000')) return 'Too many documents to process at once. Please try with fewer documents.'
+  return msg || fallback
+}
+
 const LOADING_STEPS = [
   'Loading the case documents...',
   'Extracting key entities, dates, and party details...',
@@ -399,7 +408,7 @@ export default function AnalysisPage() {
       setStatus('completed')
       setActiveTab('chronology')
     } catch (err: any) {
-      setError(err.message || 'Analysis failed. Please try again.')
+      setError(friendlyAnalysisError(err, 'Analysis failed. Please try again.'))
       setStatus('idle')
     }
   }, [selectedCaseId, caseDocuments, saveChronologyFromAi, saveSummaryFromAi])
@@ -463,8 +472,15 @@ export default function AnalysisPage() {
       <div style={{ flex: 1, overflowY: 'auto' }}>
 
         {error && (
-          <div style={{ maxWidth: 760, margin: '0 auto 16px', padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626' }}>
-            {error}
+          <div style={{ maxWidth: 760, margin: '0 auto 16px', padding: '12px 16px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10 }}>
+            <div style={{ fontSize: 13, color: '#dc2626', marginBottom: 8 }}>{error}</div>
+            <button
+              onClick={() => { setError(''); handleRunAnalysis() }}
+              disabled={!selectedCaseId || caseDocuments.length === 0}
+              style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: '#dc2626', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: !selectedCaseId || caseDocuments.length === 0 ? 0.5 : 1 }}
+            >
+              Retry
+            </button>
           </div>
         )}
 

@@ -15,7 +15,7 @@ public class UserSubscription : BaseEntity
 
     // Dates
     public DateTime StartDate { get; set; } = DateTime.UtcNow;
-    public DateTime EndDate { get; set; } = DateTime.UtcNow.AddDays(14);
+    public DateTime EndDate { get; set; } = DateTime.UtcNow.AddDays(5);
 
     // Razorpay
     public string? RazorpaySubscriptionId { get; set; }

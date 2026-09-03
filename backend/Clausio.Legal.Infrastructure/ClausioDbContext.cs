@@ -29,6 +29,8 @@ public class ClausioDbContext(DbContextOptions<ClausioDbContext> options) : DbCo
     public DbSet<PromptReferenceDoc> PromptReferenceDocs => Set<PromptReferenceDoc>();
     public DbSet<UserSubscription> UserSubscriptions => Set<UserSubscription>();
     public DbSet<SubscriptionBillingHistory> SubscriptionBillingHistories => Set<SubscriptionBillingHistory>();
+    public DbSet<Wallet> Wallets => Set<Wallet>();
+    public DbSet<CreditTransaction> CreditTransactions => Set<CreditTransaction>();
     public DbSet<UserNotificationSettings> UserNotificationSettings => Set<UserNotificationSettings>();
     public DbSet<CalendarIntegration> CalendarIntegrations => Set<CalendarIntegration>();
     public DbSet<CalendarEventLink> CalendarEventLinks => Set<CalendarEventLink>();
@@ -86,6 +88,8 @@ public class ClausioDbContext(DbContextOptions<ClausioDbContext> options) : DbCo
 
         modelBuilder.Entity<UserSubscription>(e => e.HasIndex(x => x.UserId).IsUnique());
         modelBuilder.Entity<SubscriptionBillingHistory>(e => e.HasIndex(x => x.UserId));
+        modelBuilder.Entity<Wallet>(e => e.HasIndex(x => x.UserId).IsUnique());
+        modelBuilder.Entity<CreditTransaction>(e => e.HasIndex(x => x.WalletId));
         modelBuilder.Entity<UserNotificationSettings>(e => e.HasIndex(x => x.UserId).IsUnique());
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ClausioDbContext).Assembly);

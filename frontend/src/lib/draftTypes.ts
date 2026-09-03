@@ -24,6 +24,7 @@ const DRAFT_TYPES_BY_CASE: Record<string, DraftType[]> = {
     { label: 'Vakalatnama',                   description: 'Power of attorney authorising advocate to appear',                sections: ['Order III Rule 4 CPC'] },
     { label: 'Affidavit',                     description: 'Sworn affidavit in support of petition',                          sections: ['Order XIX CPC'] },
     { label: 'Legal Notice',                  description: 'Pre-litigation notice to opposing party',                         sections: ['Section 80 CPC'] },
+    { label: 'Reply to Legal Notice',        description: 'Paragraph-wise response to a legal notice received',              sections: [] },
     { label: 'Written Statement',             description: 'Reply to petition filed by opposing party',                       sections: ['Order VIII CPC'] },
     { label: 'Discovery Application',         description: 'Application for discovery of documents and income',               sections: ['Order XI Rule 12 CPC'] },
     { label: 'Mutual Consent Divorce (Section 13B)', description: 'Joint petition for divorce by mutual consent under Section 13B HMA', sections: ['Section 13B HMA'] },
@@ -56,6 +57,7 @@ const DRAFT_TYPES_BY_CASE: Record<string, DraftType[]> = {
     { label: 'Attachment Before Judgment',    description: 'Application for attachment before judgment under Order XXXVIII', sections: ['Order XXXVIII CPC'] },
     { label: 'Civil Appeal',                  description: 'Memorandum of appeal against trial court decree',                sections: ['Order XLI CPC', 'Section 96 CPC'] },
     { label: 'Legal Notice',                  description: 'Pre-litigation demand notice',                                    sections: ['Section 80 CPC'] },
+    { label: 'Reply to Legal Notice',        description: 'Paragraph-wise response to a legal notice received',               sections: [] },
     { label: 'Affidavit',                     description: 'Sworn affidavit in support of application',                      sections: ['Order XIX CPC'] },
     { label: 'Stay Application',              description: 'Application for stay of decree pending appeal under Order 41 Rule 5 CPC', sections: ['Order 41 Rule 5 CPC'] },
     { label: 'Contempt Petition',             description: 'Petition for contempt of court order under Contempt of Courts Act 1971', sections: ['Contempt of Courts Act 1971'] },
@@ -90,6 +92,7 @@ const DRAFT_TYPES_BY_CASE: Record<string, DraftType[]> = {
   'ni act': [
     { label: 'Cheque Bounce Complaint (Section 138)', description: 'Complaint for dishonour of cheque under NI Act',         sections: ['Section 138 NI Act', 'Section 142 NI Act'] },
     { label: 'NI Act Legal Notice (15-day)',   description: 'Legal demand notice to be sent by Registered Post',             sections: ['Section 138 proviso (b) NI Act'] },
+    { label: 'Reply to Legal Notice',        description: 'Paragraph-wise response to a legal notice received',            sections: [] },
     { label: 'Reply to Complaint',            description: 'Reply/written statement filed by accused',                       sections: ['Section 138 NI Act', 'Section 313 CrPC'] },
     { label: 'Compounding Application',       description: 'Application for compounding of offence under Section 147',      sections: ['Section 147 NI Act'] },
     { label: 'Application for Interim Compensation', description: 'Application for interim compensation under Section 143A', sections: ['Section 143A NI Act'] },
@@ -101,11 +104,12 @@ const DRAFT_TYPES_BY_CASE: Record<string, DraftType[]> = {
   corporate: [
     { label: 'Section 7 Petition (IBC)',      description: 'CIRP petition by financial creditor under IBC 2016',            sections: ['Section 7 IBC 2016'] },
     { label: 'NCLT Petition (IBC Section 9)',  description: 'CIRP petition by operational creditor under IBC 2016',          sections: ['Section 9 IBC 2016'] },
-    { label: 'Oppression & Mismanagement',    description: 'Petition under Section 241-242 Companies Act 2013',             sections: ['Section 241 Companies Act', 'Section 242 Companies Act'] },
+    { label: 'NCLT Petition Section 241/242', description: 'Oppression and mismanagement petition protecting minority shareholders', sections: ['Section 241 Companies Act 2013', 'Section 242 Companies Act 2013'] },
     { label: 'Winding Up Petition',           description: 'Petition for winding up of company under Section 271',          sections: ['Section 271 Companies Act 2013'] },
     { label: 'SARFAESI Application',          description: 'Application under SARFAESI Act for secured asset possession',   sections: ['Section 13(4) SARFAESI Act'] },
     { label: 'DRT Application',               description: 'Application to Debt Recovery Tribunal for recovery',            sections: ['Section 19 RDDBFI Act'] },
     { label: 'Reply to Liquidator',           description: 'Reply/objection to liquidators action in IBC proceedings',    sections: ['Section 35 IBC', 'Section 42 IBC'] },
+    { label: 'Reply to Legal Notice',        description: 'Paragraph-wise response to a legal notice received',           sections: [] },
   ],
 
   // ── ARBITRATION ─────────────────────────────────────────────
@@ -122,6 +126,7 @@ const DRAFT_TYPES_BY_CASE: Record<string, DraftType[]> = {
   consumer: [
     { label: 'Consumer Complaint',            description: 'Complaint before District/State/National Consumer Commission',   sections: ['Section 35 CP Act 2019'] },
     { label: 'Consumer Complaint Reply',      description: 'Written reply/version filed by opposite party',                  sections: ['Section 38 CP Act 2019'] },
+    { label: 'Reply to Legal Notice',        description: 'Paragraph-wise response to a legal notice received',             sections: [] },
     { label: 'Appeal to State Commission',    description: 'Appeal against District Commission order',                       sections: ['Section 41 CP Act 2019'] },
     { label: 'Appeal to National Commission', description: 'Appeal against State Commission order',                          sections: ['Section 51 CP Act 2019'] },
     { label: 'Execution Application',         description: 'Application for execution of consumer forum order',              sections: ['Section 71 CP Act 2019'] },
@@ -133,6 +138,7 @@ const DRAFT_TYPES_BY_CASE: Record<string, DraftType[]> = {
     { label: 'Appeal to RERA Tribunal',       description: 'Appeal against RERA Authority order',                           sections: ['Section 44 RERA 2016'] },
     { label: 'Refund Application',            description: 'Application for refund with interest under Section 18',         sections: ['Section 18 RERA 2016'] },
     { label: 'Legal Notice to Builder',       description: 'Pre-litigation notice to builder for delay/defect',              sections: ['Section 14 RERA 2016'] },
+    { label: 'Reply to Legal Notice',        description: 'Paragraph-wise response to a legal notice received',              sections: [] },
   ],
 
   // ── LABOUR ──────────────────────────────────────────────────
@@ -160,6 +166,7 @@ const DRAFT_TYPES_BY_CASE: Record<string, DraftType[]> = {
     { label: 'Eviction Suit',                 description: 'Suit for eviction and recovery of rent',                          sections: ['Transfer of Property Act 1882'] },
     { label: 'RERA Complaint',                description: 'Complaint against builder before RERA Authority',                 sections: ['Section 31 RERA 2016'] },
     { label: 'Legal Notice',                  description: 'Pre-litigation notice to tenant or landlord',                     sections: ['Transfer of Property Act 1882'] },
+    { label: 'Reply to Legal Notice',        description: 'Paragraph-wise response to a legal notice received',               sections: [] },
     { label: 'Affidavit',                     description: 'Sworn affidavit in support of application',                       sections: [] },
   ],
 }
@@ -170,6 +177,7 @@ const DEFAULT_DRAFT_TYPES: DraftType[] = [
   { label: 'Written Statement',  description: 'Reply to opposing party',      sections: [] },
   { label: 'Affidavit',          description: 'Sworn affidavit',              sections: [] },
   { label: 'Legal Notice',       description: 'Pre-litigation notice',        sections: [] },
+  { label: 'Reply to Legal Notice', description: 'Paragraph-wise response to a legal notice', sections: [] },
   { label: 'Injunction',         description: 'Application for injunction',   sections: [] },
   { label: 'Vakalatnama',        description: 'Power of attorney',            sections: [] },
   { label: 'Writ Petition (Article 226)', description: 'Writ petition before High Court under Article 226', sections: ['Article 226 Constitution of India'] },

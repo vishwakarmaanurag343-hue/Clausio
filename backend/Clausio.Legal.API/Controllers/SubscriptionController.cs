@@ -1,7 +1,9 @@
 using Clausio.Legal.Core.Dtos;
+using Clausio.Legal.Infrastructure;
 using Clausio.Legal.Service;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace Clausio.Legal.API.Controllers;
@@ -10,7 +12,8 @@ namespace Clausio.Legal.API.Controllers;
 [ApiController]
 [Route("api/subscription")]
 public class SubscriptionController(
-    ISubscriptionService subscriptionService) : ControllerBase
+    ISubscriptionService subscriptionService,
+    ClausioDbContext db) : ControllerBase
 {
     private Guid UserId
     {
@@ -30,6 +33,65 @@ public class SubscriptionController(
         var status = await subscriptionService
             .GetStatusAsync(UserId, ct);
         return Ok(status);
+    }
+
+    // Lightweight gate check used by the frontend TrialBanner / AI enforcement.
+    [HttpGet("check")]
+    public async Task<IActionResult> Check(CancellationToken ct)
+    {
+        var sub = await db.UserSubscriptions
+            .FirstOrDefaultAsync(s => s.UserId == UserId, ct);
+
+        if (sub == null)
+        {
+            // First-time user — provision the free trial (mirrors GetStatusAsync).
+            sub = new Core.Entities.UserSubscription
+            {
+                UserId = UserId,
+                PlanName = "Free Trial",
+                Status = "Trial",
+                StartDate = DateTime.UtcNow,
+                EndDate = DateTime.UtcNow.AddDays(5),
+                MaxCases = 3,
+                MaxDraftsPerMonth = 5,
+                MaxTeamMembers = 1,
+                MaxStorageBytes = 1073741824
+            };
+            db.UserSubscriptions.Add(sub);
+            await db.SaveChangesAsync(ct);
+        }
+
+        var daysRemaining = Math.Max(0,
+            (int)(sub.EndDate - DateTime.UtcNow).TotalDays);
+
+        var isActive =
+            sub.Status == "Active" ||
+            sub.Status == "Trial";
+
+        var isExpired = sub.EndDate < DateTime.UtcNow;
+
+        if (isExpired && sub.Status != "Cancelled")
+        {
+            sub.Status = "Expired";
+            await db.SaveChangesAsync(ct);
+        }
+
+        return Ok(new
+        {
+            isActive = isActive && !isExpired,
+            canUseAI = isActive && !isExpired,
+            planName = sub.PlanName,
+            status = isExpired ? "Expired" : sub.Status,
+            daysRemaining,
+            endDate = sub.EndDate,
+            isTrial = sub.PlanName == "Free Trial",
+            showWarning = daysRemaining <= 3 && daysRemaining > 0,
+            message = isExpired
+                ? "Your trial has expired. Please upgrade to continue."
+                : daysRemaining <= 3
+                ? $"Your trial expires in {daysRemaining} day{(daysRemaining == 1 ? "" : "s")}. Upgrade now."
+                : null
+        });
     }
 
     [HttpGet("plans")]

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Clausio.Legal.API.Filters;
 using Clausio.Legal.Core.Dtos;
 using Clausio.Legal.Service;
 using Microsoft.AspNetCore.Authorization;
@@ -21,6 +22,7 @@ public class ReadinessController(IReadinessService readinessService, IAiService 
     /// An unreadable AI response surfaces as a retryable error — junk is never persisted.
     /// </summary>
     [HttpPost("generate")]
+    [RequireActiveSubscription]
     public async Task<IActionResult> Generate(Guid caseId, [FromBody] GenerateReadinessOptionsDto? options = null, CancellationToken cancellationToken = default)
     {
         var raw = await aiService.AssessReadinessAsync(caseId, options, cancellationToken);

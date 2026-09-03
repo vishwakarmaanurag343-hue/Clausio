@@ -520,9 +520,9 @@ function TextAreaField({ label, name, value, placeholder, onChange }: { label: s
    STYLES — UNCHANGED
 ============================================================ */
 const overlay:        React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(15,23,42,.55)', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', overflowY: 'auto', padding: '16px', zIndex: 9999 }
-const modal:          React.CSSProperties = { width: '100%', maxWidth: 1150, maxHeight: '92vh', background: '#fff', borderRadius: 24, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 60px rgba(15,23,42,.18)' }
-const header:         React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '26px 32px', borderBottom: '1px solid #e2e8f0', background: '#ffffff' }
-const footer:         React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '24px 32px', borderTop: '1px solid #e2e8f0', background: '#ffffff' }
+const modal:          React.CSSProperties = { width: '100%', maxWidth: 1150, height: 'calc(100vh - 32px)', maxHeight: '92vh', minHeight: 0, background: '#fff', borderRadius: 24, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 60px rgba(15,23,42,.18)' }
+const header:         React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, padding: '26px 32px', borderBottom: '1px solid #e2e8f0', background: '#ffffff' }
+const footer:         React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, padding: '24px 32px', borderTop: '1px solid #e2e8f0', background: '#ffffff' }
 const grid:           React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 22 }
 const sectionTitle:   React.CSSProperties = { fontSize: 26, fontWeight: 700, margin: 0, marginBottom: 10, color: '#0f172a' }
 const sectionDescription: React.CSSProperties = { marginTop: 0, marginBottom: 28, color: '#64748b', lineHeight: 1.7, fontSize: 15 }

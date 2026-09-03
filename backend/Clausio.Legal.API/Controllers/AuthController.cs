@@ -87,6 +87,45 @@ public class AuthController(IAuthService authService) : ControllerBase
         }
     }
 
+    [HttpPost("verify-email")]
+    public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailDto dto, CancellationToken ct)
+    {
+        try
+        {
+            var userAgent = Request.Headers.UserAgent.ToString();
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+            var result = await authService.VerifyEmailAsync(dto.Email, dto.Otp, userAgent, ip, ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message ?? "An error occurred while verifying your email." });
+        }
+    }
+
+    [HttpPost("resend-otp")]
+    public async Task<IActionResult> ResendOtp([FromBody] ResendOtpDto dto, CancellationToken ct)
+    {
+        try
+        {
+            await authService.ResendOtpAsync(dto.Email, ct);
+            return Ok(new { message = "New OTP sent to your email." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message ?? "An error occurred while resending the OTP." });
+        }
+    }
+
     [Authorize]
     [HttpGet("me")]
     public async Task<IActionResult> Me(CancellationToken cancellationToken)

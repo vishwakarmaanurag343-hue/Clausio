@@ -144,6 +144,8 @@ public class DraftEngine : IDraftEngine
                 => "Drafts/consumer_complaint",
             "Consumer Complaint Reply"
                 => "Drafts/consumer_reply",
+            "Reply to Legal Notice"
+                => "Drafts/legal_notice_reply",
             "GST Appeal"
                 => "Drafts/gst_appeal",
             "GST Show Cause Notice Reply"
@@ -162,6 +164,8 @@ public class DraftEngine : IDraftEngine
                 => "Drafts/arbitration_s34",
             "NCLT Petition (IBC Section 9)"
                 => "Drafts/nclt_petition_ibc",
+            "NCLT Petition Section 241/242"
+                => "Drafts/nclt_petition_241_242",
             "Succession Certificate"
                 => "Drafts/succession_certificate",
             "Writ Petition (Article 226)"

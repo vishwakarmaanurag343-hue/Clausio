@@ -23,21 +23,21 @@ public class AnalysisHandler : IAnalysisHandler
     public async Task<string> SummarizeCaseAsync(Guid caseId, CancellationToken cancellationToken = default)
     {
         var contextXml = await _contextEngine.BuildAnalysisContextAsync(caseId, "Case Summary", cancellationToken);
-        var systemPrompt = _promptBuilder.BuildSystemPrompt("GeneralChat") + $"\n\nContext:\n{contextXml}";
+        var systemPrompt = _promptBuilder.BuildSystemPrompt("Summary", new() { ["CONTEXT"] = contextXml });
         return await _aiRouter.CompleteAsync(systemPrompt, "Prepare a comprehensive case summary brief based on the provided context. Format as a JSON string.", "Summarization", cancellationToken);
     }
 
     public async Task<string> GenerateChronologyAsync(Guid caseId, CancellationToken cancellationToken = default)
     {
         var contextXml = await _contextEngine.BuildAnalysisContextAsync(caseId, "Chronology", cancellationToken);
-        var systemPrompt = _promptBuilder.BuildSystemPrompt("GeneralChat") + $"\n\nContext:\n{contextXml}";
+        var systemPrompt = _promptBuilder.BuildSystemPrompt("Chronology", new() { ["CONTEXT"] = contextXml });
         return await _aiRouter.CompleteAsync(systemPrompt, "Construct a comprehensive chronological timeline based on the context. Return JSON.", "Analysis", cancellationToken);
     }
 
     public async Task<string> DetectContradictionsAsync(Guid caseId, CancellationToken cancellationToken = default)
     {
         var contextXml = await _contextEngine.BuildAnalysisContextAsync(caseId, "Contradictions", cancellationToken);
-        var systemPrompt = _promptBuilder.BuildSystemPrompt("GeneralChat") + $"\n\nContext:\n{contextXml}";
+        var systemPrompt = _promptBuilder.BuildSystemPrompt("ContradictionAnalysis", new() { ["CONTEXT"] = contextXml });
         return await _aiRouter.CompleteAsync(systemPrompt, "Detect contradictions in the provided evidence and statements. Return JSON.", "Analysis", cancellationToken);
     }
 
@@ -49,42 +49,42 @@ public class AnalysisHandler : IAnalysisHandler
     public async Task<string> ResearchAsync(Guid caseId, CancellationToken cancellationToken = default)
     {
         var contextXml = await _contextEngine.BuildAnalysisContextAsync(caseId, "Legal Research", cancellationToken);
-        var systemPrompt = _promptBuilder.BuildSystemPrompt("GeneralChat") + $"\n\nContext:\n{contextXml}";
+        var systemPrompt = _promptBuilder.BuildSystemPrompt("LegalResearch", new() { ["CONTEXT"] = contextXml });
         return await _aiRouter.CompleteAsync(systemPrompt, "Conduct legal research for this case based on the provided context. Return JSON.", "Analysis", cancellationToken);
     }
 
     public async Task<string> GenerateActionPlanAsync(Guid caseId, CancellationToken cancellationToken = default)
     {
         var contextXml = await _contextEngine.BuildAnalysisContextAsync(caseId, "Action Plan", cancellationToken);
-        var systemPrompt = _promptBuilder.BuildSystemPrompt("GeneralChat") + $"\n\nContext:\n{contextXml}";
+        var systemPrompt = _promptBuilder.BuildSystemPrompt("ActionPlan", new() { ["CONTEXT"] = contextXml });
         return await _aiRouter.CompleteAsync(systemPrompt, "Generate a strategic action plan based on the case context. Return JSON.", "ActionPlan", cancellationToken);
     }
 
     public async Task<string> AnalyzeFinancialsAsync(Guid caseId, CancellationToken cancellationToken = default)
     {
         var contextXml = await _contextEngine.BuildAnalysisContextAsync(caseId, "Financials", cancellationToken);
-        var systemPrompt = _promptBuilder.BuildSystemPrompt("GeneralChat") + $"\n\nContext:\n{contextXml}";
+        var systemPrompt = _promptBuilder.BuildSystemPrompt("FinancialProfile", new() { ["CONTEXT"] = contextXml });
         return await _aiRouter.CompleteAsync(systemPrompt, "Analyze the financial implications and details from the context. Return JSON.", "Analysis", cancellationToken);
     }
 
     public async Task<string> AssessReadinessAsync(Guid caseId, CancellationToken cancellationToken = default)
     {
         var contextXml = await _contextEngine.BuildAnalysisContextAsync(caseId, "Readiness", cancellationToken);
-        var systemPrompt = _promptBuilder.BuildSystemPrompt("GeneralChat") + $"\n\nContext:\n{contextXml}";
+        var systemPrompt = _promptBuilder.BuildSystemPrompt("ReadinessAssessment", new() { ["CONTEXT"] = contextXml });
         return await _aiRouter.CompleteAsync(systemPrompt, "Assess case readiness for trial based on context. Return JSON.", "Analysis", cancellationToken);
     }
 
     public async Task<string> PrepHearingAsync(Guid caseId, CancellationToken cancellationToken = default)
     {
         var contextXml = await _contextEngine.BuildAnalysisContextAsync(caseId, "Hearing Prep", cancellationToken);
-        var systemPrompt = _promptBuilder.BuildSystemPrompt("GeneralChat") + $"\n\nContext:\n{contextXml}";
+        var systemPrompt = _promptBuilder.BuildSystemPrompt("HearingPrep", new() { ["CONTEXT"] = contextXml });
         return await _aiRouter.CompleteAsync(systemPrompt, "Prepare a hearing brief based on the context. Return JSON.", "Analysis", cancellationToken);
     }
 
     public async Task<string> PrepWitnessAsync(Guid caseId, CancellationToken cancellationToken = default)
     {
         var contextXml = await _contextEngine.BuildAnalysisContextAsync(caseId, "Witness Prep", cancellationToken);
-        var systemPrompt = _promptBuilder.BuildSystemPrompt("GeneralChat") + $"\n\nContext:\n{contextXml}";
+        var systemPrompt = _promptBuilder.BuildSystemPrompt("WitnessPrep", new() { ["CONTEXT"] = contextXml });
         return await _aiRouter.CompleteAsync(systemPrompt, "Prepare a witness cross-examination guide based on the context. Return JSON.", "Analysis", cancellationToken);
     }
 }

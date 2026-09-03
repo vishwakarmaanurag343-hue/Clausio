@@ -17,6 +17,12 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Auth callback (landing-site signup/login hands the JWT here). Always let it
+  // run so it can set the session cookie — regardless of current auth state.
+  if (pathname === '/auth/callback') {
+    return NextResponse.next()
+  }
+
   const token = request.cookies.get('clausio_token')?.value
   const isPublicPath = PUBLIC_PATHS.some(path => pathname === path || pathname.startsWith(`${path}/`))
 

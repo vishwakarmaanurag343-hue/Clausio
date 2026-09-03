@@ -126,6 +126,19 @@ async function handle(res: Response, fallbackMessage: string) {
     } catch {
       // response had no JSON body
     }
+    // Trial / subscription lapsed — send the advocate to the plans page instead
+    // of surfacing a generic error.
+    if (typeof message === 'string' && message.includes('SUBSCRIPTION_EXPIRED')) {
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/billing')) {
+        window.location.href = '/billing?tab=Subscription'
+      }
+    }
+    // Out of AI credits — let the shell show the OutOfCreditsModal.
+    if (typeof message === 'string' && message.includes('INSUFFICIENT_CREDITS')) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('insufficient-credits'))
+      }
+    }
     throw new Error(message)
   }
   if (res.status === 204) return null
@@ -138,8 +151,18 @@ async function handle(res: Response, fallbackMessage: string) {
   }
 }
 
+// Any successful /api/ai/* call may have spent wallet credits — tell the shell to
+// refresh the sidebar balance.
+function notifyIfAiCall(path: string) {
+  if (path.startsWith('/ai/') && typeof window !== 'undefined') {
+    try { window.dispatchEvent(new CustomEvent('credits-updated')) } catch { /* no-op */ }
+  }
+}
+
 function get(path: string, fallbackMessage: string) {
-  return fetch(`${BASE}${path}`, { headers: headers() }).then(res => handle(res, fallbackMessage))
+  return fetch(`${BASE}${path}`, { headers: headers() })
+    .then(res => handle(res, fallbackMessage))
+    .then(result => { notifyIfAiCall(path); return result })
 }
 
 function send(method: string, path: string, data: any, fallbackMessage: string, options?: RequestInit) {
@@ -148,7 +171,9 @@ function send(method: string, path: string, data: any, fallbackMessage: string, 
     headers: headers(),
     body: data !== undefined ? JSON.stringify(data) : undefined,
     ...options,
-  }).then(res => handle(res, fallbackMessage))
+  })
+    .then(res => handle(res, fallbackMessage))
+    .then(result => { notifyIfAiCall(path); return result })
 }
 
 function del(path: string, fallbackMessage: string) {
@@ -297,6 +322,7 @@ export const adminApi = {
   getPermissions:   (userId: string) => send('GET', `/admin/permissions/${userId}`, undefined, 'Failed to get permissions'),
   savePermissions:  (userId: string, pageKeys: string[]) => send('PUT', `/admin/permissions/${userId}`, { pageKeys }, 'Failed to save permissions'),
   getMyPermissions: () => send('GET', '/admin/my-permissions', undefined, 'Failed to load permissions'),
+  getCreditStats:   () => send('GET', '/admin/credit-stats', undefined, 'Failed to load credit stats'),
 }
 
 // Settings → Notifications tab (api/notification-settings → NotificationSettingsController)
@@ -553,4 +579,19 @@ export const aiApi = {
       }
     }
   }
+}
+
+export const walletApi = {
+  getSummary: () =>
+    get('/wallet', 'Failed to fetch wallet') as Promise<{
+      balance: number
+      totalEarned: number
+      totalSpent: number
+      recent: Array<{
+        amount: number
+        type: string
+        description?: string | null
+        createdAt: string
+      }>
+    }>,
 }
