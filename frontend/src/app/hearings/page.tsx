@@ -88,6 +88,18 @@ export default function HearingsPage() {
     <>
       <div className="glass-panel mobile-hearings-container" style={{ flex: 1, overflowY: 'auto', margin: '16px', padding: 20, borderRadius: 24, display: 'flex', flexDirection: 'column' }}>
 
+        {!selectedCaseId && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '60px 20px', textAlign: 'center' }}>
+            <i className="ti ti-calendar-off" style={{ fontSize: 56, color: '#cbd5e1', display: 'block', marginBottom: 16 }} />
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: '#374151', marginBottom: 8 }}>No Case Selected</h2>
+            <p style={{ fontSize: 14, color: '#64748b', maxWidth: 320, lineHeight: 1.6 }}>
+              Select a case from the sidebar or dashboard to view and manage hearing records for that case.
+            </p>
+          </div>
+        )}
+
+        {selectedCaseId && (
+        <>
         {/* ── DESKTOP HEARINGS VIEW ── */}
         <div className="desktop-hearings-view" style={{ display: 'flex', flexDirection: 'column' }}>
           {/* HEADER */}
@@ -534,6 +546,8 @@ export default function HearingsPage() {
           </div>
 
         </div>
+        </>
+        )}
       </div>
 
       {showAddModal && (

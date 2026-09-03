@@ -22,6 +22,19 @@ using Clausio.MCP.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Large document uploads — scanned case files (paper books, court records) can be big.
+// Raise Kestrel + multipart form limits to 100 MB so uploads don't 413 at the default 30 MB.
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 100L * 1024 * 1024; // 100 MB
+});
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 100L * 1024 * 1024; // 100 MB
+    options.ValueLengthLimit = 100 * 1024 * 1024;
+    options.MultipartHeadersLengthLimit = 100 * 1024 * 1024;
+});
+
 // Request-scoped carrier for the lawyer's selected AI style reference (?referenceDocId=)
 builder.Services.AddScoped<Clausio.Legal.Core.Interfaces.AI.Pipeline.IPromptReferenceContext,
     Clausio.Legal.Core.Interfaces.AI.Pipeline.PromptReferenceContext>();
@@ -186,6 +199,8 @@ builder.Services.AddScoped<ITimelineService, TimelineService>();
 builder.Services.AddScoped<IReadinessService, ReadinessService>();
 builder.Services.AddScoped<IStatsService, StatsService>();
 builder.Services.AddScoped<IAiService, AiService>();
+builder.Services.AddScoped<IWalletService, WalletService>();
+builder.Services.AddScoped<Clausio.Legal.Service.CurrentUserContext>();
 
 // Email (Resend) + automated hearing reminder emails
 builder.Services.AddHttpClient("Resend");
@@ -252,6 +267,7 @@ app.UseSwaggerUI(c =>
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<CurrentUserMiddleware>();
 app.UseMiddleware<DeviceBindingMiddleware>();
 
 // Health check endpoint for ALB / Docker

@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useUIStore, useCaseStore } from '@/lib/store'
-import { adminApi } from '@/lib/api'
+import { adminApi, walletApi } from '@/lib/api'
 import { getRole, storePermissions, hasPagePermission, pageKeyForPath } from '@/lib/pagePermissions'
+import OutOfCreditsModal from '@/components/subscription/OutOfCreditsModal'
 
 const NAV = [
   {
@@ -58,6 +59,44 @@ export default function Sidebar() {
   const [ready, setReady] = useState(false)
   const [role, setRole] = useState('')
   const [permsVersion, setPermsVersion] = useState(0)
+  const [credits, setCredits] = useState<number | null>(null)
+  const [showNoCredits, setShowNoCredits] = useState(false)
+
+  const refreshCredits = () => {
+    // SuperAdmins don't need credits display - they have unlimited access
+    if (role === 'SuperAdmin') return
+    walletApi.getSummary().then((d: any) => setCredits(d?.balance ?? 0)).catch(() => {})
+  }
+
+  // Initial load with retry — the auth token may not be readable on the first tick after
+  // login, which would otherwise leave the balance stuck on "—" until a manual refresh.
+  useEffect(() => {
+    if (role === 'SuperAdmin') return
+    let attempts = 0
+    let timer: ReturnType<typeof setTimeout>
+    const fetchCredits = () => {
+      attempts++
+      walletApi.getSummary()
+        .then((d: any) => setCredits(d?.balance ?? 0))
+        .catch(() => { if (attempts < 3) timer = setTimeout(fetchCredits, 2000) })
+    }
+    timer = setTimeout(fetchCredits, 500)
+    return () => clearTimeout(timer)
+  }, [role])
+
+  useEffect(() => {
+    const handler = () => setShowNoCredits(true)
+    window.addEventListener('insufficient-credits', handler)
+    return () => window.removeEventListener('insufficient-credits', handler)
+  }, [])
+
+  // Any successful AI call spends credits — refresh the balance when api.ts signals it.
+  useEffect(() => {
+    const handler = () => refreshCredits()
+    window.addEventListener('credits-updated', handler)
+    return () => window.removeEventListener('credits-updated', handler)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role])
 
   // Load THIS signed-in user's page permissions from the backend every time the sidebar
   // mounts (i.e. on login and on every cross-section navigation). Tagged with the user id
@@ -273,8 +312,50 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* ── DESKTOP BOTTOM ACTIONS ── */}
+      {/* ── DESKTOP BOTTOM ACTIONS (Credits display only for non-SuperAdmins) ── */}
       <div className="desktop-sidebar-bottom" style={{ padding: '12px', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+        {expanded && role !== 'SuperAdmin' && (
+          <div style={{
+            margin: '8px 12px 4px',
+            padding: '10px 14px',
+            borderRadius: 10,
+            background: credits !== null && credits < 10
+              ? 'rgba(220,38,38,0.08)'
+              : 'rgba(37,99,235,0.08)',
+            border: credits !== null && credits < 10
+              ? '1px solid rgba(220,38,38,0.2)'
+              : '1px solid rgba(37,99,235,0.2)',
+          }}>
+            <div style={{
+              fontSize: 10,
+              fontWeight: 700,
+              color: '#64748b',
+              textTransform: 'uppercase' as const,
+              letterSpacing: '0.08em',
+              marginBottom: 4,
+            }}>
+              AI Credits
+            </div>
+            <div style={{
+              fontSize: 22,
+              fontWeight: 800,
+              color: credits !== null && credits < 10 ? '#dc2626' : '#2563eb',
+              lineHeight: 1,
+            }}>
+              {credits ?? '—'}
+            </div>
+            {credits !== null && credits < 10 && credits > 0 && (
+              <div style={{ fontSize: 10, color: '#dc2626', marginTop: 4, fontWeight: 600 }}>
+                ⚠️ Low — contact us for more
+              </div>
+            )}
+            {credits === 0 && (
+              <div style={{ fontSize: 10, color: '#dc2626', marginTop: 4, fontWeight: 600 }}>
+                ❌ No credits remaining
+              </div>
+            )}
+          </div>
+        )}
         <Link
           href="/settings"
           style={{
@@ -367,6 +448,15 @@ export default function Sidebar() {
           <i className="ti ti-settings" style={{ fontSize: 20, color: '#0f172a' }} />
         </Link>
       </div>
+
+      {showNoCredits && (
+        <OutOfCreditsModal
+          onClose={() => {
+            setShowNoCredits(false)
+            refreshCredits()
+          }}
+        />
+      )}
     </aside>
     </>
   )

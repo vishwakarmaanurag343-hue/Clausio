@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { settingsBillingApi } from '@/lib/api'
+import { settingsBillingApi, walletApi } from '@/lib/api'
 import { subscriptionApi } from '@/lib/billingApi'
 
 function statusColor(status?: string) {
@@ -28,6 +28,7 @@ function limitText(n: number | undefined, noun: string) {
 export default function BillingSettings() {
   const router = useRouter()
   const [summary, setSummary] = useState<any>(null)
+  const [wallet, setWallet] = useState<Awaited<ReturnType<typeof walletApi.getSummary>> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState('')
   const [cancelling, setCancelling] = useState(false)
@@ -54,8 +55,12 @@ export default function BillingSettings() {
     setLoading(true)
     setError('')
     try {
-      const data = await settingsBillingApi.getSummary()
+      const [data, walletData] = await Promise.all([
+        settingsBillingApi.getSummary(),
+        walletApi.getSummary(),
+      ])
       setSummary(data)
+      setWallet(walletData)
     } catch (err: any) {
       setError(err.message || 'Failed to load billing summary')
     } finally {
@@ -90,6 +95,36 @@ export default function BillingSettings() {
         <p style={{ marginTop: 6, color: '#64748b', fontSize: 13 }}>Your current plan at a glance. Full management is on the Billing page.</p>
       </div>
 
+      {/* CREDIT USAGE */}
+      <div style={{ marginBottom: 28 }}>
+        <h3 style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 700, color: '#0f172a' }}>AI Credit Usage</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 16 }}>
+          <IncludeCard icon="ti-coin" text={`${wallet?.balance ?? 0} credits remaining`} />
+          <IncludeCard icon="ti-chart-line" text={`${wallet?.totalSpent ?? 0} credits used`} />
+          <IncludeCard icon="ti-gift" text={`${wallet?.totalEarned ?? 0} credits received`} />
+        </div>
+        <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden', background: '#fff' }}>
+          <div style={{ padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: 12, fontWeight: 700, color: '#475569' }}>
+            Recent credit activity
+          </div>
+          {!wallet?.recent?.length ? (
+            <div style={{ padding: '18px 16px', color: '#64748b', fontSize: 12 }}>No credit activity yet.</div>
+          ) : (
+            wallet.recent.map((transaction, index) => (
+              <div key={`${transaction.createdAt}-${index}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '12px 16px', borderBottom: index < wallet.recent.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{transaction.description || transaction.type}</div>
+                  <div style={{ marginTop: 3, fontSize: 11, color: '#64748b' }}>{new Date(transaction.createdAt).toLocaleString('en-IN')}</div>
+                </div>
+                <span style={{ flexShrink: 0, fontSize: 13, fontWeight: 700, color: transaction.amount < 0 ? '#dc2626' : '#16a34a' }}>
+                  {transaction.amount < 0 ? '' : '+'}{transaction.amount} credits
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
       {/* 1 — CURRENT PLAN CARD */}
       <div style={{ border: `1px solid ${sc}33`, background: `${sc}0d`, borderRadius: 16, padding: 24, marginBottom: 28 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
@@ -105,8 +140,8 @@ export default function BillingSettings() {
               {summary?.totalAmount ? ` · Rs. ${Number(summary.totalAmount).toLocaleString('en-IN')}/- ${summary?.isAnnual ? 'per year' : 'per month'}` : ''}
             </p>
           </div>
-          <button onClick={() => router.push('/billing?tab=Subscription')} style={primaryButton}>
-            Manage Subscription →
+          <button disabled style={{ ...primaryButton, background: '#e2e8f0', color: '#94a3b8', cursor: 'default' }}>
+            Subscription management coming soon
           </button>
         </div>
       </div>
@@ -126,7 +161,7 @@ export default function BillingSettings() {
         <h3 style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Quick Links</h3>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
           <button onClick={() => router.push('/billing?tab=Invoices')} style={linkButton}><i className="ti ti-download" /> Download Invoices</button>
-          <button onClick={() => router.push('/billing?tab=Subscription')} style={linkButton}><i className="ti ti-arrow-up-circle" /> Upgrade Plan</button>
+          <button disabled style={{ ...linkButton, color: '#94a3b8', cursor: 'default' }}><i className="ti ti-clock" /> Upgrade plan coming soon</button>
           <button
             onClick={handleCancel}
             disabled={cancelling || summary?.status === 'Cancelled' || summary?.status === 'Expired'}

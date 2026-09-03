@@ -21,6 +21,8 @@ export default function ClientPage() {
   const [clientEmail, setClientEmail] = useState('')
   const [manualEmail, setManualEmail] = useState('')
   const [error,      setError]      = useState('')
+  const [sendSuccess, setSendSuccess] = useState('')
+  const [sendError,   setSendError]   = useState('')
 
   const [sendHistory, setSendHistory] = useState<Array<{
     id: string
@@ -81,17 +83,20 @@ export default function ClientPage() {
     ? `${caseData.client.firstName ?? ''} ${caseData.client.lastName ?? ''}`.trim()
     : 'No client'
 
+  const flashSendError = (msg: string) => { setSendError(msg); setSendSuccess(''); setTimeout(() => setSendError(''), 5000) }
+
   const handleSendEmail = useCallback(async () => {
+    setSendError(''); setSendSuccess('')
     if (!selectedCaseId) {
-      alert('Select a case first.')
+      flashSendError('Select a case first.')
       return
     }
     if (!manualEmail && !clientEmail) {
-      alert('Please enter client email address.')
+      flashSendError('Please enter the client email address.')
       return
     }
     if (!message) {
-      alert('Generate a message first.')
+      flashSendError('Generate a message first.')
       return
     }
 
@@ -114,9 +119,10 @@ export default function ClientPage() {
       })
 
       handleSent('email', body)
-      alert(`✅ Email sent to ${toEmail}`)
+      setSendSuccess(`Email sent successfully to ${toEmail}`)
+      setTimeout(() => setSendSuccess(''), 5000)
     } catch (err: any) {
-      alert(err.message || 'Failed to send. Try again.')
+      flashSendError(err.message || 'Failed to send. Try again.')
     } finally {
       setSending(false)
     }
@@ -185,6 +191,17 @@ export default function ClientPage() {
           {error && (
             <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626', marginBottom: 16, flexShrink: 0 }}>
               {error}
+            </div>
+          )}
+
+          {sendSuccess && (
+            <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, fontSize: 13, color: '#16a34a', fontWeight: 600, marginBottom: 16, flexShrink: 0 }}>
+              ✓ {sendSuccess}
+            </div>
+          )}
+          {sendError && (
+            <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626', marginBottom: 16, flexShrink: 0 }}>
+              {sendError}
             </div>
           )}
 
@@ -407,6 +424,16 @@ export default function ClientPage() {
 
             {/* Main Content Area */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {sendSuccess && (
+                <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, fontSize: 12, color: '#16a34a', fontWeight: 600 }}>
+                  ✓ {sendSuccess}
+                </div>
+              )}
+              {sendError && (
+                <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, fontSize: 12, color: '#dc2626' }}>
+                  {sendError}
+                </div>
+              )}
               {activeTab === 'update' && (
                 <>
                   <WhatsAppUpdate onGenerate={generate} generating={generating} channel={channel} />

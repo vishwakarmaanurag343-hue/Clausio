@@ -34,6 +34,8 @@ public class AIPipeline : IAIPipeline
     private readonly ILogger<AIPipeline> _logger;
     private readonly JudgmentSearchService _judgmentSearch;
     private readonly IPromptReferenceContext _promptReference;
+    private readonly IWalletService _walletService;
+    private readonly CurrentUserContext _currentUser;
 
     public AIPipeline(
         IContextEngine contextEngine,
@@ -50,8 +52,12 @@ public class AIPipeline : IAIPipeline
         IPiiTokenService piiTokenService,
         ILogger<AIPipeline> logger,
         JudgmentSearchService judgmentSearch,
-        IPromptReferenceContext promptReference)
+        IPromptReferenceContext promptReference,
+        IWalletService walletService,
+        CurrentUserContext currentUser)
     {
+        _walletService = walletService;
+        _currentUser = currentUser;
         _contextEngine = contextEngine;
         _promptBuilder = promptBuilder;
         _router = router;
@@ -73,6 +79,32 @@ public class AIPipeline : IAIPipeline
     {
         var sw = Stopwatch.StartNew();
         var context = new AIPipelineContext();
+
+        // === STEP 0: Pre-execution validation ===
+        // Check if we should charge for this request:
+        // - Not anonymous (userId != Guid.Empty)
+        // - Not SuperAdmin testing (role != "SuperAdmin")
+        // - Not admin assuming another user (OriginalUserId is null)
+        var userId = _currentUser.UserId;
+        var userRole = _currentUser.Role;
+        var isAdminAssuming = _currentUser.OriginalUserId.HasValue;
+        var shouldChargeUser = userId != Guid.Empty 
+            && userRole != "SuperAdmin" 
+            && !isAdminAssuming;
+
+        // Pre-check credits if user will be charged
+        if (shouldChargeUser)
+        {
+            var creditCost = WalletService.Costs.GetValueOrDefault(
+                taskType, WalletService.Costs["default"]);
+
+            if (!await _walletService.HasCreditsAsync(userId, creditCost, cancellationToken))
+            {
+                throw new InvalidOperationException(
+                    "INSUFFICIENT_CREDITS: You have used all your free credits. " +
+                    "Contact support@clausiotech.com to get more.");
+            }
+        }
 
         // === STEP 1: Intent Classification ===
         context.Intent = taskType;
@@ -200,6 +232,8 @@ public class AIPipeline : IAIPipeline
                         => "consumer complaint deficiency service unfair trade practice compensation forum",
                     "Consumer Complaint Reply"
                         => "consumer complaint reply opposite party maintainability jurisdiction limitation",
+                    "Reply to Legal Notice"
+                        => "reply to legal notice paragraph wise response denial admission objection demand notice breach contract",
                     "GST Appeal"
                         => "GST appeal appellate authority section 107 CGST pre-deposit demand order",
                     "GST Show Cause Notice Reply"
@@ -218,6 +252,8 @@ public class AIPipeline : IAIPipeline
                         => "arbitration section 34 set aside award patent illegality public policy Associated Builders",
                     "NCLT Petition (IBC Section 9)"
                         => "NCLT insolvency section 9 IBC operational creditor demand notice default CIRP",
+                    "NCLT Petition Section 241/242"
+                        => "NCLT petition sections 241 242 Companies Act oppression mismanagement minority shareholder protection",
                     "Succession Certificate"
                         => "succession certificate Indian Succession Act debts securities movable",
                     "Writ Petition (Article 226)"
@@ -395,6 +431,63 @@ public class AIPipeline : IAIPipeline
         });
 
         _logger.LogInformation("[Pipeline] Completed. TotalMs={Ms}, Intent={Intent}", elapsedMs, context.Intent);
+
+        // === FINAL STEP: Deduct credits only if output is valid and user should be charged ===
+        if (shouldChargeUser && !string.IsNullOrWhiteSpace(response))
+        {
+            // Verify output is not an error/blocked message
+            bool isValidOutput = !response.StartsWith("[ERROR]", StringComparison.OrdinalIgnoreCase)
+                              && !response.StartsWith("[SECURITY ALERT]", StringComparison.OrdinalIgnoreCase);
+
+            if (isValidOutput)
+            {
+                try
+                {
+                    var creditCost = WalletService.Costs.GetValueOrDefault(
+                        taskType, WalletService.Costs["default"]);
+
+                    await _walletService.DeductAsync(
+                        userId,
+                        creditCost,
+                        taskType,
+                        $"{taskType} — {creditCost} credit{(creditCost == 1 ? "" : "s")} used",
+                        cancellationToken);
+
+                    _logger.LogInformation(
+                        "[Pipeline] Credits deducted. UserId={UserId}, Cost={Cost}, TaskType={TaskType}",
+                        userId, creditCost, taskType);
+                }
+                catch (InvalidOperationException ex) when (ex.Message.Contains("INSUFFICIENT_CREDITS"))
+                {
+                    // This should not happen (checked earlier), but log if it does
+                    _logger.LogWarning(
+                        "[Pipeline] Credit deduction failed after execution completed. UserId={UserId}, TaskType={TaskType}",
+                        userId, taskType);
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, 
+                        "[Pipeline] Unexpected error during credit deduction. UserId={UserId}, TaskType={TaskType}",
+                        userId, taskType);
+                    throw;
+                }
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "[Pipeline] Credits not deducted - output is error/blocked. UserId={UserId}, TaskType={TaskType}",
+                    userId, taskType);
+            }
+        }
+        else if (!shouldChargeUser && userId != Guid.Empty)
+        {
+            if (userRole == "SuperAdmin")
+                _logger.LogInformation("[Pipeline] SuperAdmin test - no credits deducted. UserId={UserId}", userId);
+            else if (isAdminAssuming)
+                _logger.LogInformation("[Pipeline] Admin assuming user - no credits deducted. AssumedBy={AdminId}, UserId={UserId}", 
+                    _currentUser.OriginalUserId, userId);
+        }
 
         return response;
     }
@@ -616,6 +709,8 @@ public class AIPipeline : IAIPipeline
         if (taskType == "LegalDraft")
         {
             var docType = parameters != null && parameters.ContainsKey("DocumentType") ? parameters["DocumentType"]?.ToString() : null;
+            if (docType?.StartsWith("Client Update", StringComparison.OrdinalIgnoreCase) == true)
+                return "ClientUpdate";
             return docType switch
             {
                 "Bail Application (Sessions Court)"
@@ -676,6 +771,8 @@ public class AIPipeline : IAIPipeline
                     => "Drafts/consumer_complaint",
                 "Consumer Complaint Reply"
                     => "Drafts/consumer_reply",
+                "Reply to Legal Notice"
+                    => "Drafts/legal_notice_reply",
                 "GST Appeal"
                     => "Drafts/gst_appeal",
                 "GST Show Cause Notice Reply"
@@ -694,6 +791,8 @@ public class AIPipeline : IAIPipeline
                     => "Drafts/arbitration_s34",
                 "NCLT Petition (IBC Section 9)"
                     => "Drafts/nclt_petition_ibc",
+                "NCLT Petition Section 241/242"
+                    => "Drafts/nclt_petition_241_242",
                 "Succession Certificate"
                     => "Drafts/succession_certificate",
                 "Writ Petition (Article 226)"

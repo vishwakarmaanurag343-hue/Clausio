@@ -52,13 +52,15 @@ async function adminAction(path: string, method: string, body?: any) {
 
 export default function AdminPage() {
     const router = useRouter()
-    const [tab, setTab] = useState<'overview' | 'users' | 'audit' | 'ai' | 'console' | 'metrics'>('overview')
+    const [tab, setTab] = useState<'overview' | 'credits' | 'users' | 'audit' | 'ai' | 'console' | 'metrics'>('overview')
     const [stats, setStats] = useState<any>(null)
     const [users, setUsers] = useState<any[]>([])
     const [auditLogs, setAuditLogs] = useState<any[]>([])
     const [aiLogs, setAiLogs] = useState<any[]>([])
+    const [creditsData, setCreditsData] = useState<any>(null)
     const [loading, setLoading] = useState(false)
     const [statsLoading, setStatsLoading] = useState(true)
+    const [creditsLoading, setCreditsLoading] = useState(false)
     const [search, setSearch] = useState('')
     const [roleFilter, setRoleFilter] = useState('')
     const [error, setError] = useState('')
@@ -134,6 +136,7 @@ export default function AdminPage() {
 
     const TABS = [
         { key: 'overview', label: 'Overview', icon: 'ti-layout-dashboard' },
+        { key: 'credits', label: 'Credits Tracker', icon: 'ti-coin' },
         { key: 'users', label: 'Users', icon: 'ti-users' },
         { key: 'audit', label: 'Audit Trail', icon: 'ti-list-check' },
         { key: 'ai', label: 'AI Logs', icon: 'ti-brain' },
@@ -183,6 +186,11 @@ export default function AdminPage() {
                         Retry
                     </button>
                 </div>
+            )}
+
+            {/* ── CREDITS TRACKER TAB ── */}
+            {tab === 'credits' && (
+                <iframe src="/admin/credits" style={{ width: '100%', height: 'calc(100vh - 200px)', border: 'none', borderRadius: 8 }} />
             )}
 
             {/* ── OVERVIEW TAB ── */}

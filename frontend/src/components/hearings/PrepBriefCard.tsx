@@ -12,10 +12,61 @@ export interface PrepBrief {
   nextStepsIfAdjourned?:         string[]
 }
 
+function textValue(value: unknown): string | undefined {
+  if (typeof value === 'string' || typeof value === 'number') return String(value)
+  if (!value || typeof value !== 'object') return undefined
+  const record = value as Record<string, unknown>
+  if (record.document !== undefined && record.note !== undefined) {
+    const documentName = textValue(record.document)
+    const note = textValue(record.note)
+    if (documentName && note) return `${documentName}: ${note}`
+  }
+  const preferred = record.document ?? record.name ?? record.title ?? record.text ?? record.item ?? record.note
+  return typeof preferred === 'string' || typeof preferred === 'number' ? String(preferred) : undefined
+}
+
+function textList(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  return value.map(textValue).filter((item): item is string => Boolean(item))
+}
+
+function normalizeBrief(raw: Record<string, unknown>): PrepBrief {
+  const keyArguments = Array.isArray(raw.keyArguments)
+    ? raw.keyArguments.map(value => {
+        const item = value && typeof value === 'object' ? value as Record<string, unknown> : {}
+        return { point: textValue(item.point ?? value) ?? '', legalBasis: textValue(item.legalBasis) }
+      }).filter(item => item.point)
+    : undefined
+  const anticipatedOpposingArguments = Array.isArray(raw.anticipatedOpposingArguments)
+    ? raw.anticipatedOpposingArguments.map(value => {
+        const item = value && typeof value === 'object' ? value as Record<string, unknown> : {}
+        return { theirArgument: textValue(item.theirArgument ?? value) ?? '', ourCounter: textValue(item.ourCounter) }
+      }).filter(item => item.theirArgument)
+    : undefined
+  const proceduralChecklist = Array.isArray(raw.proceduralChecklist)
+    ? raw.proceduralChecklist.map(value => {
+        const item = value && typeof value === 'object' ? value as Record<string, unknown> : {}
+        return { item: textValue(item.item ?? value) ?? '', status: textValue(item.status) }
+      }).filter(item => item.item)
+    : undefined
+
+  return {
+    caseSnapshot: textValue(raw.caseSnapshot),
+    todaysObjective: textValue(raw.todaysObjective),
+    keyArguments,
+    anticipatedOpposingArguments,
+    documentsToCarry: textList(raw.documentsToCarry),
+    proceduralChecklist,
+    openingStatement: textValue(raw.openingStatement),
+    riskFlags: textList(raw.riskFlags),
+    nextStepsIfAdjourned: textList(raw.nextStepsIfAdjourned),
+  }
+}
+
 /** Robustly extract the brief object from an LLM response. Returns null on ANY failure — callers must never render raw text. */
 export function parsePrepBrief(raw: unknown): PrepBrief | null {
   // Already-parsed object (e.g. if middleware ever pre-parses JSON responses)
-  if (raw && typeof raw === 'object' && !Array.isArray(raw)) return raw as PrepBrief
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) return normalizeBrief(raw as Record<string, unknown>)
   if (typeof raw !== 'string' || !raw.trim()) return null
   let t = raw.trim()
   const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/)
@@ -25,7 +76,7 @@ export function parsePrepBrief(raw: unknown): PrepBrief | null {
   if (first === -1 || last <= first) return null
   try {
     const obj = JSON.parse(t.slice(first, last + 1))
-    return typeof obj === 'object' && obj !== null && !Array.isArray(obj) ? (obj as PrepBrief) : null
+    return typeof obj === 'object' && obj !== null && !Array.isArray(obj) ? normalizeBrief(obj as Record<string, unknown>) : null
   } catch { return null }
 }
 

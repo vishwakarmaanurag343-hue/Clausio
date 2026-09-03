@@ -531,7 +531,10 @@ export default function Subscription() {
           gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
           gap: 20
         }}>
-          {plans.map(plan => (
+          {plans.map(plan => {
+            const isComingSoon = plan.name === 'Starter' || plan.name === 'Professional'
+
+            return (
             <div key={plan.name} style={{
               padding: '24px 20px',
               background: plan.isRecommended
@@ -544,6 +547,22 @@ export default function Subscription() {
               display: 'flex',
               flexDirection: 'column'
             }}>
+              {isComingSoon && (
+                <div style={{
+                  alignSelf: 'flex-start',
+                  marginBottom: 12,
+                  padding: '4px 10px',
+                  background: '#fef3c7',
+                  color: '#b45309',
+                  borderRadius: 20,
+                  fontSize: 10,
+                  fontWeight: 800,
+                  letterSpacing: 0.3,
+                  textTransform: 'uppercase'
+                }}>
+                  Coming soon
+                </div>
+              )}
               {plan.isRecommended && (
                 <div style={{
                   position: 'absolute', top: -12,
@@ -634,25 +653,27 @@ export default function Subscription() {
 
               <button
                 onClick={() => handleChoosePlan(plan.name)}
-                disabled={processingPlan === plan.name ||
+                disabled={isComingSoon || processingPlan === plan.name ||
                   status?.planName === plan.name}
                 style={{
                   width: '100%',
                   padding: '12px 0',
-                  background: status?.planName === plan.name
+                  background: isComingSoon || status?.planName === plan.name
                     ? '#e2e8f0'
                     : plan.isRecommended
                     ? '#2563eb' : '#0f172a',
-                  color: status?.planName === plan.name
+                  color: isComingSoon || status?.planName === plan.name
                     ? '#94a3b8' : '#fff',
                   border: 'none', borderRadius: 10,
                   fontWeight: 700, fontSize: 14,
-                  cursor: status?.planName === plan.name
+                  cursor: isComingSoon || status?.planName === plan.name
                     ? 'default' : 'pointer',
                   fontFamily: 'inherit',
                   transition: '.2s'
                 }}>
-                {processingPlan === plan.name
+                {isComingSoon
+                  ? 'Coming soon'
+                  : processingPlan === plan.name
                   ? 'Processing...'
                   : status?.planName === plan.name
                   ? 'Current Plan'
@@ -661,7 +682,8 @@ export default function Subscription() {
                   : `Choose ${plan.name}`}
               </button>
             </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 

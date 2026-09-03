@@ -650,7 +650,6 @@ export default function DashboardPage() {
                     {[
                       { icon: 'ti-calendar-plus', label: 'Client Meeting', action: () => setShowMeetingModal(true), color: '#0d9488', bg: '#f0fdfa' },
                       { icon: 'ti-alert-triangle', label: 'Emergency', route: '/readiness', color: '#dc2626', bg: '#fef2f2' },
-                      { icon: 'ti-alert-triangle', label: 'Emergency', route: '/readiness', color: '#dc2626', bg: '#fef2f2' },
                       { icon: 'ti-clipboard-list', label: 'Hearing Brief', route: '/hearings', color: '#1e40af', bg: '#eff6ff' },
                       { icon: 'ti-message', label: 'Client Update', route: '/client', color: '#15803d', bg: '#f0fdf4' },
                       { icon: 'ti-sparkles', label: 'AI Strategy', route: '/strategy', color: '#7c3aed', bg: '#f5f3ff' },

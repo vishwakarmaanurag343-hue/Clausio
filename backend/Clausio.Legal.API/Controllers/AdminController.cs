@@ -336,4 +336,116 @@ public class AdminController(ClausioDbContext db) : ControllerBase
         await db.SaveChangesAsync(ct);
         return Ok(new { userId, pageKeys = keys });
     }
+
+    // ── GET /api/admin/credit-stats → per-user AI credit balances + usage ──
+    [HttpGet("credit-stats")]
+    public async Task<IActionResult> GetCreditStats(CancellationToken ct)
+    {
+        try
+        {
+            // Fetch all active users (excluding SuperAdmins) with their wallet data
+            // SuperAdmins have unlimited access and are not subject to credit limits
+            var users = await db.Users
+                .Where(u => u.IsActive && u.Role != "SuperAdmin")
+                .Select(u => new
+                {
+                    u.Id,
+                    u.Email,
+                    Name = u.FirstName + " " + u.LastName,
+                    u.CreatedAt,
+                    Wallet = db.Wallets
+                        .Where(w => w.UserId == u.Id)
+                        .Select(w => new
+                        {
+                            w.Balance,
+                            TotalUsed = db.CreditTransactions
+                                .Where(t => t.WalletId == w.Id && t.Amount < 0)
+                                .Sum(t => (int?)t.Amount) ?? 0,
+                            LastUsed = db.CreditTransactions
+                                .Where(t => t.WalletId == w.Id && t.Amount < 0)
+                                .OrderByDescending(t => t.CreatedAt)
+                                .Select(t => (DateTime?)t.CreatedAt)
+                                .FirstOrDefault()
+                        })
+                        .FirstOrDefault()
+                })
+                .OrderByDescending(u => u.CreatedAt)
+                .ToListAsync(ct);
+
+            // Ensure all users have a wallet (create if missing)
+            var usersWithoutWallet = users.Where(u => u.Wallet == null).ToList();
+            if (usersWithoutWallet.Count > 0)
+            {
+                foreach (var user in usersWithoutWallet)
+                {
+                    // Check if wallet exists in DB but wasn't loaded (shouldn't happen, but be safe)
+                    var existingWallet = await db.Wallets
+                        .FirstOrDefaultAsync(w => w.UserId == user.Id, ct);
+
+                    if (existingWallet == null)
+                    {
+                        // Create new wallet for user
+                        var newWallet = new Clausio.Legal.Core.Entities.Wallet
+                        {
+                            UserId = user.Id,
+                            Balance = 0
+                        };
+                        db.Wallets.Add(newWallet);
+                    }
+                }
+                await db.SaveChangesAsync(ct);
+
+                // Reload users with updated wallet data
+                users = await db.Users
+                    .Where(u => u.IsActive)
+                    .Select(u => new
+                    {
+                        u.Id,
+                        u.Email,
+                        Name = u.FirstName + " " + u.LastName,
+                        u.CreatedAt,
+                        Wallet = db.Wallets
+                            .Where(w => w.UserId == u.Id)
+                            .Select(w => new
+                            {
+                                w.Balance,
+                                TotalUsed = db.CreditTransactions
+                                    .Where(t => t.WalletId == w.Id && t.Amount < 0)
+                                    .Sum(t => (int?)t.Amount) ?? 0,
+                                LastUsed = db.CreditTransactions
+                                    .Where(t => t.WalletId == w.Id && t.Amount < 0)
+                                    .OrderByDescending(t => t.CreatedAt)
+                                    .Select(t => (DateTime?)t.CreatedAt)
+                                    .FirstOrDefault()
+                            })
+                            .FirstOrDefault()
+                    })
+                    .OrderByDescending(u => u.CreatedAt)
+                    .ToListAsync(ct);
+            }
+
+            // Calculate summary statistics
+            var totalUsersCount = users.Count;
+            var totalCreditsGranted = users.Sum(u =>
+                (u.Wallet?.Balance ?? 0) + Math.Abs(u.Wallet?.TotalUsed ?? 0));
+            var totalCreditsUsed = Math.Abs(users.Sum(u => u.Wallet?.TotalUsed ?? 0));
+            var usersOutOfCreditsCount = users.Count(u => (u.Wallet?.Balance ?? 0) == 0);
+            var usersLowCreditsCount = users.Count(u =>
+                (u.Wallet?.Balance ?? 0) > 0 && (u.Wallet?.Balance ?? 0) < 10);
+
+            return Ok(new
+            {
+                TotalUsers = totalUsersCount,
+                TotalCreditsGranted = totalCreditsGranted,
+                TotalCreditsUsed = totalCreditsUsed,
+                UsersOutOfCredits = usersOutOfCreditsCount,
+                UsersLowCredits = usersLowCreditsCount,
+                Users = users
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "Failed to load credit statistics", message = ex.Message });
+        }
+    }
 }

@@ -17,7 +17,7 @@ public class User : BaseEntity
     public DateTime? LockoutEnd { get; set; }
 
     // Email verification / OTP
-    public bool IsEmailVerified { get; set; } = true; // Default true for frictionless dev, toggled on production verification
+    public bool IsEmailVerified { get; set; } = false; // New users must verify email via OTP before accessing the product
     public string? EmailOtp { get; set; }
     public DateTime? EmailOtpExpiry { get; set; }
 

@@ -244,7 +244,17 @@ export default function FinancialPage() {
               )}
 
               {/* Tab content */}
-              {renderTab()}
+              {tabs.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>
+                  <i className="ti ti-calculator-off" style={{ fontSize: 48, display: 'block', marginBottom: 16, opacity: 0.4 }} />
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: '#374151', marginBottom: 8 }}>No Financial Calculators for This Case</h3>
+                  <p style={{ fontSize: 13, maxWidth: 320, margin: '0 auto', lineHeight: 1.6 }}>
+                    Financial calculators apply to Family, Tax, NI Act, and Civil cases. This case type does not have applicable financial components.
+                  </p>
+                </div>
+              ) : (
+                renderTab()
+              )}
             </>
           )}
         </div>

@@ -128,7 +128,7 @@ export default function KnowledgeBase() {
       <div style={{ marginTop: 20, padding: '14px 18px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 12, fontSize: 13 }}>
         <i className="ti ti-info-circle" style={{ color: '#2563eb', fontSize: 18, flexShrink: 0 }} />
         <span style={{ color: '#1e40af' }}>
-          Knowledge Base is being built. Contact <strong>support@clausio.io</strong> to request early access.
+          Knowledge Base is being built. Contact <strong>support@clausiotech.com</strong> to request early access.
         </span>
       </div>
     </div>

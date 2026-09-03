@@ -332,11 +332,20 @@ export default function AIInsights() {
       }
     }
     
-    // 2. Stream Chat Response
+    // 2. Stream Chat Response (with 60-second timeout to prevent page freeze)
+    const abortController = new AbortController()
+    const timeoutId = setTimeout(() => {
+      abortController.abort()
+    }, 60000) // 60-second timeout
+    
     try {
       const stream = aiApi.chatStream({ message: userContent || 'Summarize this document', caseId: selectedCaseId, history: [] })
       
       for await (const chunk of stream) {
+        if (abortController.signal.aborted) {
+          throw new Error('AI request timed out. Please try again.')
+        }
+        
         setChatHistory(prev => {
           const newHistory = [...prev]
           const lastMsg = { ...newHistory[newHistory.length - 1] }
@@ -358,10 +367,11 @@ export default function AIInsights() {
       setChatHistory(prev => {
         const newHistory = [...prev]
         const lastMsg = newHistory[newHistory.length - 1]
-        lastMsg.content = lastMsg.content || 'Unable to get AI response. Please try again.'
+        lastMsg.content = lastMsg.content || (err instanceof Error ? err.message : 'Unable to get AI response. Please try again.')
         return newHistory
       })
     } finally {
+      clearTimeout(timeoutId)
       setChatHistory(prev => {
         const newHistory = [...prev]
         if (newHistory.length > 0) {

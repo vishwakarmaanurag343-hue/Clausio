@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useUIStore, useCaseStore } from '@/lib/store'
 import { authApi, casesApi } from '@/lib/api'
+import TrialBanner from '@/components/subscription/TrialBanner'
 
 export default function Header() {
   const router = useRouter()
@@ -93,6 +94,8 @@ export default function Header() {
   const isDashboard = pathname === '/dashboard'
 
   return (
+    <>
+    <TrialBanner />
     <header className={`glass-panel app-header-panel ${isChat ? 'header-theme-chat' : ''} ${isDashboard ? 'header-theme-dashboard' : ''}`} style={{ height: 60, display: 'flex', alignItems: 'center', padding: '0 24px', gap: 16, flexShrink: 0, margin: '16px 16px 0 16px', position: 'relative', zIndex: 100 }}>
 
       {/* Back button — present on every page */}
@@ -221,6 +224,7 @@ export default function Header() {
         </div>
       </div>
     </header>
+    </>
   )
 }
 

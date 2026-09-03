@@ -15,7 +15,7 @@ const TABS = [
   { name: 'Payments',       icon: 'ti-credit-card',      live: true  },
   { name: 'Expenses',       icon: 'ti-cash',             live: true  },
   { name: 'Client Billing', icon: 'ti-users',            live: true  },
-  { name: 'Subscription',   icon: 'ti-star',             live: true  },
+  { name: 'Subscription',   icon: 'ti-star',             live: false },
 ]
 
 export default function BillingPage() {

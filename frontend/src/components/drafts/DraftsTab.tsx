@@ -5,7 +5,7 @@ import { motion, type Variants } from 'framer-motion'
 import { MotionButton } from '@/components/ui/Motion'
 import { MotionCard } from '@/components/ui/Motion'
 import { useCaseStore } from '@/lib/store'
-import { aiApi, casesApi, parseAiJson, draftsApi, promptReferenceApi } from '@/lib/api'
+import { aiApi, casesApi, parseAiJson, draftsApi, promptReferenceApi, documentsApi } from '@/lib/api'
 import CaseTypeBadge from '@/components/ui/CaseTypeBadge'
 import { getDraftTypesForCase, type DraftType } from '@/lib/draftTypes'
 import { diffLines } from '@/lib/diffLines'
@@ -381,6 +381,19 @@ export default function DraftsTab() {
   const [editingAfterFinal, setEditingAfterFinal] = useState(false)                       // editor unlocked via "Create New Version"
   const [actionError,       setActionError]       = useState('')
 
+  // How many of this case's documents are OCR-ready — drives the "no documents" warning
+  // so the advocate knows the AI will draft from actual case facts (or won't).
+  const [docCount, setDocCount] = useState<number | null>(null)
+  useEffect(() => {
+    if (!selectedCaseId) { setDocCount(null); return }
+    documentsApi.getByCaseId(selectedCaseId)
+      .then((docs: any) => {
+        const list = Array.isArray(docs) ? docs : []
+        setDocCount(list.filter((d: any) => d.ocrStatus === 'Completed' || d.ocrStatus === 'Done').length)
+      })
+      .catch(() => setDocCount(0))
+  }, [selectedCaseId])
+
   // ✅ Load case type & auto-select first case if none selected
   useEffect(() => {
     if (!selectedCaseId) {
@@ -664,9 +677,9 @@ export default function DraftsTab() {
   }
 
   function handleCopy() {
-    if (activeText) {
-      navigator.clipboard.writeText(activeText)
-    }
+    if (!activeText) return
+    // Copy the clean legal text only — never the raw JSON wrapper the model may return.
+    navigator.clipboard.writeText(formatLegalDraftText(activeText))
   }
 
   function handleDownloadPdf() {
@@ -858,6 +871,21 @@ export default function DraftsTab() {
       {(error || actionError) && (
         <div style={{ margin: '12px 24px 0', padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12, color: '#dc2626' }}>
           {error || actionError}
+        </div>
+      )}
+
+      {/* Document-context warning — the AI drafts from uploaded case facts */}
+      {selectedCaseId && docCount === 0 && (
+        <div style={{ margin: '12px 24px 0', padding: '10px 14px', background: '#fefce8', border: '1px solid #fde047', borderRadius: 8, fontSize: 13, color: '#a16207', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span>⚠️</span>
+          <span>
+            No documents uploaded for this case yet. Upload case documents first so the AI can draft based on actual facts. Generic drafts will be produced without them.
+          </span>
+        </div>
+      )}
+      {selectedCaseId && docCount !== null && docCount > 0 && (
+        <div style={{ margin: '12px 24px 0', padding: '8px 12px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, fontSize: 12, color: '#16a34a', fontWeight: 600 }}>
+          ✓ {docCount} document{docCount !== 1 ? 's' : ''} ready — AI will draft using case facts
         </div>
       )}
 
