@@ -254,16 +254,8 @@ public class AIPipeline : IAIPipeline
                         => "NCLT insolvency section 9 IBC operational creditor demand notice default CIRP",
                     "NCLT Petition Section 241/242"
                         => "NCLT petition sections 241 242 Companies Act oppression mismanagement minority shareholder protection",
-                    "Succession Certificate"
-                        => "succession certificate Indian Succession Act debts securities movable",
-                    "Writ Petition (Article 226)"
-                        => "writ petition Article 226 fundamental rights mandamus certiorari prohibition",
-                    "Legal Notice"
-                        => "legal notice demand payment breach contract pre-litigation",
-"Reply to Legal Notice"
-    => "reply legal notice oppression mismanagement company law Companies Act 2013 minority shareholder",
-"NCLT Petition (Section 241/242 — Oppression)"
-    => "NCLT oppression mismanagement section 241 242 Companies Act minority shareholder petition Cyrus Mistry Needle Industries",
+                    "NCLT Petition (Section 241/242 — Oppression)"
+                        => "NCLT oppression mismanagement section 241 242 Companies Act minority shareholder petition Cyrus Mistry Needle Industries",
                     "Affidavit"
                         => "affidavit sworn statement deponent verification court",
                     "Agreement / Contract"
