@@ -55,10 +55,6 @@ export default function StrategyPage() {
               )}
               {!selectedCaseId && <p style={{ marginTop: 6, fontSize: 12, color: '#f59e0b', fontWeight: 600 }}>⚠ Select a case from the dashboard first.</p>}
             </div>
-            <button onClick={() => setShowModal(true)} disabled={!selectedCaseId}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 18px', height: 40, border: 'none', borderRadius: 10, cursor: selectedCaseId ? 'pointer' : 'not-allowed', background: selectedCaseId ? '#2563eb' : '#94a3b8', color: '#fff', fontWeight: 700, fontSize: 13, fontFamily: 'inherit', boxShadow: selectedCaseId ? '0 4px 12px rgba(37,99,235,.3)' : 'none' }}>
-              <i className="ti ti-sparkles" style={{ fontSize: 15 }} />Run AI Strategy
-            </button>
           </div>
 
           {!selectedCaseId ? (
