@@ -145,7 +145,7 @@ public class DraftEngine : IDraftEngine
             "Consumer Complaint Reply"
                 => "Drafts/consumer_reply",
             "Reply to Legal Notice"
-                => "Drafts/legal_notice_reply_v1",
+                => "Drafts/legal_notice_reply",
             "GST Appeal"
                 => "Drafts/gst_appeal",
             "GST Show Cause Notice Reply"
@@ -167,7 +167,13 @@ public class DraftEngine : IDraftEngine
             "NCLT Petition Section 241/242"
                 => "Drafts/nclt_petition_241_242",
             "NCLT Petition (Section 241/242 — Oppression)"
-                => "nclt_petition_oppression_v1",
+                => "Drafts/nclt_petition_oppression",
+            "Succession Certificate"
+                => "Drafts/succession_certificate",
+            "Writ Petition (Article 226)"
+                => "Drafts/writ_petition",
+            "Legal Notice"
+                => "Drafts/legal_notice",
             "Affidavit"
                 => "Drafts/affidavit",
             "Agreement / Contract"

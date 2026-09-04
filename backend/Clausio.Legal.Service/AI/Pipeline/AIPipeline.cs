@@ -264,6 +264,12 @@ public class AIPipeline : IAIPipeline
                         => "legal opinion advice statutory interpretation legal position",
                     "Notice / Show Cause Notice"
                         => "show cause notice natural justice opportunity heard reply",
+                    "Succession Certificate"
+                        => "succession certificate Indian Succession Act debts securities movable",
+                    "Writ Petition (Article 226)"
+                        => "writ petition Article 226 fundamental rights mandamus certiorari prohibition",
+                    "Legal Notice"
+                        => "legal notice demand payment breach contract pre-litigation",
                     _ => string.IsNullOrEmpty(draftDocType)
                         ? userInput
                         : $"{draftDocType} judgment precedent Indian court"
