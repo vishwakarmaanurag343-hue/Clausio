@@ -142,6 +142,7 @@ export default function AnalysisPage() {
   const [summaryCards, setSummaryCards] = useState<SummaryCards | null>(null)
   const [summaryParseFailed, setSummaryParseFailed] = useState(false)
   const [retryingSummary, setRetryingSummary] = useState(false)
+  const [generatingSummary, setGeneratingSummary] = useState(false)
   const [copiedBrief, setCopiedBrief] = useState(false)
   const [chronologyParseFailed, setChronologyParseFailed] = useState(false)
   const [retryingChronology, setRetryingChronology] = useState(false)
@@ -378,11 +379,48 @@ export default function AnalysisPage() {
   const saveSummaryFromAi = useCallback(async (): Promise<boolean> => {
     if (!selectedCaseId) return true
     const res = await aiApi.getSummary(selectedCaseId)
-    const obj = parseAiJson<any>(res.result ?? '')
-    const entry: any = Array.isArray(obj) ? obj[0] : obj?.summary?.[0] ?? null
-    setSummaryCards(entry && typeof entry === 'object' ? entry : null)
-    setSummaryParseFailed(!entry)
-    return !!entry
+    console.log('[Summary] Raw API response keys:', Object.keys(res).filter(k => k.includes('result') || k.includes('summary')))
+    console.log('[Summary] Raw result snippet:', (res.result ?? res.summary ?? res).slice(0, 200))
+
+    // Try all possible response shapes, matching the Summary_v1.json OUTPUT FORMAT:
+    // {"summary": [{"overview": "...", "parties": "...", "reliefSought": "...", "keyFacts": "...", "proceduralHistory": "...", "currentPosition": "..."}]}
+    const raw = res.result ?? res.summary ?? res
+
+    let parsed: any = null
+    try {
+      if (typeof raw === 'string') {
+        parsed = parseAiJson(raw)
+      } else {
+        parsed = raw
+      }
+    } catch {
+      parsed = null
+    }
+    console.log('[Summary] Parsed result:', JSON.stringify(parsed)?.slice(0, 300))
+
+    // Try all possible ways to extract the summary data from the parsed result:
+    const summaryData =
+      parsed?.summary?.[0]       // correct format: {"summary": [{"field": "..."}]}
+      ?? parsed?.[0]             // bare array: [{"field": "..."}]
+      ?? parsed?.summary         // summary without array wrapper
+      ?? parsed                  // direct object
+
+    console.log('[Summary] Summary object:', JSON.stringify(summaryData)?.slice(0, 300))
+
+    if (summaryData && (
+      summaryData.overview
+      || summaryData.parties
+      || summaryData.keyFacts
+    )) {
+      setSummaryCards(summaryData)
+      setSummaryParseFailed(false)
+      return true
+    } else {
+      console.error('[Summary] Could not extract summary from:', parsed)
+      setError('Case summary was generated but could not be displayed. Please try again. Make sure documents are uploaded and ready for AI analysis.')
+      setSummaryParseFailed(true)
+      return false
+    }
   }, [selectedCaseId])
 
   const handleRunAnalysis = useCallback(async () => {
@@ -870,9 +908,111 @@ export default function AnalysisPage() {
                     </div>
                   )}
 
-                  {!summaryCards && (
-                    <div style={{ padding: 30, textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>No summary yet.</div>
-                  )}
+                  {(!summaryCards
+  || !summaryCards.overview) && (
+  <div style={{
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '60px 20px',
+    textAlign: 'center',
+  }}>
+    <i className="ti ti-file-description"
+      style={{
+        fontSize: 56,
+        color: '#cbd5e1',
+        display: 'block',
+        marginBottom: 16,
+      }}
+    />
+    <h3 style={{
+      fontSize: 18,
+      fontWeight: 700,
+      color: '#374151',
+      marginBottom: 8,
+    }}>
+      No Case Summary Yet
+    </h3>
+    <p style={{
+      fontSize: 13,
+      color: '#64748b',
+      maxWidth: 340,
+      lineHeight: 1.6,
+      marginBottom: 24,
+    }}>
+      Generate a complete AI case brief
+      including overview, parties, key facts,
+      procedural history and current position.
+    </p>
+    <button
+      onClick={saveSummaryFromAi}
+      disabled={generatingSummary
+        || !selectedCaseId}
+      style={{
+        padding: '12px 28px',
+        borderRadius: 12,
+        border: 'none',
+        background: generatingSummary
+          ? '#93c5fd'
+          : 'linear-gradient(135deg,' +
+            ' #2563eb, #1d4ed8)',
+        color: '#fff',
+        fontSize: 15,
+        fontWeight: 700,
+        cursor: generatingSummary
+          ? 'not-allowed' : 'pointer',
+        fontFamily: 'inherit',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+      }}
+    >
+      <i className="ti ti-sparkles"
+        style={{ fontSize: 16 }} />
+      {generatingSummary
+        ? 'Generating...'
+        : 'Generate Case Summary'}
+    </button>
+    {generatingSummary && (
+      <p style={{
+        fontSize: 12,
+        color: '#64748b',
+        marginTop: 12,
+      }}>
+        This may take 30-60 seconds
+        for large cases...
+      </p>
+    )}
+  </div>
+)}
+
+{summaryCards?.overview && (
+  <button
+    onClick={saveSummaryFromAi}
+    disabled={generatingSummary}
+    style={{
+      padding: '6px 14px',
+      borderRadius: 8,
+      border: '1px solid #e2e8f0',
+      background: '#fff',
+      color: '#2563eb',
+      fontSize: 12,
+      fontWeight: 700,
+      cursor: 'pointer',
+      fontFamily: 'inherit',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 6,
+    }}
+  >
+    <i className="ti ti-refresh"
+      style={{ fontSize: 13 }} />
+    {generatingSummary
+      ? 'Regenerating...'
+      : 'Regenerate'}
+  </button>
+)}
 
                   {summaryCards && (() => {
                     const sc = summaryCards

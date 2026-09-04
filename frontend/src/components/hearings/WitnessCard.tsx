@@ -29,15 +29,43 @@ export function parseWitnessBrief(raw: unknown): WitnessBrief | null {
   if (raw && typeof raw === 'object' && !Array.isArray(raw)) return raw as WitnessBrief
   if (typeof raw !== 'string' || !raw.trim()) return null
   let t = raw.trim()
-  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/)
-  if (fence) t = fence[1].trim()
+
+  // 1. Check all markdown code blocks (find the one that parses to an object with witnessName or witnessProfile)
+  const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)```/g
+  let match: RegExpExecArray | null
+  while ((match = codeBlockRegex.exec(t)) !== null) {
+    try {
+      const parsed = JSON.parse(match[1].trim())
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as WitnessBrief
+      }
+    } catch {}
+  }
+
+  // 2. Try direct parse of whole string or sliced between first { and last }
   const first = t.indexOf('{')
   const last  = t.lastIndexOf('}')
-  if (first === -1 || last <= first) return null
-  try {
-    const obj = JSON.parse(t.slice(first, last + 1))
-    return typeof obj === 'object' && obj !== null && !Array.isArray(obj) ? (obj as WitnessBrief) : null
-  } catch { return null }
+  if (first !== -1 && last > first) {
+    try {
+      const obj = JSON.parse(t.slice(first, last + 1))
+      if (obj && typeof obj === 'object' && !Array.isArray(obj)) return obj as WitnessBrief
+    } catch {}
+  }
+
+  // 3. Fallback: If unclosed trailing braces occurred (e.g. truncated at end), attempt repair
+  if (first !== -1) {
+    const candidate = t.slice(first)
+    // Try adding missing closing braces
+    for (let extra = 1; extra <= 4; extra++) {
+      try {
+        const repaired = candidate + '\n' + '}'.repeat(extra)
+        const obj = JSON.parse(repaired)
+        if (obj && typeof obj === 'object' && !Array.isArray(obj)) return obj as WitnessBrief
+      } catch {}
+    }
+  }
+
+  return null
 }
 
 function Block({ icon, title, accent, children }: { icon: string; title: string; accent: string; children: React.ReactNode }) {

@@ -60,15 +60,37 @@ function normalizeBrief(raw: Record<string, unknown>): PrepBrief {
       }).filter(item => item.item)
     : undefined
 
+  const documentsToCarry = Array.isArray(raw.documentsToCarry)
+    ? raw.documentsToCarry.map(value => {
+        const item = value && typeof value === 'object' ? value as Record<string, unknown> : {}
+        return {
+          document: textValue(item.document ?? value) ?? '',
+          whichArgumentItSupports: textValue(item.whichArgumentItSupports),
+          status: textValue(item.status),
+        }
+      }).filter(item => item.document)
+    : undefined
+
+  const riskFlags = Array.isArray(raw.riskFlags)
+    ? raw.riskFlags.map(value => {
+        const item = value && typeof value === 'object' ? value as Record<string, unknown> : {}
+        return {
+          risk: textValue(item.risk ?? value) ?? '',
+          basis: textValue(item.basis),
+          howToHandle: textValue(item.howToHandle),
+        }
+      }).filter(item => item.risk)
+    : undefined
+
   return {
     caseSnapshot: textValue(raw.caseSnapshot),
     todaysObjective: textValue(raw.todaysObjective),
     keyArguments,
     anticipatedOpposingArguments,
-    documentsToCarry: textList(raw.documentsToCarry),
+    documentsToCarry,
     proceduralChecklist,
     openingStatement: textValue(raw.openingStatement),
-    riskFlags: textList(raw.riskFlags),
+    riskFlags,
     nextStepsIfAdjourned: textList(raw.nextStepsIfAdjourned),
   }
 }

@@ -371,7 +371,7 @@ public class AIPipeline : IAIPipeline
             // structured extraction (chronology, summary, evidence). 25s was cutting those
             // off mid-generation and returning an unparseable error string to the UI.
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeoutCts.CancelAfter(TimeSpan.FromSeconds(90));
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(180));
             try {
                 response = await _router.CompleteAsync(context.SystemPrompt, context.FinalUserPrompt, taskType, timeoutCts.Token);
             } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {

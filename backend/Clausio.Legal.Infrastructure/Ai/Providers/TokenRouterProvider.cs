@@ -26,13 +26,15 @@ public class TokenRouterProvider : ILLMProvider
     {
         _logger = logger;
         _http = httpClient;
-        _apiKey = config["AI:OpenRouter:ApiKey"]
+        _apiKey = config["AI:Groq:ApiKey"]
+               ?? config["AI:OpenRouter:ApiKey"]
                ?? config["AI:DeepProvider:ApiKey"]
-               ?? throw new InvalidOperationException("AI:OpenRouter:ApiKey missing");
+               ?? throw new InvalidOperationException("AI:Groq:ApiKey or AI:OpenRouter:ApiKey missing");
 
-        _baseUrl = config["AI:Groq:BaseUrl"]
+        _baseUrl = config["AI:OpenRouter:BaseUrl"]
                 ?? config["AI:DeepProvider:BaseUrl"]
-                ?? "https://api.groq.com/openai/v1";
+                ?? config["AI:Groq:BaseUrl"]
+                ?? "https://openrouter.ai/api/v1";
 
         // Non-streaming completions need room for a multi-page structured answer (Analysis-page
         // briefs / chronology / evidence). A 4096 cap was truncating case summaries to one page.
@@ -64,14 +66,27 @@ public class TokenRouterProvider : ILLMProvider
                 new { role = "user", content = userPrompt }
             }
         };
-        // Reasoning models burn the completion budget deliberating — cap it per family
-        requestBody["reasoning_effort"] = model.Contains("gpt-oss", StringComparison.OrdinalIgnoreCase) ? "low" : "none";
+        if (_baseUrl.Contains("sarvam.ai", StringComparison.OrdinalIgnoreCase))
+        {
+            requestBody["reasoning_effort"] = "low";
+        }
+        else
+        {
+            requestBody["reasoning_effort"] = model.Contains("gpt-oss", StringComparison.OrdinalIgnoreCase) ? "low" : "none";
+        }
 
         var json = JsonSerializer.Serialize(requestBody);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/chat/completions");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+        if (_apiKey.StartsWith("sk_", StringComparison.OrdinalIgnoreCase) && _baseUrl.Contains("sarvam.ai", StringComparison.OrdinalIgnoreCase))
+        {
+            request.Headers.Add("api-subscription-key", _apiKey);
+        }
+        else
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+        }
         request.Content = content;
 
         using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -124,14 +139,27 @@ public class TokenRouterProvider : ILLMProvider
                 new { role = "user", content = userPrompt }
             }
         };
-        // Reasoning models burn the completion budget deliberating — cap it per family
-        requestBody["reasoning_effort"] = model.Contains("gpt-oss", StringComparison.OrdinalIgnoreCase) ? "low" : "none";
+        if (_baseUrl.Contains("sarvam.ai", StringComparison.OrdinalIgnoreCase))
+        {
+            requestBody["reasoning_effort"] = "low";
+        }
+        else
+        {
+            requestBody["reasoning_effort"] = model.Contains("gpt-oss", StringComparison.OrdinalIgnoreCase) ? "low" : "none";
+        }
 
         var json = JsonSerializer.Serialize(requestBody);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/chat/completions");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+        if (_apiKey.StartsWith("sk_", StringComparison.OrdinalIgnoreCase) && _baseUrl.Contains("sarvam.ai", StringComparison.OrdinalIgnoreCase))
+        {
+            request.Headers.Add("api-subscription-key", _apiKey);
+        }
+        else
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+        }
         request.Content = content;
 
         var response = await _http.SendAsync(request, cancellationToken);

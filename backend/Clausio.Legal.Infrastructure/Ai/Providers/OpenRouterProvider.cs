@@ -26,13 +26,15 @@ public class OpenRouterProvider : ILLMProvider
     {
         _logger = logger;
         _http = httpClient;
-        _apiKey = config["AI:OpenRouter:ApiKey"]
+        _apiKey = config["AI:Groq:ApiKey"]
+               ?? config["AI:OpenRouter:ApiKey"]
                ?? config["AI:FastProvider:ApiKey"]
-               ?? throw new InvalidOperationException("AI:OpenRouter:ApiKey missing");
+               ?? throw new InvalidOperationException("AI:Groq:ApiKey or AI:OpenRouter:ApiKey missing");
 
-        _baseUrl = config["AI:Groq:BaseUrl"]
+        _baseUrl = config["AI:OpenRouter:BaseUrl"]
                 ?? config["AI:FastProvider:BaseUrl"]
-                ?? "https://api.groq.com/openai/v1";
+                ?? config["AI:Groq:BaseUrl"]
+                ?? "https://openrouter.ai/api/v1";
 
         // Non-streaming completions (the Analysis-page briefs, chronology, evidence review,
         // non-stream chat) need room for a multi-page structured answer — a 4096 cap was
@@ -40,7 +42,7 @@ public class OpenRouterProvider : ILLMProvider
         _completionMaxTokens = int.TryParse(config["AI:AnalysisMaxTokens"], out var mt) && mt > 0 ? mt : 8192;
         
         _http.DefaultRequestHeaders.Add("User-Agent", "ClausioLegalAI/1.0");
-        _http.Timeout = TimeSpan.FromSeconds(60);
+        _http.Timeout = TimeSpan.FromSeconds(180);
     }
 
     public async Task<string> CompleteAsync(string model, string systemPrompt, string userPrompt, CancellationToken cancellationToken = default)
@@ -65,13 +67,27 @@ public class OpenRouterProvider : ILLMProvider
                 new { role = "user", content = userPrompt }
             }
         };
-        requestBody["reasoning_effort"] = model.Contains("gpt-oss", StringComparison.OrdinalIgnoreCase) ? "low" : "none";
+        if (_baseUrl.Contains("sarvam.ai", StringComparison.OrdinalIgnoreCase))
+        {
+            requestBody["reasoning_effort"] = "low";
+        }
+        else
+        {
+            requestBody["reasoning_effort"] = model.Contains("gpt-oss", StringComparison.OrdinalIgnoreCase) ? "low" : "none";
+        }
 
         var json = JsonSerializer.Serialize(requestBody);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/chat/completions");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+        if (_apiKey.StartsWith("sk_", StringComparison.OrdinalIgnoreCase) && _baseUrl.Contains("sarvam.ai", StringComparison.OrdinalIgnoreCase))
+        {
+            request.Headers.Add("api-subscription-key", _apiKey);
+        }
+        else
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+        }
         request.Content = content;
 
         using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -125,15 +141,27 @@ public class OpenRouterProvider : ILLMProvider
             }
         };
 
-        // Reasoning models burn the completion budget deliberating before writing —
-        // cap it per family (gpt-oss takes low/medium/high; qwen only none/default)
-        requestBody["reasoning_effort"] = model.Contains("gpt-oss", StringComparison.OrdinalIgnoreCase) ? "low" : "none";
+        if (_baseUrl.Contains("sarvam.ai", StringComparison.OrdinalIgnoreCase))
+        {
+            requestBody["reasoning_effort"] = "low";
+        }
+        else
+        {
+            requestBody["reasoning_effort"] = model.Contains("gpt-oss", StringComparison.OrdinalIgnoreCase) ? "low" : "none";
+        }
 
         var json = JsonSerializer.Serialize(requestBody);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/chat/completions");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+        if (_apiKey.StartsWith("sk_", StringComparison.OrdinalIgnoreCase) && _baseUrl.Contains("sarvam.ai", StringComparison.OrdinalIgnoreCase))
+        {
+            request.Headers.Add("api-subscription-key", _apiKey);
+        }
+        else
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+        }
         request.Content = content;
 
         var response = await _http.SendAsync(request, cancellationToken);
@@ -147,26 +175,71 @@ public class OpenRouterProvider : ILLMProvider
         var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
         var parsed = JsonDocument.Parse(responseJson);
 
-        var responseText = parsed.RootElement
+        var message = parsed.RootElement
             .GetProperty("choices")[0]
-            .GetProperty("message")
-            .GetProperty("content")
-            .GetString() ?? string.Empty;
+            .GetProperty("message");
 
-        return ExtractJson(responseText);
+        var responseText = message.TryGetProperty("content", out var contentProp) && contentProp.ValueKind == JsonValueKind.String
+            ? contentProp.GetString()
+            : null;
+
+        if (string.IsNullOrWhiteSpace(responseText) && message.TryGetProperty("reasoning_content", out var reasoningProp) && reasoningProp.ValueKind == JsonValueKind.String)
+        {
+            responseText = reasoningProp.GetString();
+        }
+
+        // If content contains reasoning, prefer the last well-formed JSON block or content itself
+        return ExtractJson(responseText ?? string.Empty);
     }
 
     private string ExtractJson(string text)
     {
-        var match = System.Text.RegularExpressions.Regex.Match(text, @"```json\s*(\{.*?\})\s*```", System.Text.RegularExpressions.RegexOptions.Singleline);
-        if (match.Success) return match.Groups[1].Value;
+        if (string.IsNullOrWhiteSpace(text)) return text;
 
-        var startIndex = text.IndexOf('{');
-        var endIndex = text.LastIndexOf('}');
-        if (startIndex >= 0 && endIndex > startIndex)
+        // 1. Check for markdown json code blocks (try all matches and pick the valid/longest one)
+        var matches = System.Text.RegularExpressions.Regex.Matches(text, @"```(?:json)?\s*(\{[\s\S]*?\})\s*```");
+        for (int i = matches.Count - 1; i >= 0; i--)
         {
-            return text.Substring(startIndex, endIndex - startIndex + 1);
+            var candidate = matches[i].Groups[1].Value.Trim();
+            try
+            {
+                using var doc = JsonDocument.Parse(candidate);
+                return candidate;
+            }
+            catch { }
         }
+
+        // 2. Try parsing from the last complete JSON object backwards
+        int start = text.IndexOf('{');
+        int end = text.LastIndexOf('}');
+        if (start >= 0 && end > start)
+        {
+            var candidate = text.Substring(start, end - start + 1);
+            try
+            {
+                using var doc = JsonDocument.Parse(candidate);
+                return candidate;
+            }
+            catch { }
+
+            // If combined string failed, search for innermost or largest balanced JSON object
+            for (int s = start; s < end; s = text.IndexOf('{', s + 1))
+            {
+                if (s < 0) break;
+                for (int e = end; e > s; e = text.LastIndexOf('}', e - 1))
+                {
+                    if (e < 0) break;
+                    var sub = text.Substring(s, e - s + 1);
+                    try
+                    {
+                        using var doc = JsonDocument.Parse(sub);
+                        return sub;
+                    }
+                    catch { }
+                }
+            }
+        }
+
         return text;
     }
 }

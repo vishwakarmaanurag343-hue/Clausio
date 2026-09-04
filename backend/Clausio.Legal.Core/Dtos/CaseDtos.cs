@@ -51,4 +51,5 @@ public class UpdateCaseDto
 
     [Range(0, 100, ErrorMessage = "Readiness score must be between 0 and 100.")]
     public int? ReadinessScore { get; set; }
+    public string? Description { get; set; }
 }

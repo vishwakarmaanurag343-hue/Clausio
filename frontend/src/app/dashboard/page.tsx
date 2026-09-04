@@ -21,7 +21,7 @@ const TABS = [
 export default function DashboardPage() {
   const router = useRouter()
   const { caseListVisible, aiPanelVisible, aiPanelExpanded, aiPanelWidth, toggleAIPanel, toggleSidebar } = useUIStore()
-  const { selectedCaseId, setSelectedCase } = useCaseStore()
+  const { selectedCaseId, selectedCaseName, setSelectedCase } = useCaseStore()
 
   const [activeTab, setActiveTab] = useState('Overview')
   const [caseData, setCaseData] = useState<any>(null)
@@ -35,6 +35,51 @@ export default function DashboardPage() {
   const [genPlan, setGenPlan] = useState(false)
   const [genErr, setGenErr] = useState('')
   const [taskBusyId, setTaskBusyId] = useState<string | null>(null)
+  const [caseSummary, setCaseSummary] = useState<{
+    docCount: number
+    readyDocs: number
+    hearingCount: number
+    nextHearing: string | null
+  } | null>(null)
+
+  useEffect(() => {
+    if (!selectedCaseId) {
+      setCaseSummary(null)
+      return
+    }
+    Promise.all([
+      documentsApi.getByCaseId(selectedCaseId).catch(() => []),
+      hearingsApi.getByCaseId(selectedCaseId).catch(() => []),
+    ]).then(([docs, hearings]) => {
+      const docList = Array.isArray(docs) ? docs : []
+      const hearingList = Array.isArray(hearings) ? hearings : []
+      const readyDocs = docList.filter(
+        (d: any) => d.ocrStatus === 'Completed' || d.ocrStatus === 'Done'
+      ).length
+      const upcoming = hearingList
+        .filter((h: any) => {
+          const date = new Date(h.hearingDate || h.HearingDate || '')
+          return date > new Date()
+        })
+        .sort((a: any, b: any) =>
+          new Date(a.hearingDate || a.HearingDate || '').getTime() -
+          new Date(b.hearingDate || b.HearingDate || '').getTime()
+        )[0]
+      const nextDate = upcoming
+        ? new Date(upcoming.hearingDate || upcoming.HearingDate || '').toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          })
+        : null
+      setCaseSummary({
+        docCount: docList.length,
+        readyDocs,
+        hearingCount: hearingList.length,
+        nextHearing: nextDate,
+      })
+    })
+  }, [selectedCaseId])
 
   // Auto-select first case of current user
   useEffect(() => {
@@ -408,6 +453,76 @@ export default function DashboardPage() {
           {/* Tab content */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '0 4px 20px 4px' }}>
 
+            {selectedCaseId && caseSummary && (
+              <div style={{
+                display: 'flex',
+                gap: 12,
+                padding: '14px 20px',
+                background: '#fff',
+                border: '1px solid #e2e8f0',
+                borderRadius: 12,
+                marginBottom: 20,
+                flexWrap: 'wrap',
+                alignItems: 'center',
+              }}>
+                <div style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: '#0f172a',
+                  marginRight: 8,
+                }}>
+                  📁 {selectedCaseName || 'Current Case'}
+                </div>
+                <div style={{
+                  display: 'flex',
+                  gap: 16,
+                  flexWrap: 'wrap',
+                }}>
+                  <span style={{
+                    fontSize: 13,
+                    color: '#64748b',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}>
+                    <i className="ti ti-files"
+                      style={{ color: '#2563eb' }} />
+                    {caseSummary.docCount} document
+                    {caseSummary.docCount !== 1
+                      ? 's' : ''}
+                    {caseSummary.readyDocs > 0
+                      && ` · ${caseSummary.readyDocs} ready`}
+                  </span>
+                  <span style={{
+                    fontSize: 13,
+                    color: '#64748b',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}>
+                    <i className="ti ti-calendar"
+                      style={{ color: '#7c3aed' }} />
+                    {caseSummary.hearingCount} hearing
+                    {caseSummary.hearingCount !== 1
+                      ? 's' : ''}
+                  </span>
+                  {caseSummary.nextHearing && (
+                    <span style={{
+                      fontSize: 13,
+                      color: '#16a34a',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}>
+                      <i className="ti ti-calendar-event" />
+                      Next: {caseSummary.nextHearing}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* No case */}
             {!selectedCaseId && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60%', gap: 12 }}>
@@ -637,6 +752,39 @@ export default function DashboardPage() {
                         <span style={{ fontSize: 11, fontWeight: 600, color: '#0f172a', textAlign: 'right', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.value}</span>
                       </div>
                     ))}
+                    {caseData?.description
+                      || caseData?.notes
+                      || caseData?.summary ? (
+                      <div style={{
+                        padding: '12px 16px',
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 10,
+                        marginTop: 12,
+                      }}>
+                        <div style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: '#64748b',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.08em',
+                          marginBottom: 6,
+                        }}>
+                          Case Description
+                        </div>
+                        <p style={{
+                          fontSize: 13,
+                          color: '#374151',
+                          lineHeight: 1.6,
+                          margin: 0,
+                          whiteSpace: 'pre-wrap',
+                        }}>
+                          {caseData?.description
+                            || caseData?.notes
+                            || caseData?.summary}
+                        </p>
+                      </div>
+                    ) : null}
                     <button onClick={() => router.push('/cases')} style={{ marginTop: 12, width: '100%', padding: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 11, fontWeight: 600, color: '#334155', cursor: 'pointer', fontFamily: 'inherit' }}>
                       Edit Case Details
                     </button>

@@ -52,6 +52,10 @@ export default function AddHearingModal({ onClose, onSaved }: Props) {
       setError('Please fill Hearing Date and What Happened')
       return
     }
+    if (nextHearingDate && hearingDate && nextHearingDate <= hearingDate) {
+      setError('Next hearing date must be after the current hearing date.')
+      return
+    }
 
     // Keep only rows where an order was actually typed
     const cleanOrders = orders
@@ -178,7 +182,18 @@ export default function AddHearingModal({ onClose, onSaved }: Props) {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 18 }}>
             <Field label="Next Hearing Date">
-              <input type="date" value={nextHearingDate} onChange={(e) => setNextHearingDate(e.target.value)} style={inputStyle} />
+              <input
+                type="date"
+                value={nextHearingDate}
+                min={hearingDate
+                  ? new Date(
+                      new Date(hearingDate).getTime()
+                      + 24 * 60 * 60 * 1000
+                    ).toISOString().split('T')[0]
+                  : new Date().toISOString().split('T')[0]}
+                onChange={(e) => setNextHearingDate(e.target.value)}
+                style={inputStyle}
+              />
             </Field>
           </div>
 

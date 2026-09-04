@@ -15,6 +15,7 @@ public class Case : BaseEntity
     public DateTime FiledOn { get; set; }
     public DateTime? NextHearing { get; set; }
     public int? ReadinessScore { get; set; }
+    public string? Description { get; set; }
 
     public Guid ClientId { get; set; }
     public Client? Client { get; set; }

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import CaseDescriptionInput from '@/components/cases/CaseDescriptionInput'
+import { documentsApi } from '@/lib/api'
 
 interface AddCaseModalProps {
   open:      boolean
@@ -56,6 +57,8 @@ export default function AddCaseModal({ open, onClose, onSaved }: AddCaseModalPro
   const [error,   setError]   = useState('')      // ✅ NEW
   const [translating,   setTranslating]   = useState(false)
   const [detectedLang,  setDetectedLang]  = useState('')
+  const [files,         setFiles]         = useState<File[]>([])
+  const [newCaseId,     setNewCaseId]     = useState('')
 
   const next = () => {
     setError('')
@@ -196,9 +199,27 @@ async function translateDescription() {
       })
 
       if (!caseRes.ok) throw new Error('Failed to create case')
+      const caseData = await caseRes.json()
+      const createdCaseId = caseData.id || caseData.caseId || ''
+      setNewCaseId(createdCaseId)
+
+      // Step 3: Upload any documents attached in Step 5/6
+      if (createdCaseId && files.length > 0) {
+        for (const file of files) {
+          console.log('[Step6 Upload] caseId:', createdCaseId)
+          console.log('[Step6 Upload] file:', file?.name)
+          try {
+            await documentsApi.upload(createdCaseId, file, 'Uploaded Document')
+          } catch (uploadErr) {
+            console.error('[Step6 Upload] Document upload failed:', file?.name, uploadErr)
+          }
+        }
+      }
 
       // Success — reset form and close
       setForm(initialForm)
+      setFiles([])
+      setNewCaseId('')
       setStep(1)
       onSaved?.()
       onClose()
@@ -364,10 +385,51 @@ async function translateDescription() {
                   <InputField label="Court Hall"   name="courtHall"  value={(form as any).courtHall || ''} onChange={updateField} placeholder="Hall No. 5" />
                 </div>
               </div>
+
+              {/* Step 4 Case Description */}
+              <div style={{ marginTop: 24 }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: '#374151',
+                  marginBottom: 6,
+                }}>
+                  Case Description
+                  <span style={{
+                    fontSize: 11,
+                    color: '#94a3b8',
+                    fontWeight: 400,
+                    marginLeft: 6,
+                  }}>
+                    (Brief facts of the case)
+                  </span>
+                </label>
+                <textarea
+                  value={form.description || ''}
+                  onChange={e => setForm(prev => ({
+                    ...prev,
+                    description: e.target.value
+                  }))}
+                  placeholder="Brief description of the case facts, background, and key issues..."
+                  rows={4}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 10,
+                    border: '1px solid #e2e8f0',
+                    fontSize: 14,
+                    fontFamily: 'inherit',
+                    outline: 'none',
+                    resize: 'vertical',
+                    boxSizing: 'border-box' as const,
+                  }}
+                />
+              </div>
             </>
           )}
 
-          {/* STEP 5 — UNCHANGED */}
+          {/* STEP 5 — DOCUMENTS UPLOAD */}
           {step === 5 && (
             <>
               <h3 style={sectionTitle}>Documents & AI</h3>
@@ -375,8 +437,41 @@ async function translateDescription() {
               <div style={{ marginTop: 20, border: '2px dashed #cbd5e1', borderRadius: 18, padding: 40, textAlign: 'center', background: '#f8fafc' }}>
                 <i className="ti ti-cloud-upload" style={{ fontSize: 52, color: '#2563eb' }} />
                 <h3 style={{ marginTop: 16, marginBottom: 8 }}>Upload Case Documents</h3>
-                <p style={{ color: '#64748b', lineHeight: 1.8 }}>Drag & Drop or browse your files.</p>
-                <input type="file" multiple style={{ marginTop: 20 }} />
+                <p style={{ color: '#64748b', lineHeight: 1.8 }}>Select PDF, DOCX, or scanned files for this case.</p>
+                <input
+                  type="file"
+                  multiple
+                  style={{ marginTop: 20 }}
+                  onChange={e => {
+                    if (e.target.files) {
+                      const picked = Array.from(e.target.files)
+                      setFiles(prev => [...prev, ...picked])
+                    }
+                  }}
+                />
+                {files.length > 0 && (
+                  <div style={{ marginTop: 20, textAlign: 'left', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: 14 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>
+                      Selected Documents ({files.length}):
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 150, overflowY: 'auto' }}>
+                      {files.map((f, idx) => (
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, padding: '6px 10px', background: '#f8fafc', borderRadius: 8 }}>
+                          <span style={{ color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }}>
+                            📄 {f.name} ({(f.size / 1024).toFixed(1)} KB)
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setFiles(prev => prev.filter((_, i) => i !== idx))}
+                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 600 }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               <div style={{ marginTop: 30, background: '#eff6ff', borderRadius: 18, border: '1px solid #bfdbfe', padding: 24 }}>
                 <h3 style={{ marginTop: 0, color: '#1d4ed8' }}>🤖 Clausio AI will generate</h3>
@@ -412,11 +507,11 @@ async function translateDescription() {
 
               <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 16, padding: 24 }}>
                 <ReviewSection title="Practice" items={[['Practice Area', form.practiceArea],['Case Type', form.caseType],['Priority', form.priority],['Status', form.status]]} />
-                <ReviewSection title="Case"     items={[['Case Title', form.caseTitle],['Case Number', form.caseNumber || '-'],['Filing Date', form.filingDate || '-'],['Next Hearing', form.hearingDate || '-']]} />
+                <ReviewSection title="Case"     items={[['Case Title', form.caseTitle],['Case Number', form.caseNumber || '-'],['Filing Date', form.filingDate || '-'],['Next Hearing', form.hearingDate || '-'],['Case Description', form.description || '-']]} />
                 <ReviewSection title="Client"   items={[['Client Name', form.clientName],['Phone', form.clientPhone],['Email', form.clientEmail || '-']]} />
                 <ReviewSection title="Opponent" items={[['Opponent', form.opponentName || '-'],['Advocate', form.opponentAdvocate || '-']]} />
                 <ReviewSection title="Court"    items={[['Court', form.court || '-'],['Location', form.courtLocation || '-'],['Judge', form.judgeName || '-'],['Stage', form.stage || '-']]} />
-                <ReviewSection title="Notes"    items={[['Relief', form.relief || '-'],['Internal Notes', form.notes || '-']]} />
+                <ReviewSection title="Notes"    items={[['Relief', form.relief || '-'],['Internal Notes', form.notes || '-'],['Documents Attached', files.length > 0 ? `${files.length} file(s) selected: ${files.map(f => f.name).join(', ')}` : 'None']]} />
               </div>
 
               <div style={{ marginTop: 28, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 16, padding: 22 }}>

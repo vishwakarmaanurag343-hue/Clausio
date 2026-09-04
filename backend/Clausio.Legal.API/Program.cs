@@ -137,9 +137,9 @@ builder.Services.AddScoped<IDocumentTextExtractor, DocumentTextExtractor>();
 builder.Services.AddClausioMcp();
 
 // AI
-builder.Services.AddHttpClient<Clausio.Legal.Infrastructure.Ai.Providers.TokenRouterProvider>();
-builder.Services.AddHttpClient<Clausio.Legal.Infrastructure.Ai.Providers.OpenRouterProvider>();
-builder.Services.AddHttpClient<Clausio.Legal.Infrastructure.Ai.Providers.OpenAIEmbeddingProvider>();
+builder.Services.AddHttpClient<Clausio.Legal.Infrastructure.Ai.Providers.TokenRouterProvider>(c => c.Timeout = TimeSpan.FromSeconds(180));
+builder.Services.AddHttpClient<Clausio.Legal.Infrastructure.Ai.Providers.OpenRouterProvider>(c => c.Timeout = TimeSpan.FromSeconds(180));
+builder.Services.AddHttpClient<Clausio.Legal.Infrastructure.Ai.Providers.OpenAIEmbeddingProvider>(c => c.Timeout = TimeSpan.FromSeconds(60));
 
 builder.Services.AddScoped<Clausio.Legal.Infrastructure.Ai.Providers.TokenRouterProvider>();
 builder.Services.AddScoped<Clausio.Legal.Infrastructure.Ai.Providers.OpenRouterProvider>();

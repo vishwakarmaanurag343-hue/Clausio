@@ -26,6 +26,7 @@ export default function EditCaseModal({ onClose, onSaved, caseId }: Props) {
   const [priority,      setPriority]      = useState('High')
   const [opposingAdv,   setOpposingAdv]   = useState('')
   const [nextHearing,   setNextHearing]   = useState('')
+  const [description,   setDescription]   = useState('')
 
   useEffect(() => {
     if (!caseId) return
@@ -40,6 +41,7 @@ export default function EditCaseModal({ onClose, onSaved, caseId }: Props) {
         setPriority(data.priority ?? 'High')
         setOpposingAdv(data.opposingAdv ?? '')
         setNextHearing(data.nextHearing ? new Date(data.nextHearing).toISOString().split('T')[0] : '')
+        setDescription(data.description ?? data.notes ?? data.summary ?? '')
       })
       .catch(err => setError(err.message || 'Failed to load case'))
       .finally(() => setLoading(false))
@@ -57,6 +59,7 @@ export default function EditCaseModal({ onClose, onSaved, caseId }: Props) {
         priority,
         opposingAdv,
         nextHearing: nextHearing ? new Date(nextHearing).toISOString() : null,
+        description,
       })
       onSaved?.()
       onClose()
@@ -150,9 +153,14 @@ export default function EditCaseModal({ onClose, onSaved, caseId }: Props) {
         <F  label="Court hall" value="" />
       </div>
 
-      {/* Notes — UNCHANGED */}
-      <SLabel>Case notes</SLabel>
-      <textarea style={{ width: '100%', padding: '6px 9px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none', resize: 'none', height: 80 }} />
+      {/* Notes / Description */}
+      <SLabel>Case Description</SLabel>
+      <textarea
+        value={description}
+        onChange={e => setDescription(e.target.value)}
+        placeholder="Brief description of the case facts, background, and key issues..."
+        style={{ width: '100%', padding: '6px 9px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none', resize: 'vertical', minHeight: 80, boxSizing: 'border-box' }}
+      />
 
       {/* Footer — UNCHANGED except Save button now calls API */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 18, paddingTop: 14, borderTop: '1px solid #e2e8f0' }}>

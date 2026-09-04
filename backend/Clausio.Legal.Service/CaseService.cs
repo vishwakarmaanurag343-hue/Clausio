@@ -47,6 +47,7 @@ public class CaseService(
             OpposingAdv     = dto.OpposingAdv,
             FiledOn         = dto.FiledOn,
             NextHearing     = dto.NextHearing,
+            Description     = dto.Description,
             ClientId        = dto.ClientId,
             CreatedByUserId = createdByUserId,
         };
@@ -104,6 +105,7 @@ public class CaseService(
         if (dto.OpposingAdv    is not null) entity.OpposingAdv    = dto.OpposingAdv;
         if (dto.NextHearing    is not null) entity.NextHearing    = dto.NextHearing;
         if (dto.ReadinessScore is not null) entity.ReadinessScore = dto.ReadinessScore;
+        if (dto.Description    is not null) entity.Description    = dto.Description;
         await db.SaveChangesAsync(cancellationToken);
 
         // Re-sync the case's next-hearing date to the calendar (adds, updates or removes the event)

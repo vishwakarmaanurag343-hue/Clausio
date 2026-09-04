@@ -60,9 +60,11 @@ export default function DocumentsPage() {
 
   const load = useCallback(async () => {
     if (!selectedCaseId) return
+    console.log('[Documents] Loading for caseId:', selectedCaseId)
     setLoading(true)
     try {
       const data = await documentsApi.getByCaseId(selectedCaseId)
+      console.log('[Documents] API returned:', Array.isArray(data) ? data.length : data, 'items')
       setDocuments(Array.isArray(data) ? data : [])
       hearingsApi.getByCaseId(selectedCaseId).then((h: any) => setHearings(Array.isArray(h) ? h : [])).catch(() => {})
     } catch (e: any) { setError(e.message) }
@@ -178,9 +180,40 @@ export default function DocumentsPage() {
       )}
 
       {!selectedCaseId && (
-        <div style={{ textAlign: 'center', padding: 60, color: '#94a3b8' }}>
-          <i className="ti ti-folder-open" style={{ fontSize: 40, display: 'block', marginBottom: 12, opacity: 0.3 }} />
-          <div style={{ fontSize: 14, fontWeight: 600, color: '#64748b' }}>Select a case to view documents</div>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flex: 1,
+          padding: '60px 20px',
+          textAlign: 'center',
+        }}>
+          <i className="ti ti-folder-open"
+            style={{
+              fontSize: 56,
+              color: '#cbd5e1',
+              display: 'block',
+              marginBottom: 16,
+            }}
+          />
+          <h2 style={{
+            fontSize: 20,
+            fontWeight: 700,
+            color: '#374151',
+            marginBottom: 8,
+          }}>
+            No Case Selected
+          </h2>
+          <p style={{
+            fontSize: 14,
+            color: '#64748b',
+            maxWidth: 320,
+            lineHeight: 1.6,
+          }}>
+            Select a case from the sidebar
+            to view its documents.
+          </p>
         </div>
       )}
 

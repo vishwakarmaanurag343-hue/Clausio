@@ -3,3 +3,7 @@ node_modules/
 .env.local
 .DS_Store
 backend/Clausio.Legal.API/appsettings.Development.json
+backend/Clausio.Legal.API/uploads/
+voice-backend/__pycache__/
+voice-backend/get-pip.py
+voice-backend/temp_uploads/
