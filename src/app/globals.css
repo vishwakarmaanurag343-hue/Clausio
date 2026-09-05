@@ -1,0 +1,357 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@theme inline {
+  --font-serif: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --color-background: #F0F6FC;
+  --color-foreground: #0F172A;
+}
+
+
+:root {
+  --background: #F0F6FC;
+  --foreground: #0F172A;
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+}
+
+@layer base {
+  * {
+    border-color: rgba(56, 189, 248, 0.2);
+    font-family: var(--font-inter), system-ui, -apple-system, sans-serif !important;
+  }
+
+  body {
+    background-color: #F0F6FC;
+    color: #0F172A;
+    font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+    background-image: radial-gradient(rgba(14, 165, 233, 0.07) 1px, transparent 0), radial-gradient(rgba(14, 165, 233, 0.03) 1px, transparent 0);
+    background-size: 24px 24px;
+    background-position: 0 0, 12px 12px;
+  }
+}
+
+/* ========================================================= */
+/* LUXURY SKEUOMORPHIC LIGHT-BLUE DESIGN SYSTEM              */
+/* ========================================================= */
+
+/* 1. SKEUOMORPHIC FLOATING NAVIGATION BAR (PURE WHITE & LIGHT-BLUE FROST) */
+.skeuo-nav-initial {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(240, 248, 255, 0.92) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 1);
+  box-shadow: 
+    0 1px 0 rgba(255, 255, 255, 1) inset,
+    0 -1px 0 rgba(14, 165, 233, 0.15) inset,
+    0 12px 32px -8px rgba(14, 116, 144, 0.15),
+    0 4px 10px rgba(0, 0, 0, 0.03);
+}
+
+.skeuo-nav-scrolled {
+  background: linear-gradient(180deg, #FFFFFF 0%, rgba(240, 248, 255, 0.96) 100%);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 1);
+  box-shadow: 
+    0 1px 0 rgba(255, 255, 255, 1) inset,
+    0 -1px 0 rgba(14, 165, 233, 0.2) inset,
+    0 20px 45px -12px rgba(14, 116, 144, 0.2),
+    0 6px 16px rgba(0, 0, 0, 0.05);
+}
+
+/* 2. SKEUOMORPHIC CRISP WHITE & LIGHT-BLUE CARDS */
+.skeuo-card {
+  background: linear-gradient(180deg, #FFFFFF 0%, #F5FAFF 100%);
+  border: 1px solid rgba(255, 255, 255, 1);
+  box-shadow: 
+    0 1px 0 rgba(255, 255, 255, 1) inset,
+    0 -1px 0 rgba(56, 189, 248, 0.2) inset,
+    0 12px 28px -6px rgba(14, 116, 144, 0.1),
+    0 3px 8px rgba(0, 0, 0, 0.03);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.skeuo-card:hover {
+  transform: translateY(-3px);
+  background: linear-gradient(180deg, #FFFFFF 0%, #EBF5FF 100%);
+  box-shadow: 
+    0 1px 0 rgba(255, 255, 255, 1) inset,
+    0 -1px 0 rgba(14, 165, 233, 0.3) inset,
+    0 20px 40px -8px rgba(14, 116, 144, 0.18),
+    0 6px 14px rgba(0, 0, 0, 0.04);
+}
+
+/* 3. SKEUOMORPHIC INSET / PRESSED PANELS (PURE ICE WHITE-BLUE) */
+.skeuo-inset {
+  background: linear-gradient(180deg, #EBF5FF 0%, #F5FAFF 100%);
+  box-shadow: 
+    inset 0 2px 4px rgba(14, 116, 144, 0.12),
+    inset 0 1px 2px rgba(14, 116, 144, 0.08),
+    0 1px 0 rgba(255, 255, 255, 1);
+  border: 1px solid rgba(186, 230, 253, 0.8);
+}
+
+/* 4. SKEUOMORPHIC TACTILE BUTTONS */
+.skeuo-btn-primary {
+  background: linear-gradient(180deg, #0284C7 0%, #0369A1 100%);
+  color: #FFFFFF;
+  border: 1px solid #075985;
+  box-shadow: 
+    0 1px 0 rgba(255, 255, 255, 0.35) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.3) inset,
+    0 6px 18px -2px rgba(2, 132, 199, 0.45),
+    0 2px 4px rgba(0, 0, 0, 0.15);
+  transition: all 0.15s ease-out;
+}
+
+.skeuo-btn-primary:hover {
+  background: linear-gradient(180deg, #0369A1 0%, #0C4A6E 100%);
+  border-color: #082F49;
+  box-shadow: 
+    0 1px 0 rgba(255, 255, 255, 0.45) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.4) inset,
+    0 8px 22px -2px rgba(2, 132, 199, 0.55),
+    0 3px 6px rgba(0, 0, 0, 0.2);
+}
+
+.skeuo-btn-primary:active {
+  transform: translateY(1px);
+  background: linear-gradient(180deg, #082F49 0%, #0C4A6E 100%);
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.6),
+    0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.skeuo-btn-secondary {
+  background: linear-gradient(180deg, #FFFFFF 0%, #F5FAFF 100%);
+  color: #0F172A;
+  border: 1px solid rgba(186, 230, 253, 0.9);
+  box-shadow: 
+    0 1px 0 rgba(255, 255, 255, 1) inset,
+    0 -1px 0 rgba(14, 165, 233, 0.15) inset,
+    0 6px 14px -2px rgba(14, 116, 144, 0.12),
+    0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: all 0.15s ease-out;
+}
+
+.skeuo-btn-secondary:hover {
+  background: linear-gradient(180deg, #FFFFFF 0%, #EBF5FF 100%);
+  box-shadow: 
+    0 1px 0 rgba(255, 255, 255, 1) inset,
+    0 -1px 0 rgba(14, 165, 233, 0.25) inset,
+    0 8px 18px -2px rgba(14, 116, 144, 0.18),
+    0 2px 5px rgba(0, 0, 0, 0.04);
+}
+
+.skeuo-btn-secondary:active {
+  transform: translateY(1px);
+  background: linear-gradient(180deg, #BAE6FD 0%, #EBF5FF 100%);
+  box-shadow: 
+    inset 0 2px 4px rgba(14, 116, 144, 0.2),
+    0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+/* 5. SKEUOMORPHIC EMBOSSED BADGES & ICONS */
+.skeuo-icon-badge {
+  background: linear-gradient(180deg, #FFFFFF 0%, #EBF5FF 100%);
+  border: 1px solid rgba(255, 255, 255, 1);
+  box-shadow: 
+    0 1px 0 rgba(255, 255, 255, 1) inset,
+    0 -1px 0 rgba(14, 165, 233, 0.18) inset,
+    0 8px 16px -3px rgba(14, 116, 144, 0.15),
+    0 2px 4px rgba(0, 0, 0, 0.03);
+}
+
+
+/* 6. SKEUOMORPHIC EMBOSSED TEXT */
+.skeuo-text-embossed {
+  color: #0F172A;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.9), 0 -1px 0 rgba(14, 165, 233, 0.1);
+}
+
+.skeuo-text-engraved {
+  color: #334155;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+/* 7. CUSTOM SKEUOMORPHIC LIGHT-BLUE SCROLLBAR */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #E0F0FE;
+  box-shadow: inset 0 0 4px rgba(14, 116, 144, 0.15);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #BAE6FD 0%, #38BDF8 100%);
+  border: 1px solid #FFFFFF;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(14, 116, 144, 0.25);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #7DD3FC 0%, #0284C7 100%);
+}
+
+/* 8. LANDING PAGE MARQUEES / TICKER / TYPEWRITER / CTA ORBS */
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.ticker-animate {
+  animation: ticker-scroll 35s linear infinite;
+}
+
+@keyframes row-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.row-left {
+  animation: row-scroll 30s linear infinite;
+}
+.row-right {
+  animation: row-scroll 30s linear infinite reverse;
+}
+
+@keyframes doc-blink {
+  0%, 50% { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
+.doc-cursor {
+  animation: doc-blink 1s step-end infinite;
+}
+
+@keyframes doc-progress-fill {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+.doc-progress {
+  animation: doc-progress-fill 8s linear forwards;
+}
+
+@keyframes orb-1 {
+  0%, 100% { transform: translate(0px, 0px); }
+  50% { transform: translate(40px, -30px); }
+}
+@keyframes orb-2 {
+  0%, 100% { transform: translate(0px, 0px); }
+  50% { transform: translate(-35px, 25px); }
+}
+@keyframes orb-3 {
+  0%, 100% { transform: translate(0px, 0px); }
+  33% { transform: translate(25px, 20px); }
+  66% { transform: translate(-20px, -15px); }
+}
+
+/* 9. ABOUT SCALE-OF-JUSTICE WATERMARK + HERO FLOATING PARTICLES */
+@keyframes float-scale {
+  0%, 100% { transform: translateY(-50%) rotate(-1deg); }
+  50% { transform: translateY(-53%) rotate(1deg); }
+}
+.float-scale {
+  animation: float-scale 6s ease-in-out infinite;
+}
+
+@keyframes float-particle {
+  from { transform: translateY(0px); }
+  to { transform: translateY(-20px); }
+}
+
+/* 10. ANIMATED GRADIENT BORDER (pricing professional card) */
+@keyframes gradient-border {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* 11. GOLDEN HALO SUNRAYS BEHIND STATUE */
+@keyframes ray-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes ray-rotate-reverse {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
+}
+.sunrays-outer {
+  animation: ray-rotate 40s linear infinite;
+}
+.sunrays-inner {
+  animation: ray-rotate-reverse 25s linear infinite;
+}
+
+/* 12. RIPPLE WHEN STATUE LOCKS */
+@keyframes ripple-out {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(4);
+    opacity: 0;
+  }
+}
+.ripple-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid rgba(37, 99, 235, 0.4);
+  animation: ripple-out 1.2s ease-out forwards;
+  pointer-events: none;
+}
+
+/* 13. 3D CARD FLIP — FEATURE CARDS */
+.feature-card-3d {
+  perspective: 1000px;
+}
+.feature-card-inner {
+  transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+  transform-style: preserve-3d;
+}
+.feature-card-3d:hover .feature-card-inner {
+  transform: rotateY(6deg) rotateX(-3deg) translateY(-8px);
+}
+
+/* 14. NEURAL NETWORK TRAVELING DOTS (intelligence section) */
+@keyframes dot-travel {
+  0% { offset-distance: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { offset-distance: 100%; opacity: 0; }
+}
+.traveling-dot {
+  offset-path: var(--path);
+  animation: dot-travel 3s linear infinite;
+  animation-delay: var(--delay);
+}
+
+/* 15. ANIMATED WHY-CLAUSIO CARD ICONS */
+@keyframes stack-files {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes sweep-needle {
+  0% { transform: rotate(-60deg); }
+  100% { transform: rotate(60deg); }
+}
+@keyframes check-appear {
+  0% { stroke-dashoffset: 30; }
+  100% { stroke-dashoffset: 0; }
+}
+@keyframes gear-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 16. LEGAL DOCUMENT BACKGROUND TEXTURE (features section) */
+@keyframes scroll-text {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
+}
+.legal-text-scroll {
+  animation: scroll-text 30s linear infinite;
+}
