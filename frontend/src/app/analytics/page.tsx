@@ -7,6 +7,7 @@ import CrossExamination from '@/components/analytics/CrossExamination'
 import JudgmentAnalysis from '@/components/analytics/JudgmentAnalysis'
 import PromptLibrary    from '@/components/analytics/PromptLibrary'
 import AIHistory        from '@/components/analytics/AIHistory'
+import CaseHeader       from '@/components/layout/CaseHeader'
 
 export default function AnalyticsPage() {
   const [activeTab, setActiveTab] = useState('AI Chat')
@@ -25,6 +26,8 @@ export default function AnalyticsPage() {
 
   return (
     <div className="glass-panel" style={{ flex: 1, overflowY: 'auto', margin: '16px', padding: 20, borderRadius: 24 }}>
+
+      <CaseHeader />
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>

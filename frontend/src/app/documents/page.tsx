@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useCaseStore } from '@/lib/store'
-import { documentsApi, hearingsApi } from '@/lib/api'
+import { documentsApi, hearingsApi, BASE } from '@/lib/api'
 import CaseTypeBadge from '@/components/ui/CaseTypeBadge'
+import CaseHeader from '@/components/layout/CaseHeader'
 
 const CATEGORIES = ['All', 'Evidence', 'Proof', 'Court Order', 'Pleading', 'Financial', 'Medical', 'Identity', 'Other']
 
@@ -57,6 +58,10 @@ export default function DocumentsPage() {
   const [filedDate,   setFiledDate]   = useState('')
   const [filedHearingId, setFiledHearingId] = useState('')
   const [savingFiling, setSavingFiling] = useState(false)
+  const [driveUrl, setDriveUrl] = useState('')
+  const [importingUrl, setImportingUrl] = useState(false)
+  const [urlError, setUrlError] = useState('')
+  const [urlSuccess, setUrlSuccess] = useState('')
 
   const load = useCallback(async () => {
     if (!selectedCaseId) return
@@ -92,6 +97,60 @@ export default function DocumentsPage() {
       await load()
     } catch (err: any) { setError(err.message) }
     finally { setUploading(false); e.target.value = '' }
+  }
+
+  async function handleDriveImport() {
+    if (!driveUrl.trim()) {
+      setUrlError('Please enter a URL.')
+      return
+    }
+    if (!selectedCaseId) {
+      setUrlError('Please select a case first.')
+      return
+    }
+
+    setImportingUrl(true)
+    setUrlError('')
+    setUrlSuccess('')
+
+    try {
+      const token = localStorage.getItem('clausio_token') || ''
+
+      const res = await fetch(`${BASE}/cases/${selectedCaseId}/documents/import-url`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          url: driveUrl.trim(),
+          originalUrl: driveUrl.trim(),
+        }),
+      })
+
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        setUrlError(data?.message || 'Failed to import. Make sure the file/folder is shared as "Anyone with the link can view".')
+        return
+      }
+
+      if (data?.isFolder) {
+        setUrlSuccess(
+          `${data.importedCount} file(s) imported from folder` +
+          (data.failedCount > 0 ? ` (${data.failedCount} failed)` : '') + '.'
+        )
+      } else {
+        setUrlSuccess(`File imported: ${data?.fileName || 'document'}`)
+      }
+
+      setDriveUrl('')
+      await load()
+    } catch (err: any) {
+      setUrlError(err.message || 'Import failed. Please try again.')
+    } finally {
+      setImportingUrl(false)
+    }
   }
 
   async function handleDelete(docId: string) {
@@ -155,6 +214,8 @@ export default function DocumentsPage() {
   return (
     <div className="glass-panel" style={{ flex: 1, overflowY: 'auto', margin: '16px', padding: 20, borderRadius: 24, display: 'flex', flexDirection: 'column' }}>
 
+      <CaseHeader />
+
       {/* ── HEADER (matches Hearings page pattern) ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
@@ -171,6 +232,113 @@ export default function DocumentsPage() {
             <input type="file" accept=".pdf,.docx,.doc,.jpg,.jpeg,.png,.txt" onChange={handleUpload} style={{ display: 'none' }} disabled={uploading || !selectedCaseId} />
           </label>
         </div>
+      </div>
+
+      <div style={{
+        marginTop: -8,
+        marginBottom: 20,
+        padding: '16px',
+        background: '#f8fafc',
+        borderRadius: 12,
+        border: '1px solid #e2e8f0',
+      }}>
+        <div style={{
+          fontSize: 12,
+          fontWeight: 700,
+          color: '#374151',
+          marginBottom: 8,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+        }}>
+          <span>🔗</span>
+          Import from Google Drive URL
+        </div>
+
+        <div style={{
+          fontSize: 11,
+          color: '#64748b',
+          marginBottom: 10,
+          lineHeight: 1.5,
+        }}>
+          Paste a Google Drive file or folder link. For folders — all files will be imported automatically. Make sure sharing is set to "Anyone with the link can view".
+        </div>
+
+        <div style={{
+          display: 'flex',
+          gap: 8,
+          alignItems: 'center',
+        }}>
+          <input
+            type="url"
+            value={driveUrl}
+            onChange={e => {
+              setDriveUrl(e.target.value)
+              setUrlError('')
+              setUrlSuccess('')
+            }}
+            placeholder="Paste Google Drive file or folder link..."
+            style={{
+              flex: 1,
+              padding: '9px 12px',
+              borderRadius: 8,
+              border: `1px solid ${urlError ? '#fca5a5' : '#e2e8f0'}`,
+              fontSize: 13,
+              fontFamily: 'inherit',
+              outline: 'none',
+              background: '#fff',
+              color: '#0f172a',
+            }}
+          />
+          <button
+            onClick={handleDriveImport}
+            disabled={!driveUrl.trim() || importingUrl || !selectedCaseId}
+            style={{
+              padding: '9px 18px',
+              borderRadius: 8,
+              border: 'none',
+              background: !driveUrl.trim() || importingUrl || !selectedCaseId ? '#93c5fd' : '#2563eb',
+              color: '#fff',
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: !driveUrl.trim() || importingUrl || !selectedCaseId ? 'not-allowed' : 'pointer',
+              fontFamily: 'inherit',
+              whiteSpace: 'nowrap' as const,
+              flexShrink: 0,
+            }}
+          >
+            {importingUrl ? '⏳ Importing...' : '⬆ Import'}
+          </button>
+        </div>
+
+        {urlError && (
+          <div style={{
+            marginTop: 8,
+            padding: '8px 12px',
+            background: '#fef2f2',
+            border: '1px solid #fca5a5',
+            borderRadius: 8,
+            fontSize: 12,
+            color: '#dc2626',
+          }}>
+            {urlError}
+          </div>
+        )}
+
+        {urlSuccess && (
+          <div style={{
+            marginTop: 8,
+            padding: '8px 12px',
+            background: '#f0fdf4',
+            border: '1px solid #86efac',
+            borderRadius: 8,
+            fontSize: 12,
+            color: '#16a34a',
+            fontWeight: 600,
+          }}>
+            ✓ {urlSuccess}
+          </div>
+        )}
       </div>
 
       {error && (

@@ -42,7 +42,7 @@ export default function OutOfCreditsModal({ onClose }: Props) {
           lineHeight: 1.6,
           marginBottom: 8,
         }}>
-          Your 50 free AI credits are used up.
+          Your 15 free AI credits are used up.
         </p>
 
         <p style={{

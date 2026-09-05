@@ -10,6 +10,7 @@ import ReadinessScore         from '@/components/readiness/ReadinessScore'
 import ChecklistBoard         from '@/components/readiness/ChecklistBoard'
 import StrengthsGaps          from '@/components/readiness/StrengthsGaps'
 import GenerateReadinessModal from '@/components/readiness/GenerateReadinessModal'
+import CaseHeader             from '@/components/layout/CaseHeader'
 
 function ComingSoonCard({ icon, title, description }: { icon: string; title: string; description: string }) {
   return (
@@ -54,6 +55,7 @@ export default function ReadinessPage() {
 
         {/* ── DESKTOP READINESS VIEW ── */}
         <div className="desktop-readiness-view" style={{ display: 'flex', flexDirection: 'column' }}>
+          <CaseHeader />
           {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <div>

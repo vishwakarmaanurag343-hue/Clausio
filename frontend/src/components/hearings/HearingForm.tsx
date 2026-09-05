@@ -46,6 +46,18 @@ export default function HearingForm({ onSaved }: Props) {
       .catch(() => setCalConnected(false))
   }, [])
 
+  const minNextDate = (() => {
+    if (!hearingDate) {
+      return new Date(Date.now() + 86400000).toISOString().split('T')[0]
+    }
+    const d = new Date(hearingDate)
+    if (isNaN(d.getTime())) {
+      return new Date(Date.now() + 86400000).toISOString().split('T')[0]
+    }
+    d.setDate(d.getDate() + 1)
+    return d.toISOString().split('T')[0]
+  })()
+
   function updateOrder(index: number, key: keyof OrderRow, value: string) {
     setOrders(prev => prev.map((o, i) => (i === index ? { ...o, [key]: value } : o)))
   }
@@ -57,6 +69,18 @@ export default function HearingForm({ onSaved }: Props) {
     if (!hearingDate || !whatHappened) {
       setError('Please fill Hearing Date and What Happened')
       return
+    }
+    if (nextHearingDate && hearingDate) {
+      const hearing = new Date(hearingDate)
+      const nextHearing = new Date(nextHearingDate)
+      if (!isNaN(hearing.getTime()) && !isNaN(nextHearing.getTime()) && nextHearing <= hearing) {
+        setError(
+          'Next hearing date must be after the hearing date (' +
+          hearing.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) +
+          ').'
+        )
+        return
+      }
     }
 
     // Keep only rows where an order was actually typed
@@ -159,9 +183,15 @@ export default function HearingForm({ onSaved }: Props) {
         <textarea rows={3} value={judgeObservation} onChange={(e) => setJudgeObservation(e.target.value)} placeholder="Judge's remarks..." style={{ ...inputStyle, resize: 'vertical', minHeight: 60 }} />
       </Field>
 
-      {/* Next Hearing Date — UNCHANGED */}
+      {/* Next Hearing Date */}
       <Field label="Next Hearing Date">
-        <input type="date" value={nextHearingDate} onChange={(e) => setNextHearingDate(e.target.value)} style={inputStyle} />
+        <input
+          type="date"
+          value={nextHearingDate}
+          min={minNextDate}
+          onChange={(e) => setNextHearingDate(e.target.value)}
+          style={inputStyle}
+        />
       </Field>
 
       {/* Court orders passed at this hearing — saved to the case's Court Orders & Diary */}

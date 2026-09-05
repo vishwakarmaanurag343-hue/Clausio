@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useCaseStore } from '@/lib/store'
 import { documentsApi, timelineApi, aiApi, casesApi, parseAiJson, BASE } from '@/lib/api'
 import FlashCard from '@/components/common/FlashCard'
+import CaseHeader from '@/components/layout/CaseHeader'
 
 type AnalysisStatus = 'idle' | 'uploading' | 'completed'
 
@@ -459,6 +460,7 @@ export default function AnalysisPage() {
 
   return (
     <div className="glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', margin: '16px', padding: 16, borderRadius: 24 }}>
+      <CaseHeader />
       {/* ── HEADER ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>

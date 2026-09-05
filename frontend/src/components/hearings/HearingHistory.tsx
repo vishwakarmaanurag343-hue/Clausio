@@ -138,6 +138,8 @@ export default function HearingHistory({ refresh }: Props) {
           <div>
             {hearings.map((hearing, index) => {
               const isOverdue = (hearing.orders ?? []).some((o: any) => !o.done && o.deadline && new Date(o.deadline) < new Date())
+              const hDate = new Date(hearing.hearingDate || hearing.HearingDate || '')
+              const isUpcoming = !isNaN(hDate.getTime()) && hDate > new Date()
               return (
                 <div key={hearing.id} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: 20 }}>
 
@@ -155,6 +157,35 @@ export default function HearingHistory({ refresh }: Props) {
                       <div>
                         <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>
                           {new Date(hearing.hearingDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {isUpcoming ? (
+                            <span style={{
+                              fontSize: 10,
+                              padding: '2px 8px',
+                              borderRadius: 20,
+                              background: '#f0fdf4',
+                              color: '#16a34a',
+                              fontWeight: 700,
+                              border: '1px solid #86efac',
+                              marginLeft: 8,
+                              verticalAlign: 'middle',
+                            }}>
+                              UPCOMING
+                            </span>
+                          ) : (
+                            <span style={{
+                              fontSize: 10,
+                              padding: '2px 8px',
+                              borderRadius: 20,
+                              background: '#f8fafc',
+                              color: '#64748b',
+                              fontWeight: 700,
+                              border: '1px solid #e2e8f0',
+                              marginLeft: 8,
+                              verticalAlign: 'middle',
+                            }}>
+                              PAST
+                            </span>
+                          )}
                         </div>
                         <div style={{ marginTop: 2, color: '#2563eb', fontWeight: 600, fontSize: 12 }}>{hearing.stage}</div>
                       </div>

@@ -2,10 +2,12 @@
 
 import React from 'react'
 import DraftsTab from '@/components/drafts/DraftsTab'
+import CaseHeader from '@/components/layout/CaseHeader'
 
 export default function DraftsPage() {
   return (
     <div className="glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', margin: 16, borderRadius: 24 }}>
+      <CaseHeader />
       <DraftsTab />
     </div>
   )

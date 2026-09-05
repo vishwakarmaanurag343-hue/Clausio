@@ -12,6 +12,7 @@ import HearingTabs     from '@/components/hearings/HearingTabs'
 import DeadlineBanner  from '@/components/hearings/DeadlineBanner'
 import CaseTypeBadge   from '@/components/ui/CaseTypeBadge'
 import WitnessCard, { parseWitnessBrief, type WitnessBrief } from '@/components/hearings/WitnessCard'
+import CaseHeader from '@/components/layout/CaseHeader'
 
 export default function HearingsPage() {
   const { selectedCaseId } = useCaseStore()
@@ -102,6 +103,7 @@ export default function HearingsPage() {
         <>
         {/* ── DESKTOP HEARINGS VIEW ── */}
         <div className="desktop-hearings-view" style={{ display: 'flex', flexDirection: 'column' }}>
+          <CaseHeader />
           {/* HEADER */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <div>

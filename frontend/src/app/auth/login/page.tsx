@@ -13,6 +13,20 @@ const ROLE_LABELS: Record<string, string> = {
   Clerk:          'Clerk / Paralegal',
 }
 
+function validatePassword(pwd: string): string | null {
+  if (pwd.length < 8)
+    return 'Password must be at least 8 characters.'
+  if (!/[A-Z]/.test(pwd))
+    return 'Password must contain at least one uppercase letter.'
+  if (!/[a-z]/.test(pwd))
+    return 'Password must contain at least one lowercase letter.'
+  if (!/[0-9]/.test(pwd))
+    return 'Password must contain at least one number.'
+  if (!/[^A-Za-z0-9]/.test(pwd))
+    return 'Password must contain at least one special character (!@#$%^&* etc).'
+  return null
+}
+
 const FEATURES = [
   { icon: 'ti-gavel',        text: 'AI-powered petition drafting' },
   { icon: 'ti-book',         text: 'Legal research with binding judgments' },
@@ -47,6 +61,7 @@ export default function LoginPage() {
   const [role,        setRole]        = useState('SeniorAdvocate')
   const [regPassword, setRegPassword] = useState('')
   const [confirmPass, setConfirmPass] = useState('')
+  const [regPasswordFocused, setRegPasswordFocused] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -140,8 +155,9 @@ export default function LoginPage() {
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    const pwdError = validatePassword(regPassword)
+    if (pwdError) { setError(pwdError); return }
     if (regPassword !== confirmPass) { setError('Passwords do not match.'); return }
-    if (regPassword.length < 8) { setError('Password must be at least 8 characters.'); return }
     setLoading(true)
     try {
       await authApi.register({ firstName, lastName, email: regEmail, password: regPassword, phone, barCouncilNo: barCouncil, firmName, role })
@@ -596,7 +612,16 @@ export default function LoginPage() {
                       </div>
                       <FField label="Password">
                         <i className="ti ti-lock" style={iconSt} />
-                        <input type="password" value={regPassword} onChange={e => setRegPassword(e.target.value)} placeholder="Min. 8 characters" required className="auth-input" />
+                        <input
+                          type="password"
+                          value={regPassword}
+                          onChange={e => setRegPassword(e.target.value)}
+                          onFocus={() => setRegPasswordFocused(true)}
+                          onBlur={() => setRegPasswordFocused(false)}
+                          placeholder="Min. 8 characters"
+                          required
+                          className="auth-input"
+                        />
                       </FField>
                       {regPassword && (
                         <div style={{ marginTop: -6 }}>
@@ -604,6 +629,22 @@ export default function LoginPage() {
                             <div style={{ height: '100%', width: psWidth, background: psColor, borderRadius: 3, transition: 'all 0.3s' }} />
                           </div>
                           <span style={{ fontSize: 11, color: psColor, marginTop: 4, display: 'block', fontWeight: 600 }}>{psLabel}</span>
+                        </div>
+                      )}
+                      {(regPasswordFocused || regPassword) && (
+                        <div style={{ marginTop: -4, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          {[
+                            { rule: /.{8,}/, text: '8+ characters' },
+                            { rule: /[A-Z]/, text: 'One uppercase' },
+                            { rule: /[a-z]/, text: 'One lowercase' },
+                            { rule: /[0-9]/, text: 'One number' },
+                            { rule: /[^A-Za-z0-9]/, text: 'One special character' },
+                          ].map((r, i) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: r.rule.test(regPassword) ? '#16a34a' : '#94a3b8' }}>
+                              <span>{r.rule.test(regPassword) ? '✓' : '○'}</span>
+                              <span>{r.text}</span>
+                            </div>
+                          ))}
                         </div>
                       )}
                       <FField label="Confirm password">

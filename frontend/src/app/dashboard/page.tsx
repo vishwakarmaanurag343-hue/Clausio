@@ -11,6 +11,7 @@ import {
   DocumentsTab,
   HearingsTab,
 } from '@/components/dashboard/DashboardTabs'
+import CaseHeader from '@/components/layout/CaseHeader'
 
 const TABS = [
   { id: 'Overview', icon: 'ti-layout-dashboard' },
@@ -246,6 +247,8 @@ export default function DashboardPage() {
 
   return (
     <div className="glass-panel mobile-dashboard-container" style={{ height: 'calc(100% - 32px)', margin: '16px 16px 16px 16px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+      <CaseHeader />
 
       {/* ── DESKTOP TOP BAR ── */}
       <div className="desktop-dashboard-topbar" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 20px', background: 'rgba(255,255,255,0.4)', borderBottom: '1px solid rgba(0,0,0,0.06)', flexShrink: 0 }}>

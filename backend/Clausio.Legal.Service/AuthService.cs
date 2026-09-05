@@ -81,7 +81,7 @@ public class AuthService(ClausioDbContext db, IOptions<JwtSettings> jwtOptions, 
         // CREDITS GIVEN AFTER EMAIL VERIFICATION — NOT on registration.
         // var wallet = new Clausio.Legal.Core.Entities.Wallet { UserId = user.Id, Balance = WalletService.FREE_CREDITS };
         // db.Wallets.Add(wallet);
-        // db.CreditTransactions.Add(new Clausio.Legal.Core.Entities.CreditTransaction { WalletId = wallet.Id, Amount = WalletService.FREE_CREDITS, Type = "plan_signup", Description = "Welcome to Clausio! 50 free AI credits." });
+        // db.CreditTransactions.Add(new Clausio.Legal.Core.Entities.CreditTransaction { WalletId = wallet.Id, Amount = WalletService.FREE_CREDITS, Type = "plan_signup", Description = "Welcome to Clausio! 15 free AI credits." });
         // await db.SaveChangesAsync(cancellationToken);
 
         // Email the OTP.
@@ -120,7 +120,7 @@ public class AuthService(ClausioDbContext db, IOptions<JwtSettings> jwtOptions, 
         user.EmailOtp = null;
         user.EmailOtpExpiry = null;
 
-        // Grant the 50 free credits now — but only once (guard against a second wallet).
+        // Grant the 15 free credits now — but only once (guard against a second wallet).
         var existingWallet = await db.Wallets.FirstOrDefaultAsync(w => w.UserId == user.Id, ct);
         if (existingWallet == null)
         {
@@ -137,7 +137,7 @@ public class AuthService(ClausioDbContext db, IOptions<JwtSettings> jwtOptions, 
                     WalletId = wallet.Id,
                     Amount = WalletService.FREE_CREDITS,
                     Type = "plan_signup",
-                    Description = "Welcome to Clausio! 50 free AI credits.",
+                    Description = "Welcome to Clausio! 15 free AI credits.",
                 });
         }
 
@@ -486,6 +486,9 @@ public class AuthService(ClausioDbContext db, IOptions<JwtSettings> jwtOptions, 
 
         if (!Regex.IsMatch(password, @"[0-9]"))
             throw new InvalidOperationException("Password must contain at least one numeric digit (0-9).");
+
+        if (!Regex.IsMatch(password, @"[^A-Za-z0-9]"))
+            throw new InvalidOperationException("Password must contain at least one special character (!@#$%^&* etc).");
     }
 }
 

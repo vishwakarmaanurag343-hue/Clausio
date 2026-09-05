@@ -14,6 +14,7 @@ import CourtFeeCalculator    from '@/components/financial/CourtFeeCalculator'
 import DamagesCalculator     from '@/components/financial/DamagesCalculator'
 import MaintenanceTracker from '@/components/financial/MaintenanceTracker'
 import AnalyzeFinancialModal from '@/components/financial/AnalyzeFinancialModal'
+import CaseHeader            from '@/components/layout/CaseHeader'
 
 // Compoundable offences that carry a real financial component (compensation/fine in lieu
 // of punishment). A Criminal case shows the Fine & Compensation Calculator only when its
@@ -181,6 +182,7 @@ export default function FinancialPage() {
 
         {/* ── DESKTOP FINANCIAL VIEW ── */}
         <div className="desktop-financial-view" style={{ display: 'flex', flexDirection: 'column' }}>
+          <CaseHeader />
           {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <div>

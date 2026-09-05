@@ -46,7 +46,7 @@ public class WalletService(
     ClausioDbContext db
 ) : IWalletService
 {
-    public const int FREE_CREDITS = 50;
+    public const int FREE_CREDITS = 15;
 
     public static readonly
         Dictionary<string, int> Costs = new()

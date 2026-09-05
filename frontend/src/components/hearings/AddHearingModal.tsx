@@ -36,9 +36,19 @@ export default function AddHearingModal({ onClose, onSaved }: Props) {
   const [judgeObservation, setJudgeObservation] = useState('')
   const [nextHearingDate,  setNextHearingDate]  = useState('')
   const [clientReminderEmail, setClientReminderEmail] = useState('')
+  const [notes,            setNotes]            = useState('')
   const [orders,           setOrders]           = useState<OrderRow[]>([{ ...emptyOrderRow }])
   const [saving,           setSaving]           = useState(false)
   const [error,            setError]            = useState('')
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const selectedHearingDate = new Date(hearingDate || '')
+
+  const hearingDateSelected = !isNaN(selectedHearingDate.getTime())
+
+  const isFutureHearing = hearingDateSelected && selectedHearingDate > today
 
   function updateOrder(index: number, key: keyof OrderRow, value: string) {
     setOrders(prev => prev.map((o, i) => (i === index ? { ...o, [key]: value } : o)))
@@ -48,9 +58,16 @@ export default function AddHearingModal({ onClose, onSaved }: Props) {
 
   async function saveHearing() {
     if (!selectedCaseId) { setError('Select a case first.'); return }
-    if (!hearingDate || !whatHappened) {
-      setError('Please fill Hearing Date and What Happened')
+    if (!hearingDate) {
+      setError('Please fill Hearing Date')
       return
+    }
+    if (!isFutureHearing) {
+      const notesCheck = whatHappened || ''
+      if (!notesCheck.trim()) {
+        setError('Please describe what happened at this hearing.')
+        return
+      }
     }
     if (nextHearingDate && hearingDate && nextHearingDate <= hearingDate) {
       setError('Next hearing date must be after the current hearing date.')
@@ -81,6 +98,7 @@ export default function AddHearingModal({ onClose, onSaved }: Props) {
         judgeObservation,
         nextObjective: nextHearingDate ? `Next hearing: ${nextHearingDate}` : '',
         clientReminderEmail: clientReminderEmail.trim() || undefined,
+        notes:         notes.trim() || undefined,
         orders:        cleanOrders,
       })
 
@@ -160,15 +178,76 @@ export default function AddHearingModal({ onClose, onSaved }: Props) {
             </Field>
           </div>
 
-          <Field label="What happened today?" required>
-            <textarea
-              rows={6}
-              value={whatHappened}
-              onChange={(e) => setWhatHappened(e.target.value)}
-              placeholder="Describe the hearing, arguments made, submissions, observations and overall outcome..."
-              style={{ ...inputStyle, resize: 'vertical', minHeight: 140 }}
-            />
-          </Field>
+          {hearingDateSelected && isFutureHearing && (
+            <div style={{
+              padding: '10px 14px',
+              background: '#eff6ff',
+              border: '1px solid #bfdbfe',
+              borderRadius: 10,
+              fontSize: 13,
+              color: '#1d4ed8',
+              marginBottom: 16,
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 8,
+            }}>
+              <span style={{ fontSize: 16 }}>📅</span>
+              <div>
+                <div style={{ fontWeight: 700, marginBottom: 2 }}>
+                  Upcoming Hearing Scheduled
+                </div>
+                <div style={{ color: '#3b82f6' }}>
+                  You can add pre-hearing notes now. Come back after the hearing to record what happened and the next date.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!isFutureHearing && (
+            <Field label="What happened today?" required>
+              <textarea
+                rows={6}
+                value={whatHappened}
+                onChange={(e) => setWhatHappened(e.target.value)}
+                placeholder="Describe the hearing, arguments made, submissions, observations and overall outcome..."
+                style={{ ...inputStyle, resize: 'vertical', minHeight: 140 }}
+              />
+            </Field>
+          )}
+
+          {isFutureHearing && (
+            <div style={{ marginBottom: 16 }}>
+              <label style={{
+                display: 'block',
+                fontSize: 12,
+                fontWeight: 600,
+                color: '#374151',
+                marginBottom: 6,
+              }}>
+                Pre-Hearing Notes
+                <span style={{ color: '#94a3b8', fontWeight: 400, marginLeft: 4 }}>
+                  (Optional)
+                </span>
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Purpose of hearing, arguments to prepare, documents to carry..."
+                rows={3}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  border: '1px solid #e2e8f0',
+                  fontSize: 14,
+                  fontFamily: 'inherit',
+                  outline: 'none',
+                  resize: 'vertical',
+                  boxSizing: 'border-box' as const,
+                }}
+              />
+            </div>
+          )}
 
           <Field label="Judge's Observation">
             <textarea
@@ -180,22 +259,24 @@ export default function AddHearingModal({ onClose, onSaved }: Props) {
             />
           </Field>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 18 }}>
-            <Field label="Next Hearing Date">
-              <input
-                type="date"
-                value={nextHearingDate}
-                min={hearingDate
-                  ? new Date(
-                      new Date(hearingDate).getTime()
-                      + 24 * 60 * 60 * 1000
-                    ).toISOString().split('T')[0]
-                  : new Date().toISOString().split('T')[0]}
-                onChange={(e) => setNextHearingDate(e.target.value)}
-                style={inputStyle}
-              />
-            </Field>
-          </div>
+          {!isFutureHearing && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 18 }}>
+              <Field label="Next Hearing Date">
+                <input
+                  type="date"
+                  value={nextHearingDate}
+                  min={hearingDate
+                    ? new Date(
+                        new Date(hearingDate).getTime()
+                        + 24 * 60 * 60 * 1000
+                      ).toISOString().split('T')[0]
+                    : new Date().toISOString().split('T')[0]}
+                  onChange={(e) => setNextHearingDate(e.target.value)}
+                  style={inputStyle}
+                />
+              </Field>
+            </div>
+          )}
 
           <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>
