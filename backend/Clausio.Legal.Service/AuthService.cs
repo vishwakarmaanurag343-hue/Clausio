@@ -22,6 +22,8 @@ public interface IAuthService
 {
     Task<object> RegisterAsync(RegisterDto dto, string? userAgent = null, string? ipAddress = null, CancellationToken cancellationToken = default);
     Task<AuthResponseDto> LoginAsync(LoginDto dto, string? userAgent = null, string? ipAddress = null, CancellationToken cancellationToken = default);
+    Task ForgotPasswordAsync(string email, CancellationToken cancellationToken = default);
+    Task ResetPasswordAsync(ResetPasswordDto dto, CancellationToken cancellationToken = default);
     Task<AuthResponseDto> RefreshTokenAsync(string refreshToken, string? userAgent = null, string? ipAddress = null, CancellationToken cancellationToken = default);
     Task<bool> VerifyEmailOtpAsync(VerifyOtpDto dto, CancellationToken cancellationToken = default);
     Task<object> VerifyEmailAsync(string email, string otp, string userAgent, string ipAddress, CancellationToken ct = default);
@@ -209,12 +211,11 @@ public class AuthService(ClausioDbContext db, IOptions<JwtSettings> jwtOptions, 
             await db.SaveChangesAsync(cancellationToken);
         }
 
-        // 📧 Block login until the email is verified. Auto-send a fresh OTP and
-        // signal the frontend with a machine-readable prefix.
+        // 📧 Block login until the email is verified. Auto-send a fresh OTP if not verified
         if (!user.IsEmailVerified)
         {
-            var otp = new Random().Next(100000, 999999).ToString();
-            user.EmailOtp = otp;
+            var verifyOtp = new Random().Next(100000, 999999).ToString();
+            user.EmailOtp = verifyOtp;
             user.EmailOtpExpiry = DateTime.UtcNow.AddMinutes(5);
             await db.SaveChangesAsync(cancellationToken);
 
@@ -222,13 +223,65 @@ public class AuthService(ClausioDbContext db, IOptions<JwtSettings> jwtOptions, 
                 user.Email,
                 user.FirstName ?? "",
                 "Your Clausio verification code",
-                BuildOtpEmailHtml(otp),
+                BuildOtpEmailHtml(verifyOtp),
                 cancellationToken);
 
             throw new InvalidOperationException("EMAIL_NOT_VERIFIED:" + user.Email);
         }
 
         return await BuildAuthResponseAsync(user, userAgent, ipAddress, cancellationToken);
+    }
+
+    public async Task ForgotPasswordAsync(string email, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            throw new InvalidOperationException("Email address is required.");
+
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken);
+        
+        // Security best practice: Don't leak user existence, but if user exists, send OTP
+        if (user != null)
+        {
+            var otp = new Random().Next(100000, 999999).ToString();
+            user.EmailOtp = otp;
+            user.EmailOtpExpiry = DateTime.UtcNow.AddMinutes(10);
+            await db.SaveChangesAsync(cancellationToken);
+
+            await emailService.SendEmailAsync(
+                user.Email,
+                user.FirstName ?? "Advocate",
+                "Clausio Password Reset Request",
+                BuildPasswordResetEmailHtml(otp),
+                cancellationToken);
+        }
+    }
+
+    public async Task ResetPasswordAsync(ResetPasswordDto dto, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Otp) || string.IsNullOrWhiteSpace(dto.NewPassword))
+            throw new InvalidOperationException("Email, OTP code, and new password are required.");
+
+        ValidatePasswordComplexity(dto.NewPassword);
+
+        var normalizedEmail = dto.Email.Trim().ToLowerInvariant();
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken)
+            ?? throw new InvalidOperationException("Invalid password reset request.");
+
+        if (string.IsNullOrEmpty(user.EmailOtp) || user.EmailOtp != dto.Otp.Trim())
+            throw new InvalidOperationException("Invalid or incorrect verification OTP.");
+
+        if (user.EmailOtpExpiry == null || user.EmailOtpExpiry < DateTime.UtcNow)
+            throw new InvalidOperationException("Verification code has expired. Please request a new password reset.");
+
+        // Hash new password & reset lockouts
+        user.PasswordHash = _passwordHasher.HashPassword(user, dto.NewPassword);
+        user.EmailOtp = null;
+        user.EmailOtpExpiry = null;
+        user.FailedLoginAttempts = 0;
+        user.LockoutEnd = null;
+
+        await db.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<AuthResponseDto> RefreshTokenAsync(string refreshToken, string? userAgent = null, string? ipAddress = null, CancellationToken cancellationToken = default)
@@ -386,6 +439,26 @@ public class AuthService(ClausioDbContext db, IOptions<JwtSettings> jwtOptions, 
     <div style="font-size:48px;font-weight:900;letter-spacing:12px;color:#2563eb;margin:16px 0;font-family:monospace;">{otp}</div>
     <p style="font-size:13px;color:#64748b;">This code expires in <strong>5 minutes</strong>.</p>
     <p style="font-size:13px;color:#64748b;margin-top:16px;">If you did not create a Clausio account, please ignore this email.</p>
+  </div>
+</body>
+</html>
+""";
+    }
+
+    private static string BuildPasswordResetEmailHtml(string otp)
+    {
+        return $"""
+<!DOCTYPE html>
+<html>
+<body style="font-family:Arial,sans-serif;color:#0f172a;max-width:500px;margin:0 auto;padding:20px;">
+  <div style="background:#0f172a;padding:20px;border-radius:8px 8px 0 0;text-align:center;">
+    <h2 style="color:#fff;margin:0;">🔑 Clausio Password Reset</h2>
+  </div>
+  <div style="background:#f8fafc;padding:32px;border:1px solid #e2e8f0;border-radius:0 0 8px 8px;text-align:center;">
+    <p style="font-size:15px;color:#374151;margin-bottom:8px;">You requested a password reset. Your OTP verification code is:</p>
+    <div style="font-size:48px;font-weight:900;letter-spacing:12px;color:#2563eb;margin:16px 0;font-family:monospace;">{otp}</div>
+    <p style="font-size:13px;color:#64748b;">This OTP code is valid for <strong>10 minutes</strong>.</p>
+    <p style="font-size:12px;color:#64748b;margin-top:16px;">If you did not request a password reset, please ignore this message.</p>
   </div>
 </body>
 </html>

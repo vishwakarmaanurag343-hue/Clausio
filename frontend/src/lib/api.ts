@@ -185,15 +185,22 @@ export const authApi = {
 
   login: async (email: string, password: string) => {
     const data = await send('POST', '/auth/login', { email, password }, 'Invalid email or password')
-    localStorage.setItem('clausio_token', data.token)
-    localStorage.setItem('clausio_user', JSON.stringify(data))
-    localStorage.removeItem('clausio_page_permissions') // never carry a previous user's page access
-    // ✅ NEW — save to cookie for Next.js middleware auth guard
-    if (typeof window !== 'undefined') {
-      document.cookie = `clausio_token=${data.token}; path=/; max-age=${604800}`
+    if (data && data.token) {
+      localStorage.setItem('clausio_token', data.token)
+      localStorage.setItem('clausio_user', JSON.stringify(data))
+      localStorage.removeItem('clausio_page_permissions') // never carry a previous user's page access
+      if (typeof window !== 'undefined') {
+        document.cookie = `clausio_token=${data.token}; path=/; max-age=${604800}`
+      }
     }
     return data
   },
+
+  forgotPassword: (email: string) => send('POST', '/auth/forgot-password', { email }, 'Failed to process forgot password'),
+
+  resetPassword: (data: { email: string; otp: string; newPassword: string }) => send('POST', '/auth/reset-password', data, 'Failed to reset password'),
+
+  verifyMfa: (email: string, code: string) => send('POST', '/auth/verify-mfa', { email, code }, 'Invalid or expired MFA code'),
 
   me: () => get('/auth/me', 'Failed to fetch current user'),
 

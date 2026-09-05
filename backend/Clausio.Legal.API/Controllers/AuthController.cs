@@ -50,6 +50,42 @@ public class AuthController(IAuthService authService) : ControllerBase
         }
     }
 
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await authService.ForgotPasswordAsync(dto.Email, cancellationToken);
+            return Ok(new { message = "If the email is registered, a password reset OTP has been sent." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message ?? "An error occurred while processing forgot password." });
+        }
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await authService.ResetPasswordAsync(dto, cancellationToken);
+            return Ok(new { message = "Password reset successfully. You can now sign in with your new password." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message ?? "An error occurred during password reset." });
+        }
+    }
+
     [HttpPost("refresh")]
     public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto dto, CancellationToken cancellationToken)
     {

@@ -54,15 +54,27 @@ export default function LoginPage() {
     return () => clearInterval(t)
   }, [])
 
+  // MFA Step & Forgot Password
+  const [viewMode, setViewMode] = useState<'login' | 'mfa' | 'forgot' | 'reset'>('login')
+  const [mfaCode, setMfaCode] = useState('')
+  const [resetOtp, setResetOtp] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    setSuccess('')
     setLoading(true)
     try {
       const data = await authApi.login(email, password)
-      document.cookie = `clausio_token=${data.token}; path=/; max-age=${7 * 24 * 60 * 60}`
-      const isMobile = window.innerWidth <= 768
-      router.push(isMobile ? '/chat' : '/dashboard')
+      if (data?.requiresMfa) {
+        setViewMode('mfa')
+        setSuccess(`MFA Security Code sent to ${data.email || email}. Check your email inbox.`)
+      } else if (data?.token) {
+        document.cookie = `clausio_token=${data.token}; path=/; max-age=${7 * 24 * 60 * 60}`
+        const isMobile = window.innerWidth <= 768
+        router.push(isMobile ? '/chat' : '/dashboard')
+      }
     } catch (err: any) {
       if (typeof err?.message === 'string' && err.message.includes('EMAIL_NOT_VERIFIED')) {
         const errorMessage: string = err.message
@@ -76,6 +88,52 @@ export default function LoginPage() {
         return
       }
       setError(err.message || 'Invalid email or password.')
+    } finally { setLoading(false) }
+  }
+
+  async function handleVerifyMfa(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    setSuccess('')
+    setLoading(true)
+    try {
+      const data = await authApi.verifyMfa(email, mfaCode)
+      if (data?.token) {
+        document.cookie = `clausio_token=${data.token}; path=/; max-age=${7 * 24 * 60 * 60}`
+        const isMobile = window.innerWidth <= 768
+        router.push(isMobile ? '/chat' : '/dashboard')
+      }
+    } catch (err: any) {
+      setError(err.message || 'Invalid or expired MFA code.')
+    } finally { setLoading(false) }
+  }
+
+  async function handleForgotPassword(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    setSuccess('')
+    setLoading(true)
+    try {
+      await authApi.forgotPassword(email)
+      setViewMode('reset')
+      setSuccess(`Reset OTP code sent to ${email}.`)
+    } catch (err: any) {
+      setError(err.message || 'Failed to process forgot password.')
+    } finally { setLoading(false) }
+  }
+
+  async function handleResetPassword(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    setSuccess('')
+    setLoading(true)
+    try {
+      await authApi.resetPassword({ email, otp: resetOtp, newPassword })
+      setViewMode('login')
+      setPassword('')
+      setSuccess('Password reset successfully! Please sign in with your new password.')
+    } catch (err: any) {
+      setError(err.message || 'Failed to reset password.')
     } finally { setLoading(false) }
   }
 
@@ -370,20 +428,21 @@ export default function LoginPage() {
                   style={{ background: mode === 'login' ? 'rgba(255,255,255,0.95)' : 'transparent', color: mode === 'login' ? '#0f172a' : '#64748b', boxShadow: mode === 'login' ? '0 2px 8px rgba(0,0,0,0.08)' : 'none', border: mode === 'login' ? '1px solid rgba(255,255,255,0.8)' : '1px solid transparent' }}>
                   Sign In
                 </button>
-                <button className="tab-btn"
+                {/* REGISTRATION — Use landing page instead */}
+                {/* <button className="tab-btn"
                   onClick={() => { setMode('register'); setError(''); setSuccess(''); setRegStep(1) }}
                   style={{ background: mode === 'register' ? 'rgba(255,255,255,0.95)' : 'transparent', color: mode === 'register' ? '#0f172a' : '#64748b', boxShadow: mode === 'register' ? '0 2px 8px rgba(0,0,0,0.08)' : 'none', border: mode === 'register' ? '1px solid rgba(255,255,255,0.8)' : '1px solid transparent' }}>
                   Create Account
-                </button>
+                </button> */}
               </div>
 
               {/* Heading */}
               <div style={{ marginBottom: 24 }}>
                 <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 4, letterSpacing: '-0.3px' }}>
-                  {mode === 'login' ? 'Welcome back' : regStep === 1 ? 'Create your account' : 'Professional details'}
+                  {viewMode === 'mfa' ? 'Enter MFA Code 🔐' : viewMode === 'forgot' ? 'Forgot Password 🔑' : viewMode === 'reset' ? 'Set New Password 🔒' : mode === 'login' ? 'Welcome back' : regStep === 1 ? 'Create your account' : 'Professional details'}
                 </h2>
                 <p style={{ fontSize: 13, color: '#64748b' }}>
-                  {mode === 'login' ? 'Sign in to access your case dashboard.' : regStep === 1 ? 'Step 1 of 2 — Basic information' : 'Step 2 of 2 — Almost done!'}
+                  {viewMode === 'mfa' ? 'Enter the 6-digit security code sent to your email.' : viewMode === 'forgot' ? 'Enter your email to receive a password reset code.' : viewMode === 'reset' ? 'Enter the code from email and your new password.' : mode === 'login' ? 'Sign in to access your case dashboard.' : regStep === 1 ? 'Step 1 of 2 — Basic information' : 'Step 2 of 2 — Almost done!'}
                 </p>
               </div>
 
@@ -399,8 +458,60 @@ export default function LoginPage() {
                 </div>
               )}
 
+              {/* ── MFA CODE VERIFICATION ── */}
+              {viewMode === 'mfa' && (
+                <form onSubmit={handleVerifyMfa} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <FField label="6-Digit Security Code">
+                    <i className="ti ti-key" style={iconSt} />
+                    <input type="text" maxLength={6} value={mfaCode} onChange={e => setMfaCode(e.target.value.replace(/\D/g, ''))} placeholder="123456" required className="auth-input" style={{ textAlign: 'center', letterSpacing: 8, fontSize: 20, fontWeight: 700 }} />
+                  </FField>
+                  <button type="submit" disabled={loading} className="ai-magic-button" style={{ width: '100%', height: 52, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 4 }}>
+                    {loading ? <><i className="ti ti-loader-2" style={{ animation: 'spin 1s linear infinite' }} /> Verifying...</> : <><i className="ti ti-shield-check" /> Verify & Access Dashboard</>}
+                  </button>
+                  <button type="button" onClick={() => setViewMode('login')} style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 13, cursor: 'pointer', textAlign: 'center' }}>
+                    ← Back to Sign In
+                  </button>
+                </form>
+              )}
+
+              {/* ── FORGOT PASSWORD ── */}
+              {viewMode === 'forgot' && (
+                <form onSubmit={handleForgotPassword} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <FField label="Registered Email address">
+                    <i className="ti ti-mail" style={iconSt} />
+                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="advocate@lawfirm.com" required className="auth-input" />
+                  </FField>
+                  <button type="submit" disabled={loading} className="ai-magic-button" style={{ width: '100%', height: 52, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 4 }}>
+                    {loading ? <><i className="ti ti-loader-2" style={{ animation: 'spin 1s linear infinite' }} /> Sending Code...</> : <><i className="ti ti-send" /> Send Reset OTP</>}
+                  </button>
+                  <button type="button" onClick={() => setViewMode('login')} style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 13, cursor: 'pointer', textAlign: 'center' }}>
+                    ← Back to Sign In
+                  </button>
+                </form>
+              )}
+
+              {/* ── RESET PASSWORD ── */}
+              {viewMode === 'reset' && (
+                <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <FField label="Reset OTP Code">
+                    <i className="ti ti-key" style={iconSt} />
+                    <input type="text" maxLength={6} value={resetOtp} onChange={e => setResetOtp(e.target.value.replace(/\D/g, ''))} placeholder="6-digit OTP" required className="auth-input" />
+                  </FField>
+                  <FField label="New Password">
+                    <i className="ti ti-lock" style={iconSt} />
+                    <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="At least 8 chars" required className="auth-input" />
+                  </FField>
+                  <button type="submit" disabled={loading} className="ai-magic-button" style={{ width: '100%', height: 52, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 4 }}>
+                    {loading ? <><i className="ti ti-loader-2" style={{ animation: 'spin 1s linear infinite' }} /> Resetting...</> : <><i className="ti ti-check" /> Save New Password</>}
+                  </button>
+                  <button type="button" onClick={() => setViewMode('login')} style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 13, cursor: 'pointer', textAlign: 'center' }}>
+                    ← Back to Sign In
+                  </button>
+                </form>
+              )}
+
               {/* ── LOGIN ── */}
-              {mode === 'login' && (
+              {mode === 'login' && viewMode === 'login' && (
                 <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <FField label="Email address">
                     <i className="ti ti-mail" style={iconSt} />
@@ -413,15 +524,16 @@ export default function LoginPage() {
                       <i className={`ti ${showPass ? 'ti-eye-off' : 'ti-eye'}`} style={{ fontSize: 17 }} />
                     </button>
                   </FField>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: -4 }}>
+                    <button type="button" onClick={() => setViewMode('forgot')} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+                      Forgot Password?
+                    </button>
+                  </div>
+
                   <button type="submit" disabled={loading} className="ai-magic-button" style={{ width: '100%', height: 52, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 4 }}>
-                    {loading ? <><i className="ti ti-loader-2" style={{ animation: 'spin 1s linear infinite' }} /> Signing in...</> : <><i className="ti ti-login" /> Sign In to Dashboard</>}
+                    {loading ? <><i className="ti ti-loader-2" style={{ animation: 'spin 1s linear infinite' }} /> Signing in...</> : <><i className="ti ti-login" /> Sign In & Send MFA Code</>}
                   </button>
-                  <p style={{ textAlign: 'center', fontSize: 13, color: '#64748b' }}>
-                    New to Clausio?{' '}
-                    <span onClick={() => { setMode('register'); setError('') }} style={{ color: '#1e40af', fontWeight: 700, cursor: 'pointer' }}>
-                      Create account
-                    </span>
-                  </p>
                 </form>
               )}
 
