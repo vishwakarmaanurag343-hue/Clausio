@@ -92,7 +92,7 @@ export default function TermsOfService() {
           {
             title: '5. Free Credits',
             content:
-              'New users receive 50 free AI credits upon registration. Credits are consumed with each AI operation. Additional credits may be purchased once paid plans are available. Clausio reserves the right to modify the free credits policy at any time.'
+              'New users receive 15 free AI credits upon registration. Credits are consumed with each AI operation. Additional credits may be purchased once paid plans are available. Clausio reserves the right to modify the free credits policy at any time.'
           },
           {
             title: '6. Acceptable Use',

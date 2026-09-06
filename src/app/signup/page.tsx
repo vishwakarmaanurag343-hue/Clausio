@@ -15,7 +15,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [credits, setCredits] = useState(50)
+  const [credits, setCredits] = useState(15)
   const [token, setToken] = useState('')
 
   // OTP verification state
@@ -120,10 +120,10 @@ export default function SignupPage() {
           })
           if (walletRes.ok) {
             const w = await walletRes.json()
-            setCredits(w?.balance ?? 50)
+            setCredits(w?.balance ?? 15)
           }
         } catch {
-          setCredits(50)
+          setCredits(15)
         }
       }
 
@@ -287,6 +287,56 @@ export default function SignupPage() {
                 color: 'rgba(255,255,255,0.8)',
               }}>
                 Free credits · No card needed
+              </div>
+
+              <div style={{
+                marginTop: 12,
+                padding: '12px 14px',
+                background: 'rgba(255,255,255,0.08)',
+                borderRadius: 10,
+                border: '1px solid rgba(255,255,255,0.12)',
+              }}>
+                <div style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: 'rgba(255,255,255,0.6)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  marginBottom: 8,
+                }}>
+                  Your credits breakdown
+                </div>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: 4,
+                }}>
+                  {[
+                    ['📄 Drafting', '3 cr'],
+                    ['🔍 Summary', '3 cr'],
+                    ['📅 Chronology', '3 cr'],
+                    ['⚖️ Hearing', '2 cr'],
+                    ['📚 Research', '2 cr'],
+                    ['⚡ Contradiction', '2 cr'],
+                    ['💬 Client', '1 cr'],
+                    ['💰 Financial', '1 cr'],
+                  ].map(([name, cost], i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        padding: '3px 8px',
+                        background: 'rgba(255,255,255,0.06)',
+                        borderRadius: 6,
+                        fontSize: 11,
+                      }}
+                    >
+                      <span style={{ color: 'rgba(255,255,255,0.75)' }}>{name}</span>
+                      <span style={{ color: '#93c5fd', fontWeight: 700 }}>{cost}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -616,7 +666,7 @@ export default function SignupPage() {
             textAlign: 'center',
             marginBottom: 20,
           }}>
-            Get 50 free AI credits instantly. No credit card required.
+            Get 15 free AI credits instantly. No credit card required.
           </p>
 
           <div style={{
@@ -633,7 +683,7 @@ export default function SignupPage() {
             fontWeight: 600,
           }}>
             <span>⚡</span>
-            <span>50 free AI credits on signup — no credit card needed</span>
+            <span>15 free AI credits on signup — no credit card needed</span>
           </div>
 
           <form onSubmit={handleSignup}>

@@ -43,6 +43,53 @@ const DEMO_EMAIL = process.env.NEXT_PUBLIC_DEMO_EMAIL || "demo@clausiotech.com";
 const SALES_EMAIL = process.env.NEXT_PUBLIC_SALES_EMAIL || "sales@clausiotech.com";
 const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "hello@clausiotech.com";
 
+/* Pre-filled mailto links for "Contact Us" and "Book a Demo" */
+const CONTACT_US_EMAIL =
+  `mailto:${SUPPORT_EMAIL}` +
+  "?subject=" +
+  encodeURIComponent("Enquiry — Clausio AI Legal Platform") +
+  "&body=" +
+  encodeURIComponent(
+    "Hello Clausio Team,\n\n" +
+      "I am an advocate interested in learning more about Clausio.\n\n" +
+      "My details:\n" +
+      "Name: \n" +
+      "Bar Council No: \n" +
+      "City/Court: \n" +
+      "Years of Practice: \n" +
+      "Number of Cases: \n\n" +
+      "My questions/requirements:\n" +
+      "\n\n" +
+      "Please get in touch with me.\n\n" +
+      "Thank you."
+  );
+
+const BOOK_DEMO_EMAIL =
+  `mailto:${SUPPORT_EMAIL}` +
+  "?subject=" +
+  encodeURIComponent("Book a Demo — Clausio AI Legal Platform") +
+  "&body=" +
+  encodeURIComponent(
+    "Hello Clausio Team,\n\n" +
+      "I would like to book a demo of Clausio for my legal practice.\n\n" +
+      "My details:\n" +
+      "Name: \n" +
+      "Bar Council No: \n" +
+      "City/Court: \n" +
+      "Years of Practice: \n" +
+      "Number of Active Cases: \n" +
+      "Preferred demo date/time: \n" +
+      "Best contact number: \n\n" +
+      "Areas I am most interested in:\n" +
+      "[ ] AI Document Drafting\n" +
+      "[ ] Hearing Preparation\n" +
+      "[ ] Legal Research\n" +
+      "[ ] Case Analysis\n" +
+      "[ ] Client Updates\n\n" +
+      "Looking forward to the demo.\n\n" +
+      "Thank you."
+  );
+
 /* Auth pages live on this landing site (they talk to the shared backend) */
 const SIGNUP_URL = "/signup";
 const SIGNIN_URL = "/login";
@@ -65,6 +112,14 @@ const sidebarNavItems = [
 /* ============================================================= */
 /* HERO FLOATING PARTICLES (subtle depth)                        */
 /* ============================================================= */
+const HERO_PHRASES = [
+  "Draft bail applications in seconds",
+  "Research 65,000+ SC judgments",
+  "Prepare hearings with AI",
+  "Send WhatsApp updates to clients",
+  "Analyse case contradictions",
+];
+
 const HERO_PARTICLES = [
   { x: 8, y: 20, size: 4, opacity: 0.14, dur: 4, delay: 0 },
   { x: 15, y: 60, size: 5, opacity: 0.18, dur: 6, delay: 1 },
@@ -808,7 +863,7 @@ const FAQS: Faq[] = [
   },
   {
     q: "How do I get started?",
-    a: "Click \"Get Started\" anywhere on this page to open the signup form — you get 50 free AI credits instantly, no card needed. Already have an account? Use the \"Sign In\" link in the top bar.",
+    a: "Click \"Get Started\" anywhere on this page to open the signup form — you get 15 free AI credits instantly, no card needed. Already have an account? Use the \"Sign In\" link in the top bar.",
     keywords: ["get started", "start", "login", "log in", "sign up", "signup", "register", "account", "onboard"],
   },
   {
@@ -1840,6 +1895,10 @@ export default function LandingPageUI() {
   const [ripple, setRipple] = useState(false);
   const [soundOn, setSoundOn] = useState(false);
   const [torchPos, setTorchPos] = useState({ x: 0, y: 0, opacity: 0 });
+  // Hero — rotating typed phrases beneath the caption
+  const [heroPhraseIndex, setHeroPhraseIndex] = useState(0);
+  const [heroTyped, setHeroTyped] = useState("");
+  const [heroTyping, setHeroTyping] = useState(true);
   const rippleFiredRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   // Window scroll tracking for smooth statue slide from center to right
@@ -1904,8 +1963,35 @@ export default function LandingPageUI() {
 
 
 
+  // Hero — type/erase through HERO_PHRASES, one character at a time
+  useEffect(() => {
+    const target = HERO_PHRASES[heroPhraseIndex];
+    if (heroTyping) {
+      if (heroTyped.length < target.length) {
+        const t = setTimeout(() => {
+          setHeroTyped(target.slice(0, heroTyped.length + 1));
+        }, 50);
+        return () => clearTimeout(t);
+      } else {
+        const t = setTimeout(() => setHeroTyping(false), 2000);
+        return () => clearTimeout(t);
+      }
+    } else {
+      if (heroTyped.length > 0) {
+        const t = setTimeout(() => {
+          setHeroTyped(heroTyped.slice(0, -1));
+        }, 30);
+        return () => clearTimeout(t);
+      } else {
+        setHeroPhraseIndex((heroPhraseIndex + 1) % HERO_PHRASES.length);
+        setHeroTyping(true);
+      }
+    }
+  }, [heroTyped, heroTyping, heroPhraseIndex]);
+
   useEffect(() => {
     audioRef.current = new Audio("/ambient.mp3");
+    audioRef.current.preload = "none";
     audioRef.current.loop = true;
     audioRef.current.volume = 0.15;
     const el = audioRef.current;
@@ -2069,17 +2155,19 @@ export default function LandingPageUI() {
       </div>
 
       {/* LEFT SIDEBAR NAVIGATION ("ON THIS PAGE") */}
-      <aside className="fixed left-8 top-1/2 -translate-y-1/2 z-40 hidden xl:flex flex-col space-y-6">
+      <aside className="landing-sidebar fixed left-8 top-1/2 -translate-y-1/2 z-40 hidden xl:flex flex-col space-y-7 max-h-[80vh] overflow-y-auto">
         <div className="text-[10px] uppercase tracking-[0.25em] font-mono font-bold text-[#5C4D3F] skeuo-text-engraved mb-2">
           ON THIS PAGE
         </div>
-        <ul className="flex flex-col space-y-2 text-[11px] font-mono">
+        <ul className="flex flex-col space-y-3 text-[12px] font-mono leading-[1.4]">
           {sidebarNavItems.map((item) => {
             const isActive = activeSection === item.id;
             return (
               <li
                 key={item.id}
-                className="flex items-center space-x-3 group cursor-pointer"
+                className={`flex items-center space-x-3 group cursor-pointer border-l-2 pl-3 py-0.5 transition-all duration-300 ${
+                  isActive ? "border-[#2B2017]" : "border-transparent"
+                }`}
                 onClick={() => scrollTo(item.id)}
               >
                 <span
@@ -2090,10 +2178,10 @@ export default function LandingPageUI() {
                   }`}
                 />
                 <span
-                  className={`transition-all duration-300 font-medium ${
+                  className={`transition-all duration-300 ${
                     isActive
                       ? "text-[#1E1712] font-bold skeuo-text-embossed translate-x-1"
-                      : "text-[#6B5A4B] group-hover:text-[#2B2017]"
+                      : "text-[#6B5A4B] font-medium group-hover:text-[#2B2017]"
                   }`}
                 >
                   {item.label}
@@ -2245,6 +2333,44 @@ export default function LandingPageUI() {
           ref={heroRef}
           className="relative z-10 -mt-[100vh] min-h-screen flex items-center justify-end px-6 md:px-12 cursor-default select-none w-full"
         >
+          {/* Ambient glowing gradient orbs — premium depth behind the headline */}
+          <div className="absolute inset-0 z-[2] pointer-events-none overflow-hidden" aria-hidden="true">
+            <div
+              className="hero-orb"
+              style={{
+                top: "18%",
+                left: "6%",
+                width: 380,
+                height: 380,
+                background: "radial-gradient(circle, rgba(37,99,235,0.14) 0%, transparent 70%)",
+              }}
+            />
+            <div
+              className="hero-orb"
+              style={{
+                top: "42%",
+                right: "8%",
+                width: 320,
+                height: 320,
+                background: "radial-gradient(circle, rgba(124,58,237,0.12) 0%, transparent 70%)",
+                animationDelay: "2s",
+                animationDuration: "9s",
+              }}
+            />
+            <div
+              className="hero-orb"
+              style={{
+                bottom: "8%",
+                left: "28%",
+                width: 280,
+                height: 280,
+                background: "radial-gradient(circle, rgba(251,191,36,0.12) 0%, transparent 70%)",
+                animationDelay: "4s",
+                animationDuration: "11s",
+              }}
+            />
+          </div>
+
           {/* Floating dot particles — subtle background depth */}
           <div className="absolute inset-0 z-[5] pointer-events-none overflow-hidden" aria-hidden="true">
             {HERO_PARTICLES.map((p, i) => (
@@ -2307,16 +2433,67 @@ export default function LandingPageUI() {
               </p>
             </motion.div>
 
+            {/* Rotating typed capability line */}
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.9, delay: 0.4, ease: "easeOut" }}
+              transition={{ duration: 0.9, delay: 0.35, ease: "easeOut" }}
+              className="flex items-center justify-end gap-0.5 mt-4 text-xs md:text-sm font-mono font-semibold text-[#0369A1] min-h-[22px]"
+            >
+              <span>{heroTyped}</span>
+              <span className="doc-cursor inline-block w-[2px] h-[16px] bg-[#0284C7] ml-0.5" />
+            </motion.div>
+
+            {/* Premium CTA — Get Started */}
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, delay: 0.45, ease: "easeOut" }}
+              className="mt-6"
+            >
+              <button
+                onClick={() => {
+                  window.location.href = SIGNUP_URL;
+                }}
+                className="hero-cta-glow px-7 py-3 rounded-full text-[11px] md:text-xs font-mono uppercase tracking-[0.2em] font-semibold skeuo-btn-primary"
+              >
+                Get Started Free
+              </button>
+            </motion.div>
+
+            {/* Stat counter strip */}
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, delay: 0.5, ease: "easeOut" }}
+              className="flex items-center flex-wrap justify-end gap-6 md:gap-8 mt-8 pt-5 border-t border-[#3A2E26]/15"
+            >
+              {[
+                { number: "45+", label: "Document types" },
+                { number: "65K+", label: "SC Judgments" },
+                { number: "22+", label: "AI Features" },
+              ].map((stat, i) => (
+                <div key={i} className="flex flex-col items-end gap-0.5">
+                  <span className="text-xl md:text-2xl font-mono font-extrabold text-[#1E1712] skeuo-text-embossed leading-none">
+                    {stat.number}
+                  </span>
+                  <span className="text-[9px] md:text-[10px] font-mono font-semibold uppercase tracking-[0.12em] text-[#6B5A4B]">
+                    {stat.label}
+                  </span>
+                </div>
+              ))}
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, delay: 0.55, ease: "easeOut" }}
               className="flex items-center space-x-4 mt-6 pt-4 border-t border-[#3A2E26]/15"
             >
               <span className="text-[10px] md:text-[11px] font-mono uppercase tracking-[0.25em] font-medium text-[#5C4D3F] skeuo-text-engraved">
                 SCROLL TO EXPLORE
               </span>
-              <div className="w-12 h-[2px] rounded-full bg-[#3A2E26]/30 shadow-[0_1px_1px_rgba(255,255,255,0.8)]" />
+              <div className="hero-scroll-line w-12 h-[2px] rounded-full bg-[#3A2E26]/30 shadow-[0_1px_1px_rgba(255,255,255,0.8)]" />
             </motion.div>
           </motion.div>
         </section>
@@ -2809,6 +2986,60 @@ export default function LandingPageUI() {
 
           {/* TYPEWRITER DOCUMENT WINDOW — Clausio drafting in real time */}
           <TypewriterWindow />
+
+          {/* CREDIT GUIDE — what 15 free signup credits get you */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: false, amount: 0.2 }}
+            className="max-w-3xl mx-auto w-full rounded-[20px] skeuo-card p-8"
+          >
+            <div className="text-center mb-6">
+              <div className="text-[11px] uppercase tracking-[0.25em] font-mono font-bold text-[#6B5A4B] mb-2">
+                Free to start
+              </div>
+              <div className="text-2xl font-serif font-extrabold text-[#1E1712] skeuo-text-embossed mb-2">
+                15 free credits on signup
+              </div>
+              <div className="text-[13px] text-[#524337] font-sans">
+                No credit card · No commitment · Cancel anytime
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-6">
+              {[
+                { icon: "📄", name: "AI Drafting", cost: 3, desc: "~5 documents" },
+                { icon: "🔍", name: "Case Summary", cost: 3, desc: "~5 summaries" },
+                { icon: "📅", name: "Chronology", cost: 3, desc: "~5 timelines" },
+                { icon: "⚖️", name: "Hearing Prep", cost: 2, desc: "~7 briefs" },
+                { icon: "📚", name: "Legal Research", cost: 2, desc: "~7 searches" },
+                { icon: "⚡", name: "Contradiction", cost: 2, desc: "~7 analyses" },
+                { icon: "💬", name: "Client Update", cost: 1, desc: "~15 messages" },
+                { icon: "💰", name: "Financial", cost: 1, desc: "~15 calcs" },
+              ].map((item) => (
+                <div key={item.name} className="flex flex-col gap-1 p-3 rounded-xl skeuo-inset">
+                  <div className="flex items-center justify-between">
+                    <span className="text-base">{item.icon}</span>
+                    <span className="text-[11px] font-bold text-[#0369A1] bg-[#EBF5FF] px-2 py-0.5 rounded-full">
+                      {item.cost} cr
+                    </span>
+                  </div>
+                  <div className="text-xs font-bold text-[#1E1712]">{item.name}</div>
+                  <div className="text-[10px] text-[#6B5A4B]">{item.desc}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="text-center">
+              <a
+                href="/signup"
+                className="inline-flex items-center gap-2 px-7 py-3 rounded-full text-[13px] font-mono uppercase tracking-[0.15em] font-semibold skeuo-btn-primary"
+              >
+                Start Free — 15 Credits →
+              </a>
+            </div>
+          </motion.div>
         </motion.div>
       </section>
 
@@ -3495,9 +3726,7 @@ export default function LandingPageUI() {
               </button>
             </div>
             <button
-              onClick={() =>
-                window.open(`mailto:${DEMO_EMAIL}?subject=Clausio Demo Request`, "_blank")
-              }
+              onClick={() => window.open(BOOK_DEMO_EMAIL, "_blank")}
               className="px-8 py-4 rounded-full text-xs font-mono uppercase tracking-[0.2em] font-semibold skeuo-btn-secondary"
             >
               Book a Demo
@@ -3583,7 +3812,7 @@ export default function LandingPageUI() {
                 </button>
               </li>
               <li>
-                <a href={`mailto:${CONTACT_EMAIL}`} className="hover:text-white transition-colors">
+                <a href={CONTACT_US_EMAIL} className="hover:text-white transition-colors">
                   Contact Us
                 </a>
               </li>
