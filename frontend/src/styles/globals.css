@@ -712,6 +712,18 @@ button:active,
     scroll-snap-type: x mandatory !important;
   }
 
+  /* Analysis page "Inner Route Tabs" — scroll instead of wrapping/squeezing labels */
+  .analysis-inner-tabs {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    white-space: nowrap !important;
+  }
+
+  .analysis-inner-tab-btn {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+  }
+
   /* Document list items */
   .doc-list-item {
     flex-wrap: wrap !important;

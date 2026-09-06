@@ -1,9 +1,15 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import '../styles/globals.css'
 import FloatingNotes from '@/components/common/FloatingNotes'
 
 export const metadata: Metadata = {
   title: 'Clausio — Every clause. Intelligently handled.',
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

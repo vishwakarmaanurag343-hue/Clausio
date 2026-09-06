@@ -671,7 +671,7 @@ export default function AnalysisPage() {
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 10 }}>
 
             {/* Inner Route Tabs */}
-            <div style={{ display: 'flex', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '2px 4px', flexShrink: 0 }}>
+            <div className="analysis-inner-tabs" style={{ display: 'flex', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '2px 4px', flexShrink: 0 }}>
               {[
                 { id: 'chronology', icon: 'ti-calendar-event', label: 'Chronology' },
                 { id: 'summary',    icon: 'ti-notes',          label: 'Case Summary' },
@@ -681,6 +681,7 @@ export default function AnalysisPage() {
                 return (
                   <button
                     key={t.id}
+                    className="analysis-inner-tab-btn"
                     onClick={() => setActiveTab(t.id as any)}
                     style={{
                       flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,

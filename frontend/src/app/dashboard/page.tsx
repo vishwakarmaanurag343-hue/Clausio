@@ -42,6 +42,18 @@ export default function DashboardPage() {
     hearingCount: number
     nextHearing: string | null
   } | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
+  const [isTablet, setIsTablet] = useState(false)
+
+  useEffect(() => {
+    function checkSize() {
+      setIsMobile(window.innerWidth < 768)
+      setIsTablet(window.innerWidth >= 768 && window.innerWidth < 1024)
+    }
+    checkSize()
+    window.addEventListener('resize', checkSize)
+    return () => window.removeEventListener('resize', checkSize)
+  }, [])
 
   useEffect(() => {
     if (!selectedCaseId) {
@@ -291,7 +303,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Action pills */}
-        <div className="dashboard-topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="dashboard-topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {overdueOrders.length > 0 && (
             <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, background: '#fef2f2', color: '#dc2626', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
               <i className="ti ti-alert-triangle" /> {overdueOrders.length} Emergency
@@ -430,11 +442,77 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* ── MOBILE CASE SELECTOR (replaces left case-list panel below 768px) ── */}
+      {isMobile && (
+        <div style={{
+          padding: '0 0 12px 0',
+          width: '100%',
+        }}>
+          <label style={{
+            display: 'block',
+            fontSize: 11,
+            fontWeight: 700,
+            color: '#64748b',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            marginBottom: 6,
+          }}>
+            Select Case
+          </label>
+          <select
+            value={selectedCaseId || ''}
+            onChange={e => {
+              const caseId = e.target.value
+              if (!caseId) return
+              const selected = allCases.find((c: any) => c.id === caseId || c.Id === caseId)
+              if (selected) {
+                setSelectedCase(selected.id ?? selected.Id, selected.name ?? selected.Name ?? selected.title ?? selected.Title ?? '')
+              }
+            }}
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              borderRadius: 10,
+              border: '1px solid #e2e8f0',
+              fontSize: 14,
+              fontFamily: 'inherit',
+              background: '#fff',
+              color: '#0f172a',
+              fontWeight: 600,
+              outline: 'none',
+              appearance: 'auto',
+              cursor: 'pointer',
+            }}
+          >
+            <option value="">— Select a case —</option>
+            {(allCases || []).map((c: any) => (
+              <option key={c.id || c.Id} value={c.id || c.Id}>
+                {c.name || c.Name || c.title || c.Title || 'Unnamed Case'}
+              </option>
+            ))}
+          </select>
+          {selectedCaseId && (
+            <div style={{
+              marginTop: 6,
+              fontSize: 11,
+              color: '#16a34a',
+              fontWeight: 600,
+            }}>
+              ✓ Case selected
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── MAIN CONTENT AREA ── */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-        {/* Case list left drawer (Desktop) */}
-        {caseListVisible && <CaseList />}
+        {/* Case list left drawer (Desktop/Tablet only — mobile uses the dropdown above) */}
+        {caseListVisible && !isMobile && (
+          <div style={{ width: isTablet ? 160 : 260, flexShrink: 0 }}>
+            <CaseList compact={isTablet} />
+          </div>
+        )}
 
         {/* Main tabs + content */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
@@ -797,7 +875,7 @@ export default function DashboardPage() {
                 {/* Quick actions */}
                 <div style={{ background: '#fff', borderRadius: 12, padding: 16, border: '1px solid #e2e8f0' }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Quick Actions</div>
-                  <div className="dashboard-quick-actions-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 10 }}>
+                  <div className="dashboard-quick-actions-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : isTablet ? 'repeat(4, 1fr)' : 'repeat(7, 1fr)', gap: 10 }}>
                     {[
                       { icon: 'ti-calendar-plus', label: 'Client Meeting', action: () => setShowMeetingModal(true), color: '#0d9488', bg: '#f0fdfa' },
                       { icon: 'ti-alert-triangle', label: 'Emergency', route: '/readiness', color: '#dc2626', bg: '#fef2f2' },

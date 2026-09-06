@@ -90,6 +90,20 @@ export default function Sidebar() {
     return () => window.removeEventListener('insufficient-credits', handler)
   }, [])
 
+  // Tablets (768–1024px) default to the icon-only rail — a lawyer's persisted "expanded"
+  // preference from a desktop session would otherwise eat a third of a tablet's width.
+  // Mobile (<768px) is untouched here — .app-sidebar becomes a fixed overlay there via CSS.
+  useEffect(() => {
+    function collapseOnTablet() {
+      const w = window.innerWidth
+      if (w >= 768 && w < 1024 && sidebarExpanded) toggleSidebar()
+    }
+    collapseOnTablet()
+    window.addEventListener('resize', collapseOnTablet)
+    return () => window.removeEventListener('resize', collapseOnTablet)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sidebarExpanded])
+
   // Any successful AI call spends credits — refresh the balance when api.ts signals it.
   useEffect(() => {
     const handler = () => refreshCredits()

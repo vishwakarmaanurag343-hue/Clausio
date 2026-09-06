@@ -20,6 +20,7 @@ export default function CaseHeader() {
       width: '100%',
       boxSizing: 'border-box' as const,
       flexShrink: 0,
+      minWidth: 0,
     }}>
       <div style={{
         width: 7,
@@ -47,6 +48,7 @@ export default function CaseHeader() {
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap' as const,
         flex: 1,
+        minWidth: 0,
         fontFamily: 'inherit',
       }}>
         {selectedCaseName || 'Selected Case'}

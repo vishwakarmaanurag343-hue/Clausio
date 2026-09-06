@@ -153,7 +153,7 @@ export default function HearingHistory({ refresh }: Props) {
                   <div style={{ flex: 1, background: isOverdue ? 'rgba(254,242,242,0.8)' : 'rgba(255,255,255,0.5)', border: `1px solid ${isOverdue ? 'rgba(252,165,165,0.4)' : 'rgba(0,0,0,0.05)'}`, borderRadius: 10, padding: 14 }}>
 
                     {/* Card header */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
                       <div>
                         <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>
                           {new Date(hearing.hearingDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -191,7 +191,7 @@ export default function HearingHistory({ refresh }: Props) {
                       </div>
 
                       {/* Action buttons */}
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                         {index === 0 && <span style={{ background: 'rgba(59,130,246,0.1)', color: '#1d4ed8', padding: '3px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700 }}>LATEST</span>}
 
                         {/* Add to Google Calendar */}
