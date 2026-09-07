@@ -35,6 +35,7 @@ import {
   RefreshCw,
   Copy,
   Sparkle,
+  Database,
 } from "lucide-react";
 
 /* Contact emails — configured via env (see .env.local) */
@@ -3296,6 +3297,11 @@ export default function LandingPageUI() {
       <CourtsMarquee />
 
       {/* ========================================================= */}
+      {/* SECTION 4.5: TOKEN VAULT SECURITY (Data Privacy) */}
+      {/* ========================================================= */}
+      <TokenVaultSecuritySection />
+
+      {/* ========================================================= */}
       {/* SECTION 5: WHY CLAUSIO (ENGRAVED LEATHER FOLIOS) */}
       {/* ========================================================= */}
       <section
@@ -3890,5 +3896,303 @@ export default function LandingPageUI() {
       {/* FLOATING FAQ CHAT */}
       <FaqChat />
     </div>
+  );
+}
+
+/* ============================================================= */
+/* TOKEN VAULT SECURITY (Added for Data Privacy Demonstration)   */
+/* ============================================================= */
+const DUMMY_CASES = [
+  { name: "Ananya Mehta", phone: "9876543210", caseType: "Section 24 HMA", draftType: "maintenance application" },
+  { name: "Rahul Sharma", phone: "9988776655", caseType: "Section 138 NI Act", draftType: "legal notice" },
+  { name: "Priya Desai", phone: "9123456789", caseType: "Section 438 CrPC", draftType: "anticipatory bail" }
+];
+
+function TokenVaultSecuritySection() {
+  const [step, setStep] = useState(0);
+  const [dataIndex, setDataIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setStep((prev) => {
+        const nextStep = prev + 1;
+        if (nextStep >= 5) {
+          setDataIndex((idx) => (idx + 1) % DUMMY_CASES.length);
+          return 0;
+        }
+        return nextStep;
+      });
+    }, 2500);
+    return () => clearInterval(timer);
+  }, []);
+
+  const currentCase = DUMMY_CASES[dataIndex];
+
+  return (
+    <section className="relative z-30 min-h-screen py-24 px-8 md:px-16 xl:pl-56 xl:pr-24 border-t border-sky-500/20 flex flex-col justify-center overflow-hidden">
+      <div className="max-w-7xl mx-auto w-full space-y-16">
+        
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          viewport={{ once: false, amount: 0.3 }}
+          className="space-y-4 max-w-3xl mx-auto text-center flex flex-col items-center"
+        >
+          <div className="text-[11px] uppercase tracking-[0.25em] font-mono font-bold text-sky-700 flex items-center space-x-2">
+            <Lock className="w-3.5 h-3.5 text-sky-600" />
+            <span className="px-2 py-0.5 rounded skeuo-inset text-[10px]">04.5</span>
+            <span>MILITARY-GRADE PRIVACY</span>
+          </div>
+          <h2 className="text-4xl md:text-5xl font-serif tracking-tight text-[#0F172A] skeuo-text-embossed">
+            Zero-Knowledge AI Engine
+          </h2>
+          <p className="text-base font-sans text-slate-600 leading-relaxed">
+            Your clients' identities are your most guarded secret. Our proprietary Token Vault physically separates PII from the data sent to AI models, ensuring absolute attorney-client privilege.
+          </p>
+        </motion.div>
+
+        {/* 4-Pane Animation Display (Skeuomorphic Light Theme) */}
+        <div className="relative w-full min-h-[450px] skeuo-card rounded-[24px] p-6 md:p-8 flex flex-col lg:flex-row gap-6 items-stretch font-mono">
+          
+          {/* Pane 1: Clausio Input */}
+          <div className="flex-1 bg-white/70 backdrop-blur rounded-2xl border border-sky-100 p-5 flex flex-col relative overflow-hidden shadow-sm">
+            <div className="text-[10px] md:text-xs text-slate-500 mb-4 border-b border-slate-200 pb-2 uppercase tracking-widest font-bold flex items-center justify-between">
+              <span>Clausio Input</span>
+              <ShieldCheck className="w-4 h-4 text-emerald-500" />
+            </div>
+            <div className="space-y-4 text-xs md:text-sm text-slate-700">
+              <div className="flex flex-col gap-1">
+                <span className="text-slate-400 text-[10px] uppercase tracking-wider">Client</span>
+                <motion.span 
+                  className={`font-semibold ${step === 0 ? 'bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200 shadow-sm' : 'text-[#0F172A]'}`}
+                  animate={{ scale: step === 0 ? [1, 1.05, 1] : 1 }}
+                >
+                  {currentCase.name}
+                </motion.span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-slate-400 text-[10px] uppercase tracking-wider">Phone</span>
+                <motion.span 
+                  className={`font-semibold ${step === 0 ? 'bg-sky-100 text-sky-800 px-2 py-0.5 rounded border border-sky-200 shadow-sm' : 'text-[#0F172A]'}`}
+                >
+                  {currentCase.phone}
+                </motion.span>
+              </div>
+              <div className="h-px w-full bg-slate-200 my-2" />
+              <div className="text-[10px] md:text-xs text-slate-500 leading-relaxed italic">
+                Drafting {currentCase.draftType} for {currentCase.caseType}...
+              </div>
+            </div>
+
+            <AnimatePresence>
+              {step === 1 && (
+                <motion.div 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-8 h-1 bg-emerald-500 shadow-[0_0_10px_#10b981]" 
+                />
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Pane 2: Token Vault */}
+          <div className="flex-[1.2] bg-[#EBF5FF]/80 backdrop-blur rounded-2xl border border-sky-200 p-5 flex flex-col relative skeuo-inset">
+            <div className="text-[10px] md:text-xs text-sky-700 mb-4 border-b border-sky-200 pb-2 uppercase tracking-widest font-bold flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Database className="w-4 h-4 text-sky-600" /> Secure Token Vault
+              </span>
+              <Lock className="w-4 h-4 text-sky-600" />
+            </div>
+
+            <div className="flex-1 flex flex-col justify-center gap-4 text-[10px] md:text-xs">
+              <div className="bg-white/60 p-3 rounded-lg border border-sky-100 shadow-sm">
+                <div className="text-slate-500 mb-2 text-[10px] uppercase tracking-wider font-bold">Mapping Table:</div>
+                
+                <div className="space-y-3">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between font-mono gap-1 lg:gap-0">
+                    <span className="text-slate-600 whitespace-nowrap">{currentCase.name}</span>
+                    <motion.span 
+                      animate={{ opacity: step >= 1 ? 1 : 0.3 }}
+                      className="text-slate-400 hidden lg:block"
+                    >→</motion.span>
+                    <motion.span 
+                      animate={{ 
+                        opacity: step >= 1 ? 1 : 0.3,
+                        color: step === 1 ? '#059669' : '#475569' 
+                      }}
+                      className="whitespace-nowrap font-bold bg-white px-2 py-0.5 rounded border border-slate-100 shadow-sm"
+                    >
+                      {step === 1 ? 'AES(0FXS...)' : 'PARTY_1'}
+                    </motion.span>
+                  </div>
+                  
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between font-mono gap-1 lg:gap-0 mt-2 lg:mt-0">
+                    <span className="text-slate-600 whitespace-nowrap">{currentCase.phone}</span>
+                    <motion.span 
+                      animate={{ opacity: step >= 1 ? 1 : 0.3 }}
+                      className="text-slate-400 hidden lg:block"
+                    >→</motion.span>
+                    <motion.span 
+                      animate={{ 
+                        opacity: step >= 1 ? 1 : 0.3,
+                        color: step === 1 ? '#0284C7' : '#475569' 
+                      }}
+                      className="whitespace-nowrap font-bold bg-white px-2 py-0.5 rounded border border-slate-100 shadow-sm"
+                    >
+                      {step === 1 ? 'AES(b7v2...)' : 'PHONE_1'}
+                    </motion.span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="text-[9px] md:text-[10px] text-sky-600 font-bold text-center uppercase tracking-widest mt-2 h-4 drop-shadow-sm">
+                {step === 0 && "Waiting for input..."}
+                {step === 1 && "Encrypting PII..."}
+                {step === 2 && "Sending Tokens..."}
+                {step === 3 && "Decoding Response..."}
+                {step === 4 && "Delivering Draft..."}
+              </div>
+            </div>
+            
+            <AnimatePresence>
+              {step === 2 && (
+                <motion.div 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-8 h-1 bg-sky-500 shadow-[0_0_10px_#0ea5e9]" 
+                />
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Pane 3: AI Processing */}
+          <div className="flex-1 bg-white/70 backdrop-blur rounded-2xl border border-sky-100 p-5 flex flex-col relative overflow-hidden shadow-sm">
+            <div className="text-[10px] md:text-xs text-slate-500 mb-4 border-b border-slate-200 pb-2 uppercase tracking-widest font-bold flex items-center justify-between">
+              <span>AI Engine</span>
+              <Sparkles className="w-4 h-4 text-purple-500" />
+            </div>
+            
+            <div className="flex-1 flex flex-col justify-center">
+              <AnimatePresence mode="wait">
+                {step < 2 ? (
+                  <motion.div 
+                    key="waiting"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="text-slate-400 text-[10px] md:text-xs text-center"
+                  >
+                    Awaiting Context...
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    key="processing"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="space-y-3"
+                  >
+                    <div className="text-[10px] md:text-xs text-slate-600 font-bold mb-2">Prompt Received:</div>
+                    <div className="bg-[#F8FAFC] p-3 rounded-lg border border-slate-200 text-[9px] md:text-[10px] text-slate-700 leading-relaxed shadow-sm">
+                      Draft {currentCase.draftType} for <span className="text-emerald-700 font-bold bg-emerald-100 px-1 rounded mx-1 shadow-sm border border-emerald-200">PARTY_1</span>.<br/>
+                      Contact: <span className="text-sky-700 font-bold bg-sky-100 px-1 rounded mx-1 shadow-sm border border-sky-200">PHONE_1</span>.
+                    </div>
+                    <div className="flex items-center gap-2 mt-4 text-[9px] md:text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 p-2 rounded justify-center font-bold shadow-sm">
+                      <ShieldCheck className="w-3 h-3" />
+                      <span>Zero PII Exposed</span>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <AnimatePresence>
+              {step === 3 && (
+                <motion.div 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-8 h-1 bg-purple-500 shadow-[0_0_10px_#a855f7]" 
+                />
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Pane 4: AI Output (Decrypted) */}
+          <div className="flex-1 bg-white/70 backdrop-blur rounded-2xl border border-sky-100 p-5 flex flex-col relative overflow-hidden shadow-sm">
+            <div className="text-[10px] md:text-xs text-slate-500 mb-4 border-b border-slate-200 pb-2 uppercase tracking-widest font-bold flex items-center justify-between">
+              <span>Clausio Output</span>
+              <FileText className="w-4 h-4 text-sky-600" />
+            </div>
+            
+            <div className="flex-1 flex flex-col justify-center">
+              <AnimatePresence mode="wait">
+                {step < 4 ? (
+                  <motion.div 
+                    key="waiting-output"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="text-slate-400 text-[10px] md:text-xs text-center"
+                  >
+                    Awaiting Draft...
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    key="output"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="space-y-3"
+                  >
+                    <div className="text-[10px] md:text-xs text-slate-600 font-bold mb-2">Final Document:</div>
+                    <div className="bg-[#F8FAFC] p-3 rounded-lg border border-slate-200 text-[9px] md:text-[10px] text-slate-700 leading-relaxed shadow-sm">
+                      ...It is respectfully submitted on behalf of the applicant, <span className="text-emerald-700 font-bold bg-emerald-100 px-1 rounded shadow-sm border border-emerald-200">
+                        {currentCase.name}
+                      </span>, (Contact: <span className="text-sky-700 font-bold bg-sky-100 px-1 rounded shadow-sm border border-sky-200">{currentCase.phone}</span>)...
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+        </div>
+
+        {/* Guarantees */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8">
+          <div className="skeuo-card rounded-2xl p-6 lg:p-8 flex flex-col gap-4 text-center items-center group">
+            <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-emerald-600 skeuo-inset group-hover:scale-110 transition-transform">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <h4 className="font-serif text-lg font-bold text-[#0F172A] skeuo-text-embossed">Zero-PII Transmission</h4>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Personal Identifiable Information is strictly stripped and tokenized before any context ever leaves our secure server infrastructure.
+            </p>
+          </div>
+          
+          <div className="skeuo-card rounded-2xl p-6 lg:p-8 flex flex-col gap-4 text-center items-center group">
+            <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-sky-600 skeuo-inset group-hover:scale-110 transition-transform">
+              <Database className="w-6 h-6" />
+            </div>
+            <h4 className="font-serif text-lg font-bold text-[#0F172A] skeuo-text-embossed">Deterministic Token Vault</h4>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              The translation key is isolated in a separate, encrypted database table accessible only to your firm's session using AES-256 encryption.
+            </p>
+          </div>
+          
+          <div className="skeuo-card rounded-2xl p-6 lg:p-8 flex flex-col gap-4 text-center items-center group">
+            <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-purple-600 skeuo-inset group-hover:scale-110 transition-transform">
+              <Scale className="w-6 h-6" />
+            </div>
+            <h4 className="font-serif text-lg font-bold text-[#0F172A] skeuo-text-embossed">DPDP Act 2023 Compliant</h4>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Fully adheres to the stringent Indian data protection principles of data minimization, purposeful processing, and Bar Council ethics.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
