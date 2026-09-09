@@ -13,8 +13,8 @@ namespace Clausio.Legal.API.Middleware
 
         private const int MAX_REQUESTS   = 1000;
         private const int WINDOW_SECONDS  = 60;
-        private const int MAX_AUTH        = 10;
-        private const int AUTH_WINDOW     = 300;
+        private const int MAX_AUTH        = 50;
+        private const int AUTH_WINDOW     = 60;
 
         public RateLimitingMiddleware(
             RequestDelegate                  next,
@@ -33,7 +33,7 @@ namespace Clausio.Legal.API.Middleware
             }
 
             var ip = GetClientIp(context);
-            if (ip == "::1" || ip == "127.0.0.1" || ip == "localhost" || ip.StartsWith("127."))
+            if (ip == "::1" || ip == "127.0.0.1" || ip == "localhost" || ip.StartsWith("127.") || ip.StartsWith("172."))
             {
                 await _next(context);
                 return;

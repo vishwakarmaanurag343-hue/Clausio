@@ -7,3 +7,9 @@ backend/Clausio.Legal.API/uploads/
 voice-backend/__pycache__/
 voice-backend/get-pip.py
 voice-backend/temp_uploads/
+.env
+*.backup-*
+backend/Clausio.Legal.API/clausio_dev.db
+voice-backend/venv/
+clausio_db_backup.sql
+clausio_fresh_backup*.sql

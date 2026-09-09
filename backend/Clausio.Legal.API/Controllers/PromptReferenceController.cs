@@ -155,7 +155,7 @@ public class PromptReferenceController(ClausioDbContext db, IHttpClientFactory h
         HttpResponseMessage response;
         try
         {
-            response = await client.PostAsync("http://localhost:8000/api/ocr", content, ct);
+            response = await client.PostAsync("http://voice-backend:8000/api/ocr", content, ct);
         }
         catch
         {

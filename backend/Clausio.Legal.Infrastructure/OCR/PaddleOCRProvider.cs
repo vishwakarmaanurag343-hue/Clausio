@@ -30,7 +30,7 @@ public class PaddleOCRProvider : IOCRProvider
         using var http = new System.Net.Http.HttpClient();
         http.Timeout = System.TimeSpan.FromSeconds(180); // OCR can take some time for large PDFs
         
-        using var request = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Post, "http://localhost:8000/api/ocr");
+        using var request = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Post, "http://voice-backend:8000/api/ocr");
         
         var content = new System.Net.Http.MultipartFormDataContent();
         
