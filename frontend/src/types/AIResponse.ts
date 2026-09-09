@@ -18,9 +18,9 @@ export interface Judgment {
   relevance:       string   // Why relevant to this case
   howToUse:        string   // How to use in court argument
   strength:        'High' | 'Medium' | 'Low'
-  fullJudgmentUrl: string | null  // Indian Kanoon URL
+  fullJudgmentUrl: string | null  // Full Judgment URL / SCC Online link
   isVerified:      boolean  // Whether source is verified
-  verifiedSource:  string   // "Indian Kanoon" | "SCC Online" | "Manupatra"
+  verifiedSource:  string   // "SCC Online" | "eCourts" | "Supreme Court of India"
 }
 
 export interface ActionPlanItem {

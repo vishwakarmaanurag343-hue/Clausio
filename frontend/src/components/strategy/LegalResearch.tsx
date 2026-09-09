@@ -27,12 +27,6 @@ function extractSimilarCases(raw: unknown): SimilarCase[] | null {
   return null
 }
 
-// Build Indian Kanoon search URL from citation
-function getIndianKanoonUrl(citation: string): string {
-  const query = encodeURIComponent(citation)
-  return `https://indiankanoon.org/search/?formInput=${query}`
-}
-
 // Check if judgment is from a verified source
 function getVerificationStatus(judgment: any): {
   isVerified: boolean
@@ -51,7 +45,7 @@ function getVerificationStatus(judgment: any): {
     return { isVerified: true,  source: 'High Court Record',   color: '#1d4ed8', bg: '#eff6ff', icon: '✅' }
   }
   if (judgment.fullJudgmentUrl) {
-    return { isVerified: true,  source: 'Indian Kanoon',       color: '#15803d', bg: '#f0fdf4', icon: '✅' }
+    return { isVerified: true,  source: 'SCC Online Database', color: '#15803d', bg: '#f0fdf4', icon: '✅' }
   }
   return   { isVerified: false, source: 'Source not verified', color: '#d97706', bg: '#fef3c7', icon: '⚠️' }
 }
@@ -207,11 +201,6 @@ export default function LegalResearch() {
               <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
                   <span style={{ fontSize: 9, fontWeight: 700, color: '#15803d', letterSpacing: 1 }}>WHY IT HELPS THIS CASE</span>
-                  {c.citation && (
-                    <a href={getIndianKanoonUrl(c.citation)} target="_blank" rel="noreferrer" style={{ fontSize: 10.5, fontWeight: 700, color: '#d97706', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                      🔍 Indian Kanoon
-                    </a>
-                  )}
                 </div>
                 <p style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: '#14532d', whiteSpace: 'pre-line' }}>{c.whyRelevantToThisCase || '—'}</p>
               </div>
@@ -259,7 +248,7 @@ export default function LegalResearch() {
       {/* Research cards — EXACT SAME UI + verified badge */}
       {!loading && research.map((item) => {
         const verification = getVerificationStatus(item)
-        const kanoonUrl    = getIndianKanoonUrl(item.citation)
+        const sccSearchUrl = `https://www.scconline.com/Members/SearchResult.aspx#/QuickFind/${encodeURIComponent(item.citation || '')}`
 
         return (
           <div key={item.id} style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 18, marginBottom: 18, background: '#ffffff' }}>
@@ -299,25 +288,19 @@ export default function LegalResearch() {
               <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'flex-start', padding: '8px 12px', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 8 }}>
                 <span>⚠️</span>
                 <p style={{ margin: 0, fontSize: 12, color: '#92400e' }}>
-                  This judgment could not be verified automatically. Please manually check on Indian Kanoon or SCC Online before citing in court.
+                  This judgment could not be verified automatically. Please manually check on SCC Online before citing in court.
                 </p>
               </div>
             )}
 
-            {/* Footer — View Judgment button now opens Indian Kanoon */}
+            {/* Footer — View Judgment button */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
               <span style={{ background: '#eff6ff', color: '#2563eb', padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600 }}>
                 {item.relevance?.substring(0, 40) ?? 'Relevant'}
               </span>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
-                  onClick={() => window.open(kanoonUrl, '_blank')}
-                  style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontWeight: 600, color: '#d97706', fontSize: 12 }}
-                >
-                  🔍 Indian Kanoon
-                </button>
-                <button
-                  onClick={() => window.open(item.fullJudgmentUrl || kanoonUrl, '_blank')}
+                  onClick={() => window.open(item.fullJudgmentUrl || sccSearchUrl, '_blank')}
                   style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontWeight: 600, color: '#334155', fontSize: 12 }}
                 >
                   View Judgment
