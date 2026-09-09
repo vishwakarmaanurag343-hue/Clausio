@@ -23,7 +23,10 @@ const CATEGORY_COLORS: Record<string, { bg: string; color: string; icon: string 
 const FILING_FILTERS = ['All', 'Not Filed', 'Filed'] as const
 
 function getToken() {
-  return document.cookie.split(';').find(c => c.trim().startsWith('clausio_token='))?.split('=')[1] ?? ''
+  if (typeof window === 'undefined') return ''
+  return localStorage.getItem('clausio_token')
+    || document.cookie.split(';').find(c => c.trim().startsWith('clausio_token='))?.split('=')[1]
+    || ''
 }
 
 function fmtDate(d?: string | null) {
@@ -169,38 +172,42 @@ export default function DocumentsPage() {
     setDownloadingDocId(doc.id)
     setError('')
     try {
-      const token = localStorage.getItem('clausio_token') || ''
-      const res = await fetch(`${BASE}/cases/${selectedCaseId}/documents/${doc.id}/download`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
-      if (!res.ok) {
-        // Try fallback to /file endpoint if /download is not supported
-        const fallbackRes = await fetch(`${BASE}/cases/${selectedCaseId}/documents/${doc.id}/file`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        })
-        if (!fallbackRes.ok) {
-          throw new Error('Unable to download document. Please try again.')
-        }
-        const blob = await fallbackRes.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = doc.fileName || 'document.pdf'
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
-        return
+      const token = getToken()
+      const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {}
+
+      // Try /download endpoint first, then fall back to /file
+      let res = await fetch(`${BASE}/cases/${selectedCaseId}/documents/${doc.id}/download`, { headers })
+      if (!res.ok && res.status === 404) {
+        res = await fetch(`${BASE}/cases/${selectedCaseId}/documents/${doc.id}/file`, { headers })
       }
+
+      if (!res.ok) {
+        let errMsg = 'Unable to download document. Please try again.'
+        try {
+          const errData = await res.json()
+          errMsg = errData.error || errData.message || errMsg
+        } catch {
+          // ignore non-JSON errors
+        }
+        throw new Error(errMsg)
+      }
+
       const blob = await res.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
+      a.style.display = 'none'
       a.href = url
       a.download = doc.fileName || 'document.pdf'
       document.body.appendChild(a)
       a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
+      setTimeout(() => {
+        try {
+          window.URL.revokeObjectURL(url)
+          document.body.removeChild(a)
+        } catch {
+          // cleanup safe
+        }
+      }, 100)
     } catch (err: any) {
       setError(err.message || 'Unable to download document. Please try again.')
     } finally {
