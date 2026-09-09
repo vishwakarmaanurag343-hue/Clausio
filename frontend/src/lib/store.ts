@@ -74,7 +74,10 @@ export const useCaseStore = create<CaseState>()(
     (set) => ({
       selectedCaseId:   '',
       selectedCaseName: '',
-      setSelectedCase:  (id, name) => set({ selectedCaseId: id, selectedCaseName: name }),
+      setSelectedCase:  (id, name) => set(state => {
+        if (state.selectedCaseId === id && state.selectedCaseName === name) return state
+        return { selectedCaseId: id, selectedCaseName: name }
+      }),
     }),
     { name: 'clausio-case' }
   )

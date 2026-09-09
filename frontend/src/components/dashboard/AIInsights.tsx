@@ -19,7 +19,6 @@ export default function AIInsights() {
   const [chatInput,   setChatInput]   = useState('')
   const [chatHistory, setChatHistory] = useState<{role: 'user'|'ai', content: string, progress?: string[], isStreaming?: boolean}[]>([])
   const [chatLoading, setChatLoading] = useState(false)
-  const [loadingTextIndex, setLoadingTextIndex] = useState(0)
   const [isDragging,  setIsDragging]  = useState(false)
   const [isListening, setIsListening] = useState(false)
   const [isDragOver,  setIsDragOver]  = useState(false)
@@ -74,7 +73,8 @@ export default function AIInsights() {
   })
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    // Scroll without triggering intensive layout animations on every streamed character
+    chatEndRef.current?.scrollIntoView({ behavior: 'auto' })
   }, [chatHistory, chatLoading])
 
   useEffect(() => {
@@ -111,7 +111,8 @@ export default function AIInsights() {
     setLoading(true)
     setSummary(null)
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 10000)
+    // Allow sufficient time for LLM generation of comprehensive brief (45 seconds)
+    const timeout = setTimeout(() => controller.abort(), 45000)
 
     aiApi.getSummary(selectedCaseId, { signal: controller.signal })
       .then(res => {
@@ -134,28 +135,33 @@ export default function AIInsights() {
         }
 
         // Strip markdown code fences
-        cleanText = cleanText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim()
+        cleanText = cleanText.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
 
-        // New four-section Summary contract ({summary:[{parties, reliefSought, keyFacts,
-        // proceduralHistory}]}) — flatten to labelled prose so this panel keeps its
-        // full-summary layout instead of feeding a JSON blob to the markdown renderer.
+        // New six-section Summary contract ({summary:[{overview, parties, reliefSought, keyFacts, proceduralHistory, currentPosition}]})
         try {
           const brief = JSON.parse(cleanText)
-          const entry = Array.isArray(brief) ? brief[0] : Array.isArray(brief?.summary) ? brief.summary[0] : null
-          if (entry && typeof entry === 'object' && (entry.parties || entry.keyFacts || entry.reliefSought || entry.proceduralHistory)) {
-            const section = (label: string, body?: string) => body ? `**${label}.** ${body}` : ''
+          const entry = Array.isArray(brief) ? brief[0] : Array.isArray(brief?.summary) ? brief.summary[0] : (typeof brief?.summary === 'object' ? brief.summary : brief)
+          if (entry && typeof entry === 'object' && (entry.overview || entry.parties || entry.keyFacts || entry.reliefSought || entry.proceduralHistory || entry.currentPosition)) {
+            const section = (label: string, body?: string) => (body && body !== 'Not available in the case record.') ? `### ${label}\n${body}` : ''
+            const fullSummaryParts = [
+              section('Overview', entry.overview),
+              section('Parties', entry.parties),
+              section('Relief Sought', entry.reliefSought),
+              section('Key Facts', entry.keyFacts),
+              section('Procedural History', entry.proceduralHistory),
+              section('Current Working Position', entry.currentPosition),
+            ].filter(Boolean).join('\n\n')
+
             setSummary({
-              fullSummary: [
-                section('Parties', entry.parties),
-                section('Relief sought', entry.reliefSought),
-                section('Key facts', entry.keyFacts),
-                section('Procedural history', entry.proceduralHistory),
-              ].filter(Boolean).join('\n\n'),
-              keyStrengths: [], keyWeaknesses: [], nextSteps: [], verdictProbability: null,
+              fullSummary: fullSummaryParts || entry.overview || entry.keyFacts || cleanText,
+              keyStrengths: Array.isArray(entry.strengths) ? entry.strengths : [],
+              keyWeaknesses: Array.isArray(entry.weaknesses) ? entry.weaknesses : [],
+              nextSteps: Array.isArray(entry.nextSteps) ? entry.nextSteps : [],
+              verdictProbability: entry.verdictProbability || null,
             })
             return
           }
-        } catch { /* not the new contract — fall through to legacy parsing */ }
+        } catch { /* not JSON contract — fall through to legacy parsing */ }
 
         try {
           const parsed = JSON.parse(cleanText)
@@ -191,7 +197,7 @@ export default function AIInsights() {
       .catch((err) => {
         clearTimeout(timeout)
         if (err?.name === 'AbortError') {
-          setSummary({ fullSummary: 'Response taking too long. Try a shorter question.', keyStrengths: [], keyWeaknesses: [], nextSteps: [], verdictProbability: null })
+          setSummary({ fullSummary: 'Brief generation timed out. Please try again or ask questions in the chat below.', keyStrengths: [], keyWeaknesses: [], nextSteps: [], verdictProbability: null })
         } else {
           setSummary(null)
         }
@@ -341,28 +347,63 @@ export default function AIInsights() {
     try {
       const stream = aiApi.chatStream({ message: userContent || 'Summarize this document', caseId: selectedCaseId, history: [] })
       
-      for await (const chunk of stream) {
-        if (abortController.signal.aborted) {
-          throw new Error('AI request timed out. Please try again.')
-        }
-        
+      let pendingContent = ''
+      let pendingProgress: string[] = []
+      let lastFlushTime = Date.now()
+      let flushTimer: NodeJS.Timeout | null = null
+
+      const flushChatUpdate = () => {
+        if (!pendingContent && pendingProgress.length === 0) return
+        const contentToAdd = pendingContent
+        const progressToAdd = [...pendingProgress]
+        pendingContent = ''
+        pendingProgress = []
+        lastFlushTime = Date.now()
+
         setChatHistory(prev => {
+          if (prev.length === 0) return prev
           const newHistory = [...prev]
           const lastMsg = { ...newHistory[newHistory.length - 1] }
-          
-          if (chunk.startsWith('[sys]')) {
-            const sysMsg = chunk.replace('[sys]', '').trim()
-            if (sysMsg) {
-              lastMsg.progress = [...(lastMsg.progress || []), sysMsg]
-            }
-          } else {
-            lastMsg.content = (lastMsg.content || '') + chunk
+          if (contentToAdd) {
+            lastMsg.content = (lastMsg.content || '') + contentToAdd
           }
-          
+          if (progressToAdd.length > 0) {
+            lastMsg.progress = [...(lastMsg.progress || []), ...progressToAdd]
+          }
           newHistory[newHistory.length - 1] = lastMsg
           return newHistory
         })
       }
+
+      for await (const chunk of stream) {
+        if (abortController.signal.aborted) {
+          throw new Error('AI request timed out. Please try again.')
+        }
+
+        if (chunk.startsWith('[sys]')) {
+          const sysMsg = chunk.replace('[sys]', '').trim()
+          if (sysMsg) {
+            pendingProgress.push(sysMsg)
+          }
+        } else {
+          pendingContent += chunk
+        }
+
+        // Throttle React state flushes to at most once every 60ms to prevent browser main-thread freeze
+        const now = Date.now()
+        if (now - lastFlushTime >= 60) {
+          if (flushTimer) { clearTimeout(flushTimer); flushTimer = null }
+          flushChatUpdate()
+        } else if (!flushTimer) {
+          flushTimer = setTimeout(() => {
+            flushTimer = null
+            flushChatUpdate()
+          }, 60)
+        }
+      }
+
+      if (flushTimer) { clearTimeout(flushTimer); flushTimer = null }
+      flushChatUpdate()
     } catch (err) {
       setChatHistory(prev => {
         const newHistory = [...prev]
@@ -383,24 +424,6 @@ export default function AIInsights() {
     }
   }
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout
-    if (chatLoading) {
-      setLoadingTextIndex(0)
-      interval = setInterval(() => {
-        setLoadingTextIndex(prev => prev + 1)
-      }, 2000)
-    }
-    return () => clearInterval(interval)
-  }, [chatLoading])
-
-  const loadingMessages = [
-    "Thinking...",
-    "Reviewing case files...",
-    "Extracting key insights...",
-    "Analyzing evidence...",
-    "Drafting response..."
-  ]
 
   const handleVoiceInput = async () => {
     if (isListening) {
@@ -585,8 +608,12 @@ export default function AIInsights() {
 
         {/* Loading */}
         {loading && selectedCaseId && (
-          <div style={{ textAlign: 'center', padding: 20 }}>
-            {/* Kept blank for a cleaner UI transition */}
+          <div style={{ textAlign: 'center', padding: '24px 16px', background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(0,0,0,0.05)', borderRadius: 12, marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#6366f1', marginBottom: 8 }}>
+              <i className="ti ti-sparkles animate-spin" style={{ fontSize: 18 }} />
+              <span style={{ fontSize: 13, fontWeight: 600 }}>Analyzing Case & Generating Insights...</span>
+            </div>
+            <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>Reviewing facts, parties, and procedural record</p>
           </div>
         )}
 
@@ -970,15 +997,32 @@ export default function AIInsights() {
                       <video src="/aivideo.mp4" autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scale(1.8)' }} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <AIResponseFormatter 
-                        content={msg.content} 
-                        citationCallback={(title, text) => {
-                          setCitationTitle(title)
-                          setCitationContent(text)
-                          setCitationOpen(true)
-                        }} 
-                      />
-                      {msg.isStreaming && <span className="animate-pulse" style={{ color: '#2563eb', fontWeight: 700, marginLeft: 4 }}>...</span>}
+                      {msg.content ? (
+                        <>
+                          <AIResponseFormatter 
+                            content={msg.content} 
+                            isStreaming={msg.isStreaming}
+                            citationCallback={(title, text) => {
+                              setCitationTitle(title)
+                              setCitationContent(text)
+                              setCitationOpen(true)
+                            }} 
+                          />
+                          {msg.isStreaming && (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 8, verticalAlign: 'middle' }}>
+                              <span className="chat-dot-1" style={{ width: 5, height: 5, borderRadius: '50%', background: '#3b82f6', display: 'inline-block' }} />
+                              <span className="chat-dot-2" style={{ width: 5, height: 5, borderRadius: '50%', background: '#3b82f6', display: 'inline-block' }} />
+                              <span className="chat-dot-3" style={{ width: 5, height: 5, borderRadius: '50%', background: '#3b82f6', display: 'inline-block' }} />
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '8px 12px', background: '#f8fafc', borderRadius: 12, border: '1px solid rgba(0,0,0,0.05)' }}>
+                          <span className="chat-dot-1" style={{ width: 6, height: 6, borderRadius: '50%', background: '#3b82f6', display: 'inline-block' }} />
+                          <span className="chat-dot-2" style={{ width: 6, height: 6, borderRadius: '50%', background: '#3b82f6', display: 'inline-block' }} />
+                          <span className="chat-dot-3" style={{ width: 6, height: 6, borderRadius: '50%', background: '#3b82f6', display: 'inline-block' }} />
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

@@ -1113,3 +1113,31 @@ button:active,
   70%  { box-shadow: 0 0 0 12px rgba(220, 38, 38, 0); }
   100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
 }
+
+/* Clean 3-dot loading animation */
+@keyframes dot-bounce {
+  0%, 80%, 100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.chat-dot-1 {
+  animation: dot-bounce 1.4s infinite ease-in-out both;
+  animation-delay: -0.32s;
+}
+
+.chat-dot-2 {
+  animation: dot-bounce 1.4s infinite ease-in-out both;
+  animation-delay: -0.16s;
+}
+
+.chat-dot-3 {
+  animation: dot-bounce 1.4s infinite ease-in-out both;
+  animation-delay: 0s;
+}
+

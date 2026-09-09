@@ -1,6 +1,6 @@
-import AIResponseFormatter from '@/components/common/AIResponseFormatter'
 'use client'
 
+import AIResponseFormatter from '@/components/common/AIResponseFormatter'
 import { useState, useEffect } from 'react'
 import { useCaseStore } from '@/lib/store'
 import { aiApi, witnessesApi, integrationsApi } from '@/lib/api'
@@ -20,7 +20,12 @@ export default function HearingsPage() {
   const [activeTab,    setActiveTab]    = useState('Hearing Diary')
   const [refreshCount, setRefreshCount] = useState(0)
 
-  function handleSaved() { setRefreshCount(c => c + 1) }
+  function handleSaved() { 
+    setRefreshCount(c => c + 1)
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('hearings-updated'))
+    }
+  }
 
   // ── Witness Intelligence: stored witnesses + per-witness AI briefs ──
   const [witnesses,     setWitnesses]     = useState<any[]>([])

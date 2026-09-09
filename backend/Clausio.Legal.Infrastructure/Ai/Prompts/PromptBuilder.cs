@@ -106,6 +106,26 @@ REQUIRES VERIFICATION BEFORE USE: [facts needing check]
 OUTPUT FORMAT RECONCILIATION (READ CAREFULLY):
 Some tasks below require a STRICT JSON OBJECT so the application can read the result. Those tasks say so explicitly and give a schema. For a strict-JSON task: return ONLY that JSON object — no markdown, no === TRACKING TABLE ===, no page-count targets, no text before or after it. Pour ALL of the depth and length demanded above INTO the JSON instead — more array entries, and full 3-5 sentence explanations inside every string field. For every task that does NOT give a JSON schema, produce the full long-form document exactly as described, ending with the === TRACKING TABLE === block.
 """;
+
+    public const string ConversationalChat = """
+You are Clausio AI, an exceptionally knowledgeable, articulate, and thoughtful legal partner and senior Indian legal advisor with 25 years of courtroom experience.
+You communicate naturally, warmly, and with executive clarity—like Claude or ChatGPT—while maintaining deep, authentic mastery of Indian law, procedure, and case strategy.
+
+CORE CONVERSATIONAL PRINCIPLES:
+1. NATURAL & ADAPTIVE:
+   - For greetings or casual openers (e.g. "hi", "hello", "good morning"): Respond warmly, naturally, and concisely in 1-2 friendly sentences. Never number every sentence. Introduce how you can assist with this case or legal strategy.
+   - For legal and case queries: Give clear, well-structured, insightful answers with rich legal reasoning, practical next steps, and applicable statutory provisions or Supreme Court/High Court precedents.
+
+2. CLARITY & STRUCTURE (MARKDOWN):
+   - Use clean, modern Markdown formatting: descriptive headings (##), clean bullet points, bold key terms, and crisp tables when comparing options.
+   - NEVER number every sentence as "1. ... 2. ... 3. ...". Write in smooth, professional paragraphs.
+   - NEVER output internal drafting boilerplate such as "=== TRACKING TABLE ===", "COVERED IN THIS OUTPUT", or raw drafting checklist tables unless specifically requested.
+
+3. ACCURACY & INDIAN JURISPRUDENCE:
+   - When discussing legal propositions, reference the controlling Indian statutes (BNS/IPC, BNSS/CrPC, BSA/IEA, CPC, HMA, NI Act, etc.) and landmark Supreme Court or High Court rulings where applicable.
+   - When analyzing case facts or documents provided in the context, ground your analysis directly in the case record without hallucinating unmentioned facts.
+   - Provide pragmatic, high-level tactical counsel that an advocate or litigant can immediately put into practice.
+""";
 }
 
 public class PromptBuilder : IPromptBuilder
@@ -124,13 +144,22 @@ public class PromptBuilder : IPromptBuilder
     {
         var template = LoadTemplate(templateName);
 
-        // === Clausio Master Standards: the universal block is injected ahead of every
-        // task template so it lives in exactly one place. Each template file then adds
-        // its own feature-specific instructions and (where needed) its JSON schema. ===
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine(ClausioStandards.Universal).AppendLine();
-        sb.AppendLine("=== TASK-SPECIFIC INSTRUCTIONS ===");
-        sb.Append(template.SystemInstruction);
+
+        // Conversational chat (GeneralChat) uses fluid, natural conversational standards
+        // Formal drafting tasks use the comprehensive courtroom pleading standards
+        if (templateName.Equals("GeneralChat", StringComparison.OrdinalIgnoreCase))
+        {
+            sb.AppendLine(ClausioStandards.ConversationalChat).AppendLine();
+            sb.AppendLine("=== CONTEXT & CASE BACKGROUND ===");
+            sb.Append(template.SystemInstruction);
+        }
+        else
+        {
+            sb.AppendLine(ClausioStandards.Universal).AppendLine();
+            sb.AppendLine("=== TASK-SPECIFIC INSTRUCTIONS ===");
+            sb.Append(template.SystemInstruction);
+        }
 
         var prompt = sb.ToString();
 

@@ -31,10 +31,10 @@ public class OpenRouterProvider : ILLMProvider
                ?? config["AI:FastProvider:ApiKey"]
                ?? throw new InvalidOperationException("AI:Groq:ApiKey or AI:OpenRouter:ApiKey missing");
 
-        _baseUrl = config["AI:OpenRouter:BaseUrl"]
+        _baseUrl = config["AI:Groq:BaseUrl"]
                 ?? config["AI:FastProvider:BaseUrl"]
-                ?? config["AI:Groq:BaseUrl"]
-                ?? "https://openrouter.ai/api/v1";
+                ?? config["AI:OpenRouter:BaseUrl"]
+                ?? "https://api.groq.com/openai/v1";
 
         // Non-streaming completions (the Analysis-page briefs, chronology, evidence review,
         // non-stream chat) need room for a multi-page structured answer — a 4096 cap was
@@ -183,9 +183,12 @@ public class OpenRouterProvider : ILLMProvider
             ? contentProp.GetString()
             : null;
 
-        if (string.IsNullOrWhiteSpace(responseText) && message.TryGetProperty("reasoning_content", out var reasoningProp) && reasoningProp.ValueKind == JsonValueKind.String)
+        if (string.IsNullOrWhiteSpace(responseText))
         {
-            responseText = reasoningProp.GetString();
+            if (message.TryGetProperty("reasoning_content", out var reasoningProp) && reasoningProp.ValueKind == JsonValueKind.String)
+                responseText = reasoningProp.GetString();
+            else if (message.TryGetProperty("reasoning", out var rProp) && rProp.ValueKind == JsonValueKind.String)
+                responseText = rProp.GetString();
         }
 
         // If content contains reasoning, prefer the last well-formed JSON block or content itself

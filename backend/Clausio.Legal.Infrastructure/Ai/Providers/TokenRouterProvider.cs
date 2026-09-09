@@ -31,10 +31,10 @@ public class TokenRouterProvider : ILLMProvider
                ?? config["AI:DeepProvider:ApiKey"]
                ?? throw new InvalidOperationException("AI:Groq:ApiKey or AI:OpenRouter:ApiKey missing");
 
-        _baseUrl = config["AI:OpenRouter:BaseUrl"]
+        _baseUrl = config["AI:Groq:BaseUrl"]
                 ?? config["AI:DeepProvider:BaseUrl"]
-                ?? config["AI:Groq:BaseUrl"]
-                ?? "https://openrouter.ai/api/v1";
+                ?? config["AI:OpenRouter:BaseUrl"]
+                ?? "https://api.groq.com/openai/v1";
 
         // Non-streaming completions need room for a multi-page structured answer (Analysis-page
         // briefs / chronology / evidence). A 4096 cap was truncating case summaries to one page.
@@ -173,13 +173,23 @@ public class TokenRouterProvider : ILLMProvider
         var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
         var parsed = JsonDocument.Parse(responseJson);
 
-        var responseText = parsed.RootElement
+        var message = parsed.RootElement
             .GetProperty("choices")[0]
-            .GetProperty("message")
-            .GetProperty("content")
-            .GetString() ?? string.Empty;
+            .GetProperty("message");
 
-        return ExtractJson(responseText);
+        var responseText = message.TryGetProperty("content", out var contentProp) && contentProp.ValueKind == JsonValueKind.String
+            ? contentProp.GetString()
+            : null;
+
+        if (string.IsNullOrWhiteSpace(responseText))
+        {
+            if (message.TryGetProperty("reasoning_content", out var rcProp) && rcProp.ValueKind == JsonValueKind.String)
+                responseText = rcProp.GetString();
+            else if (message.TryGetProperty("reasoning", out var rProp) && rProp.ValueKind == JsonValueKind.String)
+                responseText = rProp.GetString();
+        }
+
+        return ExtractJson(responseText ?? string.Empty);
     }
 
     private string ExtractJson(string text)

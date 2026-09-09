@@ -61,7 +61,12 @@ export default function HearingHistory({ refresh }: Props) {
   async function handleDelete(hearingId: string) {
     if (!selectedCaseId) return
     setDeletingId(hearingId)
-    try { await hearingsApi.remove(selectedCaseId, hearingId); load(); setConfirmDeleteId(null) }
+    try { 
+      await hearingsApi.remove(selectedCaseId, hearingId); 
+      load(); 
+      setConfirmDeleteId(null)
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('hearings-updated'))
+    }
     catch { setError('Failed to delete hearing') }
     finally { setDeletingId(null) }
   }
@@ -80,6 +85,7 @@ export default function HearingHistory({ refresh }: Props) {
       })
       setEditHearing(null)
       load()
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('hearings-updated'))
     } catch { setError('Failed to update hearing') }
     finally { setEditLoading(false) }
   }

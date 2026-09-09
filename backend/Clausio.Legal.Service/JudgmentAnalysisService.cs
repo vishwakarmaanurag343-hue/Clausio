@@ -230,14 +230,17 @@ public class JudgmentAnalysisService(
     {
         var t = (typeLine ?? "").ToLowerInvariant();
         if (t.Contains("family") || t.Contains("matrimonial") || t.Contains("divorce")
-            || t.Contains("custody") || t.Contains("maintenance") || t.Contains("alimony")) return "Family";
-        if (t.Contains("criminal") || t.Contains("bail") || t.Contains("498a")) return "Criminal";
-        if (t.Contains("property") || t.Contains("civil")) return "Property";
-        if (t.Contains("constitution") || t.Contains("writ")) return "Constitutional";
-        if (t.Contains("tax") || t.Contains("gst")) return "Tax";
+            || t.Contains("custody") || t.Contains("maintenance") || t.Contains("alimony")) return "Family Law";
+        if (t.Contains("criminal") || t.Contains("bail") || t.Contains("498a")) return "Criminal Law";
+        if (t.Contains("property")) return "Property Law";
+        if (t.Contains("civil")) return "Civil Law";
+        if (t.Contains("constitution") || t.Contains("writ")) return "Constitutional Law";
+        if (t.Contains("tax") || t.Contains("gst")) return "Tax Law";
         if (t.Contains("ni act") || t.Contains("negotiable") || t.Contains("cheque") || t.Contains("138")) return "NI Act";
-        if (t.Contains("labour") || t.Contains("labor")) return "Labour";
-        if (t.Contains("consumer")) return "Consumer";
+        if (t.Contains("labour") || t.Contains("labor")) return "Labour Law";
+        if (t.Contains("consumer")) return "Consumer Law";
+        if (t.Contains("corporate") || t.Contains("company") || t.Contains("nclt")) return "Corporate Law";
+        if (t.Contains("arbitrat")) return "Arbitration";
         return null;
     }
 }

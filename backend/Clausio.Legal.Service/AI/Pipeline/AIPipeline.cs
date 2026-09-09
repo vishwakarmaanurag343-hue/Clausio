@@ -280,28 +280,28 @@ public class AIPipeline : IAIPipeline
                     var d when d.Contains("Bail") || d.Contains("Criminal") ||
                                d.Contains("Quashing") || d.Contains("Discharge") ||
                                d.Contains("Anticipatory") || d.Contains("NDPS")
-                        => "Criminal",
+                        => "Criminal Law",
                     var d when d.Contains("Divorce") || d.Contains("Maintenance") ||
                                d.Contains("Custody") || d.Contains("Domestic Violence") ||
                                d.Contains("Conjugal") || d.Contains("Alimony") ||
                                d.Contains("HMA") || d.Contains("PWDVA")
-                        => "Family",
+                        => "Family Law",
                     var d when d.Contains("GST") || d.Contains("Income Tax")
-                        => "Tax",
+                        => "Tax Law",
                     var d when d.Contains("Consumer")
-                        => "Consumer",
+                        => "Consumer Law",
                     var d when d.Contains("NI Act") || d.Contains("Cheque")
                         => "NI Act",
                     var d when d.Contains("Writ") || d.Contains("Article 226") ||
                                d.Contains("Constitutional")
-                        => "Constitutional",
+                        => "Constitutional Law",
                     var d when d.Contains("RERA") || d.Contains("Eviction") ||
                                d.Contains("Civil") || d.Contains("Injunction") ||
                                d.Contains("Execution") || d.Contains("Contempt") ||
                                d.Contains("Partition") || d.Contains("Declaratory") ||
                                d.Contains("Specific Performance") || d.Contains("Stay") ||
                                d.Contains("Written Statement")
-                        => "Property",
+                        => "Property Law",
                     var d when d.Contains("Reply to Legal Notice")
                         => "Corporate Law",
                     var d when d.Contains("Oppression")
@@ -622,14 +622,17 @@ public class AIPipeline : IAIPipeline
     private static string? MapToCorpusCategory(string typeLine)
     {
         var t = typeLine.ToLowerInvariant();
-        if (t.Contains("family") || t.Contains("matrimonial") || t.Contains("divorce") || t.Contains("custody")) return "Family";
-        if (t.Contains("criminal")) return "Criminal";
-        if (t.Contains("property") || t.Contains("civil")) return "Property";
-        if (t.Contains("constitution") || t.Contains("writ")) return "Constitutional";
-        if (t.Contains("tax") || t.Contains("gst")) return "Tax";
-        if (t.Contains("ni act") || t.Contains("negotiable") || t.Contains("cheque")) return "NI Act";
-        if (t.Contains("labour")) return "Labour";
-        if (t.Contains("consumer")) return "Consumer";
+        if (t.Contains("family") || t.Contains("matrimonial") || t.Contains("divorce") || t.Contains("custody") || t.Contains("maintenance") || t.Contains("alimony")) return "Family Law";
+        if (t.Contains("criminal") || t.Contains("bail") || t.Contains("498a")) return "Criminal Law";
+        if (t.Contains("property")) return "Property Law";
+        if (t.Contains("civil")) return "Civil Law";
+        if (t.Contains("constitution") || t.Contains("writ")) return "Constitutional Law";
+        if (t.Contains("tax") || t.Contains("gst")) return "Tax Law";
+        if (t.Contains("ni act") || t.Contains("negotiable") || t.Contains("cheque") || t.Contains("138")) return "NI Act";
+        if (t.Contains("labour") || t.Contains("labor")) return "Labour Law";
+        if (t.Contains("consumer")) return "Consumer Law";
+        if (t.Contains("corporate") || t.Contains("company") || t.Contains("nclt")) return "Corporate Law";
+        if (t.Contains("arbitrat")) return "Arbitration";
         return null;
     }
 

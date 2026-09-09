@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useUIStore, useCaseStore } from '@/lib/store'
-import { adminApi, walletApi } from '@/lib/api'
+import { adminApi, walletApi, statsApi } from '@/lib/api'
 import { getRole, storePermissions, hasPagePermission, pageKeyForPath } from '@/lib/pagePermissions'
 import OutOfCreditsModal from '@/components/subscription/OutOfCreditsModal'
 
@@ -15,7 +15,7 @@ const NAV = [
       { href: '/chat',      icon: 'ti-messages',         label: 'Chat', mobileOnly: true },
       { href: '/dashboard', icon: 'ti-layout-dashboard', label: 'Dashboard', key: 'dashboard' },
       { href: '/cases',     icon: 'ti-folder',           label: 'Cases',     key: 'cases' },
-      { href: '/hearings',  icon: 'ti-notebook',         label: 'Hearings',  key: 'hearings', badge: 2 },
+      { href: '/hearings',  icon: 'ti-notebook',         label: 'Hearings',  key: 'hearings' },
       { href: '/calendar',  icon: 'ti-calendar',         label: 'Calendar',  key: 'calendar' },
       { href: '/strategy',  icon: 'ti-target',           label: 'Strategy',  key: 'strategy' },
       { href: '/documents', icon: 'ti-files',            label: 'Documents', key: 'documents' },
@@ -52,7 +52,7 @@ export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const { sidebarExpanded, toggleSidebar } = useUIStore()
-  const { selectedCaseName } = useCaseStore()
+  const { selectedCaseId, selectedCaseName } = useCaseStore()
 
   const expanded = sidebarExpanded
 
@@ -61,11 +61,42 @@ export default function Sidebar() {
   const [permsVersion, setPermsVersion] = useState(0)
   const [credits, setCredits] = useState<number | null>(null)
   const [showNoCredits, setShowNoCredits] = useState(false)
+  const [upcomingHearingsCount, setUpcomingHearingsCount] = useState<number>(0)
 
   const refreshCredits = () => {
     // SuperAdmins don't need credits display - they have unlimited access
     if (role === 'SuperAdmin') return
     walletApi.getSummary().then((d: any) => setCredits(d?.balance ?? 0)).catch(() => {})
+  }
+
+  const refreshHearingsCount = () => {
+    const currentCaseId = useCaseStore.getState().selectedCaseId
+    if (!currentCaseId) {
+      setUpcomingHearingsCount(0)
+      return
+    }
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('clausio_token') : null
+    if (!token) return
+
+    const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5123/api').replace(/\/+$/, '')
+    const url = apiBase.endsWith('/api') ? `${apiBase}/cases/${currentCaseId}/hearings` : `${apiBase}/api/cases/${currentCaseId}/hearings`
+
+    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => res.ok ? res.json() : [])
+      .then((data: any[]) => {
+        if (Array.isArray(data)) {
+          const now = new Date()
+          const upcoming = data.filter(h => {
+            const d = new Date(h.hearingDate || h.HearingDate)
+            return d >= now
+          }).length
+          setUpcomingHearingsCount(upcoming)
+        } else {
+          setUpcomingHearingsCount(0)
+        }
+      })
+      .catch(() => setUpcomingHearingsCount(0))
   }
 
   // Initial load with retry — the auth token may not be readable on the first tick after
@@ -103,6 +134,14 @@ export default function Sidebar() {
     return () => window.removeEventListener('resize', collapseOnTablet)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sidebarExpanded])
+
+  // Initial load of upcoming hearings count and whenever active case changes
+  useEffect(() => {
+    refreshHearingsCount()
+    const handler = () => refreshHearingsCount()
+    window.addEventListener('hearings-updated', handler)
+    return () => window.removeEventListener('hearings-updated', handler)
+  }, [selectedCaseId])
 
   // Any successful AI call spends credits — refresh the balance when api.ts signals it.
   useEffect(() => {
@@ -304,21 +343,52 @@ export default function Sidebar() {
                     </span>
                   )}
 
-                  {'badge' in item && item.badge && expanded && (
-                    <span
-                      style={{
-                        background: '#ef4444',
-                        color: '#fff',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        borderRadius: 999,
-                        padding: '2px 8px',
-                        boxShadow: '0 2px 4px rgba(239, 68, 68, 0.3)',
-                      }}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
+                  {(() => {
+                    const badgeValue = item.key === 'hearings' ? upcomingHearingsCount : (item as any).badge
+                    if (!badgeValue || badgeValue <= 0) return null
+
+                    if (expanded) {
+                      return (
+                        <span
+                          style={{
+                            background: '#ef4444',
+                            color: '#fff',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            borderRadius: 999,
+                            padding: '2px 8px',
+                            boxShadow: '0 2px 4px rgba(239, 68, 68, 0.3)',
+                          }}
+                        >
+                          {badgeValue}
+                        </span>
+                      )
+                    }
+
+                    return (
+                      <span
+                        style={{
+                          position: 'absolute',
+                          top: 6,
+                          right: 12,
+                          background: '#ef4444',
+                          color: '#fff',
+                          fontSize: 9,
+                          fontWeight: 700,
+                          borderRadius: 999,
+                          minWidth: 15,
+                          height: 15,
+                          padding: '0 3px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: '0 2px 4px rgba(239, 68, 68, 0.3)',
+                        }}
+                      >
+                        {badgeValue > 99 ? '99+' : badgeValue}
+                      </span>
+                    )
+                  })()}
                 </Link>
               )
             })}

@@ -9,6 +9,10 @@ namespace Clausio.Legal.API.Controllers;
 [Route("api/stats")]
 public class StatsController(IStatsService statsService) : ControllerBase
 {
+    [HttpGet]
+    public async Task<IActionResult> Get(CancellationToken cancellationToken) =>
+        Ok(await statsService.GetOverviewAsync(cancellationToken));
+
     [HttpGet("overview")]
     public async Task<IActionResult> Overview(CancellationToken cancellationToken) =>
         Ok(await statsService.GetOverviewAsync(cancellationToken));

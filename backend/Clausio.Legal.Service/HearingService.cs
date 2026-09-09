@@ -1,3 +1,4 @@
+using Clausio.Legal.Cache;
 using Clausio.Legal.Core.Dtos;
 using Clausio.Legal.Core.Entities;
 using Clausio.Legal.Infrastructure;
@@ -16,8 +17,15 @@ public interface IHearingService
 
 public class HearingService(
     ClausioDbContext db,
-    ICalendarSyncService calendarSync) : IHearingService
+    ICalendarSyncService calendarSync,
+    ICacheService cache) : IHearingService
 {
+    private void InvalidateHearingStats()
+    {
+        cache.Remove("stats:hearings");
+        cache.Remove("stats:overview");
+    }
+
     public Task<List<Hearing>> ListAsync(Guid caseId, CancellationToken cancellationToken = default) =>
         db.Hearings.AsNoTracking().Include(h => h.Orders)
             .Where(h => h.CaseId == caseId)
@@ -55,6 +63,7 @@ public class HearingService(
 
         db.Hearings.Add(entity);
         await db.SaveChangesAsync(cancellationToken);
+        InvalidateHearingStats();
         // Auto-sync to Google Calendar (fire and forget — never blocks the save response)
         calendarSync.QueueHearingSync(caseId, entity.Id);
         return entity;
@@ -75,6 +84,7 @@ public class HearingService(
         if (dto.NextObjective is not null) entity.NextObjective = dto.NextObjective;
 
         await db.SaveChangesAsync(cancellationToken);
+        InvalidateHearingStats();
         // Re-sync the updated hearing to Google Calendar (fire and forget)
         calendarSync.QueueHearingSync(entity.CaseId, entity.Id);
         return entity;
@@ -101,6 +111,7 @@ public class HearingService(
         calendarSync.QueueRemoval("hearing", id);
         db.Hearings.Remove(entity);
         await db.SaveChangesAsync(cancellationToken);
+        InvalidateHearingStats();
         return true;
     }
 }

@@ -6,6 +6,7 @@ import { parseAiJson } from '@/lib/api'
 interface Props {
   content: string | any
   citationCallback?: (title: string, content: string) => void
+  isStreaming?: boolean
 }
 
 // ── FLASH CARD WRAPPER ────────────────────────────────────────────────
@@ -465,15 +466,46 @@ function renderStructuredJSON(data: any): React.ReactNode {
 }
 
 // ── MAIN EXPORT ───────────────────────────────────────────────────────
-export default function AIResponseFormatter({ content }: Props) {
+function AIResponseFormatterComponent({ content, isStreaming }: Props) {
   if (!content) return null
 
   if (typeof content === 'object') return <>{renderStructuredJSON(content)}</>
 
   const raw = String(content).trim()
 
-  const parsed = parseAiJson<any>(raw)
+  // If streaming and not full JSON yet, render clean markdown-like text smoothly
+  // to avoid heavy regex parsing and flashcard tree generation 60+ times/sec
+  if (isStreaming) {
+    return (
+      <div style={{
+        fontFamily: 'Inter,-apple-system,sans-serif',
+        fontSize: 13,
+        lineHeight: 1.7,
+        color: '#334155',
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word',
+        padding: '8px 12px',
+        background: '#f8fafc',
+        borderRadius: 12,
+        border: '1px solid rgba(0,0,0,0.06)'
+      }}>
+        {raw}
+      </div>
+    )
+  }
+
+  let cleaned = raw
+  // Strip trailing court tracking table if leaked
+  const tableIdx = cleaned.indexOf('=== TRACKING TABLE ===')
+  if (tableIdx !== -1) {
+    cleaned = cleaned.substring(0, tableIdx).trim()
+  }
+
+  const parsed = parseAiJson<any>(cleaned)
   if (parsed && typeof parsed === 'object') return <>{renderStructuredJSON(parsed)}</>
 
-  return <>{parseMarkdownToFlashCards(raw)}</>
+  return <>{parseMarkdownToFlashCards(cleaned)}</>
 }
+
+export default React.memo(AIResponseFormatterComponent)
+

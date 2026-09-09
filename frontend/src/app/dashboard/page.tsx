@@ -94,7 +94,7 @@ export default function DashboardPage() {
     })
   }, [selectedCaseId])
 
-  // Auto-select first case of current user
+  // Auto-select first case of current user once on mount or when case list loads
   useEffect(() => {
     const token = localStorage.getItem('clausio_token')
     if (!token) return
@@ -107,52 +107,60 @@ export default function DashboardPage() {
       .then(cases => {
         if (Array.isArray(cases)) {
           setAllCases(cases)
-          // If no cases exist for this user, reset selection
           if (cases.length === 0) {
             setSelectedCase('', '')
             setCaseData(null)
           } else {
-            // Deep link from Google Calendar events: /dashboard?case=<id>
-            let wanted = selectedCaseId
-            if (!wanted && typeof window !== 'undefined') {
-              const qp = new URLSearchParams(window.location.search).get('case')
-              if (qp && cases.some((c: any) => c.id === qp)) {
-                wanted = qp
+            // Check query param first
+            let qpId: string | null = null
+            if (typeof window !== 'undefined') {
+              qpId = new URLSearchParams(window.location.search).get('case')
+              if (qpId && cases.some((c: any) => c.id === qpId)) {
                 window.history.replaceState({}, '', '/dashboard')
+              } else {
+                qpId = null
               }
             }
-            // Fall back to the first case when nothing valid is selected
-            if (!wanted || !cases.some((c: any) => c.id === wanted)) {
-              wanted = cases[0].id
+
+            const currentId = qpId || useCaseStore.getState().selectedCaseId
+            let match = cases.find((c: any) => c.id === currentId)
+            if (!match) {
+              match = cases[0]
             }
-            const match = cases.find((c: any) => c.id === wanted)!
-            setSelectedCase(match.id, match.name)
+
+            if (match && (match.id !== useCaseStore.getState().selectedCaseId || match.name !== useCaseStore.getState().selectedCaseName)) {
+              setSelectedCase(match.id, match.name)
+            }
           }
         }
       })
       .catch(() => { })
-  }, [selectedCaseId, setSelectedCase])
+  }, [setSelectedCase])
 
   const loadHearings = useCallback(() => {
-    if (!selectedCaseId) return
-    hearingsApi.getByCaseId(selectedCaseId)
+    const id = useCaseStore.getState().selectedCaseId
+    if (!id) return
+    hearingsApi.getByCaseId(id)
       .then(d => setHearings(Array.isArray(d) ? d : []))
       .catch(() => { })
-  }, [selectedCaseId])
+  }, [])
 
   const loadTasks = useCallback(() => {
-    if (!selectedCaseId) return
-    actionPlansApi.getByCaseId(selectedCaseId)
+    const id = useCaseStore.getState().selectedCaseId
+    if (!id) return
+    actionPlansApi.getByCaseId(id)
       .then(d => setTasks(Array.isArray(d) ? d : []))
       .catch(() => { })
-  }, [selectedCaseId])
+  }, [])
 
   useEffect(() => {
-    if (!selectedCaseId) return
-    setCaseData(null)
-    setHearings([])
-    setDocuments([])
-    setTasks([])
+    if (!selectedCaseId) {
+      setCaseData(null)
+      setHearings([])
+      setDocuments([])
+      setTasks([])
+      return
+    }
 
     casesApi.getById(selectedCaseId).then(setCaseData).catch(() => { })
     loadHearings()
