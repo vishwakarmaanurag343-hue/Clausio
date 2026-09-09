@@ -640,7 +640,7 @@ export default function DashboardPage() {
                     { icon: 'ti-checklist', label: 'Pending Tasks', value: pendingTasks.length, sub: pendingTasks.length > 0 ? `${pendingTasks.filter(t => t.priority === 'High' || t.priority === 'Critical').length} high priority` : 'All clear', color: pendingTasks.length > 0 ? '#f59e0b' : '#10b981' },
                     { icon: 'ti-alert-circle', label: 'Overdue Orders', value: overdueOrders.length, sub: overdueOrders.length > 0 ? 'Immediate action needed' : 'No overdue orders', color: overdueOrders.length > 0 ? '#ef4444' : '#10b981' },
                   ].map((m, i) => (
-                    <div key={i} className="dashboard-metric-card" style={{ background: '#ffffff', borderRadius: 20, padding: '18px 16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 120 }}>
+                    <div key={i} className="dashboard-metric-card cursor-default" style={{ cursor: 'default', background: '#ffffff', borderRadius: 20, padding: '18px 16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 120 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                         <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>{m.label}</span>
                         <div style={{ width: 32, height: 32, borderRadius: 10, background: `${m.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

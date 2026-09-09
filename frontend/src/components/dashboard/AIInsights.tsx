@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCaseStore, useUIStore } from '@/lib/store'
 import { aiApi, casesApi, BASE } from '@/lib/api'
@@ -105,109 +105,115 @@ export default function AIInsights() {
     setIsDragging(false)
   }
 
-  // Load AI summary when case changes
+  // hasFetched ref to prevent double calling and infinite loops
+  const hasFetched = useRef<Record<string, boolean>>({})
+
+  // Clear summary when case changes without automatically re-fetching
   useEffect(() => {
-    if (!selectedCaseId) return
+    setSummary(null)
+    setLoading(false)
+  }, [selectedCaseId])
+
+  const generateSummary = useCallback(async () => {
+    if (!selectedCaseId || loading) return
+    if (hasFetched.current[selectedCaseId] && summary) return
     setLoading(true)
     setSummary(null)
     const controller = new AbortController()
     // Allow sufficient time for LLM generation of comprehensive brief (45 seconds)
     const timeout = setTimeout(() => controller.abort(), 45000)
 
-    aiApi.getSummary(selectedCaseId, { signal: controller.signal })
-      .then(res => {
-        clearTimeout(timeout)
-        let raw = res.summary ?? res.result ?? ''
-        if (typeof raw === 'object' && raw !== null) {
-          setSummary(raw)
+    try {
+      const res = await aiApi.getSummary(selectedCaseId, { signal: controller.signal })
+      clearTimeout(timeout)
+      hasFetched.current[selectedCaseId] = true
+      let raw = res.summary ?? res.result ?? ''
+      if (typeof raw === 'object' && raw !== null) {
+        setSummary(raw)
+        return
+      }
+
+      let cleanText = String(raw).trim()
+
+      // Strip out trailing Citation Verification Report notice if attached
+      const citationIdx = cleanText.indexOf('"⚠️ Citation Verification Report') !== -1 
+        ? cleanText.indexOf('"⚠️ Citation Verification Report')
+        : cleanText.indexOf('⚠️ Citation Verification Report')
+
+      if (citationIdx !== -1) {
+        cleanText = cleanText.substring(0, citationIdx).trim()
+      }
+
+      // Strip markdown code fences
+      cleanText = cleanText.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
+
+      // New six-section Summary contract ({summary:[{overview, parties, reliefSought, keyFacts, proceduralHistory, currentPosition}]})
+      try {
+        const brief = JSON.parse(cleanText)
+        const entry = Array.isArray(brief) ? brief[0] : Array.isArray(brief?.summary) ? brief.summary[0] : (typeof brief?.summary === 'object' ? brief.summary : brief)
+        if (entry && typeof entry === 'object' && (entry.overview || entry.parties || entry.keyFacts || entry.reliefSought || entry.proceduralHistory || entry.currentPosition)) {
+          const section = (label: string, body?: string) => (body && body !== 'Not available in the case record.') ? `### ${label}\n${body}` : ''
+          const fullSummaryParts = [
+            section('Overview', entry.overview),
+            section('Parties', entry.parties),
+            section('Relief Sought', entry.reliefSought),
+            section('Key Facts', entry.keyFacts),
+            section('Procedural History', entry.proceduralHistory),
+            section('Current Working Position', entry.currentPosition),
+          ].filter(Boolean).join('\n\n')
+
+          setSummary({
+            fullSummary: fullSummaryParts || entry.overview || entry.keyFacts || cleanText,
+            keyStrengths: Array.isArray(entry.strengths) ? entry.strengths : [],
+            keyWeaknesses: Array.isArray(entry.weaknesses) ? entry.weaknesses : [],
+            nextSteps: Array.isArray(entry.nextSteps) ? entry.nextSteps : [],
+            verdictProbability: entry.verdictProbability || null,
+          })
           return
         }
+      } catch { /* not JSON contract — fall through to legacy parsing */ }
 
-        let cleanText = String(raw).trim()
-
-        // Strip out trailing Citation Verification Report notice if attached
-        const citationIdx = cleanText.indexOf('"⚠️ Citation Verification Report') !== -1 
-          ? cleanText.indexOf('"⚠️ Citation Verification Report')
-          : cleanText.indexOf('⚠️ Citation Verification Report')
-
-        if (citationIdx !== -1) {
-          cleanText = cleanText.substring(0, citationIdx).trim()
+      try {
+        const parsed = JSON.parse(cleanText)
+        if (parsed && typeof parsed === 'object') {
+          const formattedSummary = {
+            fullSummary: parsed.Case_Summary || parsed.fullSummary || parsed.summary || (typeof parsed === 'string' ? parsed : ''),
+            keyStrengths: parsed.Key_Facts?.map((f: any) => typeof f === 'object' ? `${f.Fact_Description || ''} ${f.Fact_Related_Law ? `(${f.Fact_Related_Law})` : ''}`.trim() : String(f)) || parsed.keyStrengths || [],
+            keyWeaknesses: parsed.Case_Issues?.map((i: any) => typeof i === 'object' ? `${i.Issue_Description || ''} ${i.Issue_Related_Law ? `(${i.Issue_Related_Law})` : ''}`.trim() : String(i)) || parsed.keyWeaknesses || [],
+            nextSteps: parsed.Case_Outcomes?.map((o: any) => typeof o === 'object' ? `${o.Outcome_Description || ''} ${o.Outcome_Related_Law ? `(${o.Outcome_Related_Law})` : ''}`.trim() : String(o)) || parsed.nextSteps || [],
+            verdictProbability: parsed.verdictProbability || (parsed.Case_Court ? { favorable: 75, basis: `Jurisdiction: ${parsed.Case_Court}` } : null)
+          }
+          setSummary(formattedSummary)
+          return
         }
-
-        // Strip markdown code fences
-        cleanText = cleanText.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
-
-        // New six-section Summary contract ({summary:[{overview, parties, reliefSought, keyFacts, proceduralHistory, currentPosition}]})
-        try {
-          const brief = JSON.parse(cleanText)
-          const entry = Array.isArray(brief) ? brief[0] : Array.isArray(brief?.summary) ? brief.summary[0] : (typeof brief?.summary === 'object' ? brief.summary : brief)
-          if (entry && typeof entry === 'object' && (entry.overview || entry.parties || entry.keyFacts || entry.reliefSought || entry.proceduralHistory || entry.currentPosition)) {
-            const section = (label: string, body?: string) => (body && body !== 'Not available in the case record.') ? `### ${label}\n${body}` : ''
-            const fullSummaryParts = [
-              section('Overview', entry.overview),
-              section('Parties', entry.parties),
-              section('Relief Sought', entry.reliefSought),
-              section('Key Facts', entry.keyFacts),
-              section('Procedural History', entry.proceduralHistory),
-              section('Current Working Position', entry.currentPosition),
-            ].filter(Boolean).join('\n\n')
-
+      } catch {
+        if (cleanText.includes('"Case_Summary":')) {
+          const summaryMatch = cleanText.match(/"Case_Summary"\s*:\s*"([^"]+)"/)
+          if (summaryMatch) {
             setSummary({
-              fullSummary: fullSummaryParts || entry.overview || entry.keyFacts || cleanText,
-              keyStrengths: Array.isArray(entry.strengths) ? entry.strengths : [],
-              keyWeaknesses: Array.isArray(entry.weaknesses) ? entry.weaknesses : [],
-              nextSteps: Array.isArray(entry.nextSteps) ? entry.nextSteps : [],
-              verdictProbability: entry.verdictProbability || null,
+              fullSummary: summaryMatch[1],
+              keyStrengths: [],
+              keyWeaknesses: [],
+              nextSteps: [],
+              verdictProbability: null
             })
             return
           }
-        } catch { /* not JSON contract — fall through to legacy parsing */ }
-
-        try {
-          const parsed = JSON.parse(cleanText)
-          if (parsed && typeof parsed === 'object') {
-            const formattedSummary = {
-              fullSummary: parsed.Case_Summary || parsed.fullSummary || parsed.summary || (typeof parsed === 'string' ? parsed : ''),
-              keyStrengths: parsed.Key_Facts?.map((f: any) => typeof f === 'object' ? `${f.Fact_Description || ''} ${f.Fact_Related_Law ? `(${f.Fact_Related_Law})` : ''}`.trim() : String(f)) || parsed.keyStrengths || [],
-              keyWeaknesses: parsed.Case_Issues?.map((i: any) => typeof i === 'object' ? `${i.Issue_Description || ''} ${i.Issue_Related_Law ? `(${i.Issue_Related_Law})` : ''}`.trim() : String(i)) || parsed.keyWeaknesses || [],
-              nextSteps: parsed.Case_Outcomes?.map((o: any) => typeof o === 'object' ? `${o.Outcome_Description || ''} ${o.Outcome_Related_Law ? `(${o.Outcome_Related_Law})` : ''}`.trim() : String(o)) || parsed.nextSteps || [],
-              verdictProbability: parsed.verdictProbability || (parsed.Case_Court ? { favorable: 75, basis: `Jurisdiction: ${parsed.Case_Court}` } : null)
-            }
-            setSummary(formattedSummary)
-            return
-          }
-        } catch {
-          if (cleanText.includes('"Case_Summary":')) {
-            const summaryMatch = cleanText.match(/"Case_Summary"\s*:\s*"([^"]+)"/)
-            if (summaryMatch) {
-              setSummary({
-                fullSummary: summaryMatch[1],
-                keyStrengths: [],
-                keyWeaknesses: [],
-                nextSteps: [],
-                verdictProbability: null
-              })
-              return
-            }
-          }
         }
+      }
 
-        setSummary({ fullSummary: cleanText, keyStrengths: [], keyWeaknesses: [], nextSteps: [], verdictProbability: null })
-      })
-      .catch((err) => {
-        clearTimeout(timeout)
-        if (err?.name === 'AbortError') {
-          setSummary({ fullSummary: 'Brief generation timed out. Please try again or ask questions in the chat below.', keyStrengths: [], keyWeaknesses: [], nextSteps: [], verdictProbability: null })
-        } else {
-          setSummary(null)
-        }
-      })
-      .finally(() => setLoading(false))
-    return () => {
+      setSummary({ fullSummary: cleanText, keyStrengths: [], keyWeaknesses: [], nextSteps: [], verdictProbability: null })
+    } catch (err: any) {
       clearTimeout(timeout)
-      controller.abort()
+      if (err?.name === 'AbortError') {
+        setSummary({ fullSummary: 'Brief generation timed out. Please try again or ask questions in the chat below.', keyStrengths: [], keyWeaknesses: [], nextSteps: [], verdictProbability: null })
+      } else {
+        setSummary(null)
+      }
+    } finally {
+      setLoading(false)
     }
-  }, [selectedCaseId])
+  }, [selectedCaseId, loading, summary])
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
@@ -614,6 +620,34 @@ export default function AIInsights() {
               <span style={{ fontSize: 13, fontWeight: 600 }}>Analyzing Case & Generating Insights...</span>
             </div>
             <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>Reviewing facts, parties, and procedural record</p>
+          </div>
+        )}
+
+        {/* Generate Button when summary not yet loaded */}
+        {!loading && !summary && selectedCaseId && (
+          <div style={{ textAlign: 'center', padding: '16px 14px', background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(0,0,0,0.05)', borderRadius: 12, marginBottom: 14 }}>
+            <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 10px' }}>Generate comprehensive AI brief, risks & next actions for this case.</p>
+            <button
+              onClick={generateSummary}
+              style={{
+                padding: '8px 16px',
+                borderRadius: 8,
+                border: 'none',
+                background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+                color: '#fff',
+                fontWeight: 600,
+                fontSize: 12,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                boxShadow: '0 2px 8px rgba(124,58,237,0.25)',
+              }}
+            >
+              <i className="ti ti-sparkles" style={{ fontSize: 13 }} />
+              Generate Summary & Insights
+            </button>
           </div>
         )}
 

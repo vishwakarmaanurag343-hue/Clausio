@@ -402,3 +402,38 @@
   transform-origin: top;
   animation: scrollLine 2s ease-in-out infinite;
 }
+
+/* 19. TABLET RESPONSIVE STYLES (768px to 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+  #hero {
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+  }
+
+  #hero h1 {
+    font-size: clamp(4.5rem, 9vw, 6.5rem) !important;
+    line-height: 0.9 !important;
+  }
+
+  #hero .skeuo-card {
+    max-width: 320px !important;
+  }
+
+  /* Prevent side navigation overlap on tablet */
+  .landing-sidebar {
+    display: none !important;
+  }
+
+  /* Ensure feature grids stay proportional on tablet screens */
+  .features-grid,
+  .workflow-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 1.25rem !important;
+  }
+
+  /* Adjust hero statue positioning so headline remains readable */
+  .sticky img[alt*="Lady Justice"] {
+    max-height: 70vh !important;
+    opacity: 0.85 !important;
+  }
+}

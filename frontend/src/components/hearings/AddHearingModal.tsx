@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useCaseStore } from '@/lib/store'
-import { hearingsApi } from '@/lib/api'
+import { hearingsApi, calendarApi, integrationsApi } from '@/lib/api'
 
 interface Props {
   onClose: () => void
@@ -91,7 +91,7 @@ export default function AddHearingModal({ onClose, onSaved }: Props) {
     setError('')
 
     try {
-      await hearingsApi.create(selectedCaseId, {
+      const created = await hearingsApi.create(selectedCaseId, {
         hearingDate:   new Date(hearingDate).toISOString(),
         stage,
         whatHappened,
@@ -101,6 +101,19 @@ export default function AddHearingModal({ onClose, onSaved }: Props) {
         notes:         notes.trim() || undefined,
         orders:        cleanOrders,
       })
+
+      // Auto sync with Google Calendar if connected
+      const createdHearingId = created?.id || created?.hearingId
+      if (createdHearingId) {
+        try {
+          const calStatus = await integrationsApi.getStatus()
+          if (calStatus?.connected) {
+            await calendarApi.pushHearing(selectedCaseId, createdHearingId).catch(() => {})
+          }
+        } catch {
+          // calendar sync best effort
+        }
+      }
 
       onSaved?.()
       onClose()

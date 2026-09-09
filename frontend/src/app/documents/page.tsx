@@ -162,6 +162,52 @@ export default function DocumentsPage() {
     } catch (err: any) { setError(err.message) }
   }
 
+  const [downloadingDocId, setDownloadingDocId] = useState<string | null>(null)
+
+  async function handleDownload(doc: any) {
+    if (!selectedCaseId) return
+    setDownloadingDocId(doc.id)
+    setError('')
+    try {
+      const token = localStorage.getItem('clausio_token') || ''
+      const res = await fetch(`${BASE}/cases/${selectedCaseId}/documents/${doc.id}/download`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) {
+        // Try fallback to /file endpoint if /download is not supported
+        const fallbackRes = await fetch(`${BASE}/cases/${selectedCaseId}/documents/${doc.id}/file`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+        if (!fallbackRes.ok) {
+          throw new Error('Unable to download document. Please try again.')
+        }
+        const blob = await fallbackRes.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = doc.fileName || 'document.pdf'
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+        return
+      }
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = doc.fileName || 'document.pdf'
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (err: any) {
+      setError(err.message || 'Unable to download document. Please try again.')
+    } finally {
+      setDownloadingDocId(null)
+    }
+  }
+
   function openFileForm(docId: string) {
     setFilingDocId(docId)
     setFiledDate(new Date().toISOString().slice(0, 10))
@@ -558,11 +604,27 @@ export default function DocumentsPage() {
                         <option value="Not Filed">⏳ Not Filed</option>
                         <option value="Filed">✓ Filed</option>
                       </select>
-                      <a href={`http://localhost:5123/api/cases/${selectedCaseId}/documents/${doc.id}/download`}
-                        target="_blank"
-                        style={{ padding: '6px 12px', border: '1px solid #e2e8f0', borderRadius: 8, background: '#f8fafc', color: '#475569', fontSize: 12, fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <i className="ti ti-download" style={{ fontSize: 13 }} />
-                      </a>
+                      <button
+                        onClick={() => handleDownload(doc)}
+                        disabled={downloadingDocId === doc.id}
+                        title="Download Document"
+                        style={{
+                          padding: '6px 12px',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: 8,
+                          background: downloadingDocId === doc.id ? '#f1f5f9' : '#f8fafc',
+                          color: downloadingDocId === doc.id ? '#94a3b8' : '#475569',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: downloadingDocId === doc.id ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          fontFamily: 'inherit',
+                        }}
+                      >
+                        <i className={`ti ${downloadingDocId === doc.id ? 'ti-loader animate-spin' : 'ti-download'}`} style={{ fontSize: 13 }} />
+                      </button>
                       <button onClick={() => handleDelete(doc.id)}
                         style={{ padding: '6px 12px', border: '1px solid #fca5a5', borderRadius: 8, background: '#fef2f2', color: '#dc2626', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
                         <i className="ti ti-trash" style={{ fontSize: 13 }} />

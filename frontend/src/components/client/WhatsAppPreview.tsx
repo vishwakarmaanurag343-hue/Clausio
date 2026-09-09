@@ -388,11 +388,14 @@ export default function WhatsAppPreview({ message, generating, onRegenerate, cha
         )}
 
         {/* Email compose frame */}
-        {!generating && activeText && !isEditing && channel === 'email' && (
-          <div style={{ flex: 1, border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
-            <div style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>New Message</span>
+        {!generating && activeText && channel === 'email' && (
+          <div style={{ flex: 1, border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+            <div style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>New Message</span>
+              </div>
+              <span style={{ fontSize: 11, color: '#64748b' }}>Editable text area</span>
             </div>
             <div style={{ padding: '8px 16px', borderBottom: '1px solid #f1f5f9', fontSize: 13, color: '#64748b', flexShrink: 0 }}>
               <strong>To: </strong>{clientDisplayName}
@@ -400,14 +403,29 @@ export default function WhatsAppPreview({ message, generating, onRegenerate, cha
             <div style={{ padding: '8px 16px', borderBottom: '1px solid #f1f5f9', fontSize: 13, color: '#0f172a', flexShrink: 0 }}>
               <strong style={{ color: '#64748b' }}>Subject: </strong>{update.subject || 'Case Update'}
             </div>
-            <div
-              onClick={() => setIsEditing(true)}
-              title="Click to edit text directly"
-              style={{ flex: 1, padding: 16, fontSize: 13, color: '#374151', lineHeight: 1.7, overflowY: 'auto', cursor: 'text' }}
-            >
-              {activeText
-                ? <FormattedMarkdown content={activeText} />
-                : <span style={{ color: '#94a3b8' }}>Generated email will appear here...</span>}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 200, padding: 12 }}>
+              <textarea
+                value={activeText}
+                onChange={(e) => setCustomText(e.target.value)}
+                placeholder="Type or edit email message here..."
+                style={{
+                  width: '100%',
+                  flex: 1,
+                  minHeight: 200,
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 10,
+                  padding: 14,
+                  fontFamily: 'inherit',
+                  fontSize: 13.5,
+                  lineHeight: 1.7,
+                  color: '#1e293b',
+                  outline: 'none',
+                  background: '#ffffff',
+                  resize: 'vertical',
+                  boxSizing: 'border-box',
+                  overflowY: 'auto',
+                }}
+              />
             </div>
             {update.actionRequired && (
               <div style={{ margin: 16, marginTop: 0, padding: '12px 16px', borderRadius: 12, background: '#fffbeb', border: '1px solid #fde68a', fontSize: 13, color: '#b45309', display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>

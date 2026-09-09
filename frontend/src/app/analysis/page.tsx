@@ -104,12 +104,12 @@ function briefToText(sc: SummaryCards): { header: string; sections: [string, str
 }
 
 // Turn a raw API/network error into an advocate-readable message.
-function friendlyAnalysisError(err: any, fallback: string): string {
+function friendlyAnalysisError(err: any, fallback: string = 'Unable to load analysis. Please try again.'): string {
   const msg = err?.message || ''
   if (msg.includes('INSUFFICIENT_CREDITS')) return 'You have run out of AI credits. Contact support@clausiotech.com.'
   if (/timeout/i.test(msg)) return 'The AI took too long to respond. This happens with large cases. Please try again.'
   if (msg.toLowerCase().includes('context') || msg.includes('16000')) return 'Too many documents to process at once. Please try with fewer documents.'
-  return msg || fallback
+  return msg || fallback || 'Unable to load analysis. Please try again.'
 }
 
 const LOADING_STEPS = [
@@ -379,46 +379,52 @@ export default function AnalysisPage() {
   // read (never renders raw JSON).
   const saveSummaryFromAi = useCallback(async (): Promise<boolean> => {
     if (!selectedCaseId) return true
-    const res = await aiApi.getSummary(selectedCaseId)
-    console.log('[Summary] Raw API response keys:', Object.keys(res).filter(k => k.includes('result') || k.includes('summary')))
-    console.log('[Summary] Raw result snippet:', (res.result ?? res.summary ?? res).slice(0, 200))
-
-    // Try all possible response shapes, matching the Summary_v1.json OUTPUT FORMAT:
-    // {"summary": [{"overview": "...", "parties": "...", "reliefSought": "...", "keyFacts": "...", "proceduralHistory": "...", "currentPosition": "..."}]}
-    const raw = res.result ?? res.summary ?? res
-
-    let parsed: any = null
     try {
-      if (typeof raw === 'string') {
-        parsed = parseAiJson(raw)
-      } else {
-        parsed = raw
+      const res = await aiApi.getSummary(selectedCaseId)
+      console.log('[Summary] Raw API response keys:', Object.keys(res).filter(k => k.includes('result') || k.includes('summary')))
+      console.log('[Summary] Raw result snippet:', (res.result ?? res.summary ?? res).slice(0, 200))
+
+      // Try all possible response shapes, matching the Summary_v1.json OUTPUT FORMAT:
+      const raw = res.result ?? res.summary ?? res
+
+      let parsed: any = null
+      try {
+        if (typeof raw === 'string') {
+          parsed = parseAiJson(raw)
+        } else {
+          parsed = raw
+        }
+      } catch {
+        parsed = null
       }
-    } catch {
-      parsed = null
-    }
-    console.log('[Summary] Parsed result:', JSON.stringify(parsed)?.slice(0, 300))
+      console.log('[Summary] Parsed result:', JSON.stringify(parsed)?.slice(0, 300))
 
-    // Try all possible ways to extract the summary data from the parsed result:
-    const summaryData =
-      parsed?.summary?.[0]       // correct format: {"summary": [{"field": "..."}]}
-      ?? parsed?.[0]             // bare array: [{"field": "..."}]
-      ?? parsed?.summary         // summary without array wrapper
-      ?? parsed                  // direct object
+      // Try all possible ways to extract the summary data from the parsed result:
+      const summaryData =
+        parsed?.summary?.[0]       // correct format: {"summary": [{"field": "..."}]}
+        ?? parsed?.[0]             // bare array: [{"field": "..."}]
+        ?? parsed?.summary         // summary without array wrapper
+        ?? parsed                  // direct object
 
-    console.log('[Summary] Summary object:', JSON.stringify(summaryData)?.slice(0, 300))
+      console.log('[Summary] Summary object:', JSON.stringify(summaryData)?.slice(0, 300))
 
-    if (summaryData && (
-      summaryData.overview
-      || summaryData.parties
-      || summaryData.keyFacts
-    )) {
-      setSummaryCards(summaryData)
-      setSummaryParseFailed(false)
-      return true
-    } else {
-      console.error('[Summary] Could not extract summary from:', parsed)
-      setError('Case summary was generated but could not be displayed. Please try again. Make sure documents are uploaded and ready for AI analysis.')
+      if (summaryData && (
+        summaryData.overview
+        || summaryData.parties
+        || summaryData.keyFacts
+      )) {
+        setSummaryCards(summaryData)
+        setSummaryParseFailed(false)
+        return true
+      } else {
+        console.error('[Summary] Could not extract summary from:', parsed)
+        setError('Unable to load analysis. Please try again.')
+        setSummaryParseFailed(true)
+        return false
+      }
+    } catch (err: any) {
+      console.error('[Summary] API call failed:', err)
+      setError('Unable to load analysis. Please try again.')
       setSummaryParseFailed(true)
       return false
     }

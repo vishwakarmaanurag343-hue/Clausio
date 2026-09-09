@@ -2137,7 +2137,7 @@ export default function LandingPageUI() {
           <div className="flex items-center space-x-4">
             <button
               onClick={() => {
-                window.location.href = SIGNIN_URL;
+                window.open(SIGNIN_URL, "_blank");
               }}
               className="hidden sm:block text-[11px] uppercase tracking-[0.2em] font-mono font-medium text-[#4A3D33] hover:text-[#18120E] transition-colors skeuo-text-engraved"
             >
@@ -2145,7 +2145,7 @@ export default function LandingPageUI() {
             </button>
             <button
               onClick={() => {
-                window.location.href = SIGNUP_URL;
+                window.open(SIGNUP_URL, "_blank");
               }}
               className="px-5 py-2.5 rounded-full text-[11px] uppercase tracking-[0.2em] font-mono font-medium skeuo-btn-primary"
             >
@@ -2332,7 +2332,7 @@ export default function LandingPageUI() {
         <section
           id="hero"
           ref={heroRef}
-          className="relative z-10 -mt-[100vh] min-h-screen flex items-center justify-end px-6 md:px-12 cursor-default select-none w-full"
+          className="relative z-30 -mt-[100vh] min-h-screen flex items-center justify-end px-6 md:px-12 cursor-default select-none w-full"
         >
           {/* Ambient glowing gradient orbs — premium depth behind the headline */}
           <div className="absolute inset-0 z-[2] pointer-events-none overflow-hidden" aria-hidden="true">
@@ -2393,7 +2393,7 @@ export default function LandingPageUI() {
           {/* Right-Aligned High-Fashion / Skeuomorphic Editorial Headline */}
           <motion.div
             style={{ opacity: textOpacity, y: textY }}
-            className="absolute right-6 md:right-12 lg:right-16 xl:right-24 top-[50%] -translate-y-1/2 z-30 flex flex-col items-end text-right max-w-md lg:max-w-xl xl:max-w-2xl"
+            className="absolute right-6 md:right-12 lg:right-16 xl:right-24 top-[50%] -translate-y-1/2 z-40 flex flex-col items-end text-right max-w-md lg:max-w-xl xl:max-w-2xl"
           >
             {/* Skeuomorphic Embossed Tag */}
             <div className="flex items-center space-x-3 px-3 py-1 rounded-full skeuo-inset text-[10px] md:text-[11px] font-mono uppercase tracking-[0.32em] font-semibold text-[#5A4839] mb-3">
@@ -2454,7 +2454,7 @@ export default function LandingPageUI() {
             >
               <button
                 onClick={() => {
-                  window.location.href = SIGNUP_URL;
+                  window.open(SIGNUP_URL, "_blank");
                 }}
                 className="hero-cta-glow px-7 py-3 rounded-full text-[11px] md:text-xs font-mono uppercase tracking-[0.2em] font-semibold skeuo-btn-primary"
               >
@@ -3724,7 +3724,7 @@ export default function LandingPageUI() {
               <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-[#2563eb] via-[#818cf8] to-[#38bdf8] blur-md opacity-40 group-hover:opacity-70 transition duration-1000 animate-pulse" />
               <button
                 onClick={() => {
-                  window.location.href = SIGNUP_URL;
+                  window.open(SIGNUP_URL, "_blank");
                 }}
                 className="relative px-8 py-4 rounded-full text-xs font-mono uppercase tracking-[0.2em] font-semibold skeuo-btn-primary"
               >

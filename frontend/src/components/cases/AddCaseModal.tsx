@@ -55,6 +55,8 @@ export default function AddCaseModal({ open, onClose, onSaved }: AddCaseModalPro
   const [form,    setForm]    = useState<CaseForm>(initialForm)
   const [saving,  setSaving]  = useState(false)  // ✅ NEW
   const [error,   setError]   = useState('')      // ✅ NEW
+  const [successMessage, setSuccessMessage] = useState('')
+  const [step4Submitted, setStep4Submitted] = useState(false)
   const [translating,   setTranslating]   = useState(false)
   const [detectedLang,  setDetectedLang]  = useState('')
   const [files,         setFiles]         = useState<File[]>([])
@@ -62,6 +64,7 @@ export default function AddCaseModal({ open, onClose, onSaved }: AddCaseModalPro
 
   const next = () => {
     setError('')
+    setSuccessMessage('')
     if (step === 1 && !form.practiceArea) {
       setError('Please select a practice area.')
       return
@@ -95,8 +98,15 @@ export default function AddCaseModal({ open, onClose, onSaved }: AddCaseModalPro
       }
     }
     if (step === 4) {
-      if (!form.court.trim()) {
-        setError('Court name is required.')
+      setStep4Submitted(true)
+      const missing: string[] = []
+      if (!form.court.trim()) missing.push('Court Name')
+      if (!form.caseNumber.trim()) missing.push('Case Number')
+      if (!form.caseType.trim()) missing.push('Court Type')
+      if (!form.courtLocation.trim()) missing.push('City / District')
+
+      if (missing.length > 0) {
+        setError(`Please fill in all required court fields: ${missing.join(', ')}.`)
         return
       }
     }
@@ -266,8 +276,21 @@ async function translateDescription() {
           </div>
         </div>
 
-        {/* BODY — UNCHANGED */}
+        {/* BODY */}
         <div style={{ padding: 32, flex: 1, minHeight: 0, overflowY: 'auto' }}>
+          {error && (
+            <div style={{ padding: '12px 16px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 12, color: '#dc2626', fontSize: 13, fontWeight: 600, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <i className="ti ti-alert-circle" style={{ fontSize: 16 }} />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {successMessage && (
+            <div style={{ padding: '12px 16px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 12, color: '#16a34a', fontSize: 13, fontWeight: 600, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <i className="ti ti-check" style={{ fontSize: 16 }} />
+              <span>{successMessage}</span>
+            </div>
+          )}
 
           {/* STEP 1 — UNCHANGED */}
           {step === 1 && (
@@ -367,14 +390,52 @@ async function translateDescription() {
             </>
           )}
 
-          {/* STEP 4 — UNCHANGED */}
+          {/* STEP 4 — COURT INFORMATION */}
           {step === 4 && (
             <>
               <h3 style={sectionTitle}>Court Information</h3>
-              <p style={sectionDescription}>Provide court, hearing and judicial details.</p>
+              <p style={sectionDescription}>Provide court, hearing and judicial details. Fields marked with * are required.</p>
               <div style={grid}>
-                <SelectField label="Court"         name="court"         value={form.court}         onChange={updateField} options={['Family Court','District Court','Sessions Court','High Court','Supreme Court','Consumer Court','Commercial Court','NCLT']} />
-                <InputField  label="Court Location" name="courtLocation" value={form.courtLocation} onChange={updateField} placeholder="Mumbai" />
+                <SelectField
+                  label="Court Name"
+                  name="court"
+                  value={form.court}
+                  onChange={updateField}
+                  options={['Family Court','District Court','Sessions Court','High Court','Supreme Court','Consumer Court','Commercial Court','NCLT']}
+                  required
+                  hasError={step4Submitted && !form.court.trim()}
+                  errorMessage="Court name is required"
+                />
+                <InputField
+                  label="Case Number"
+                  name="caseNumber"
+                  value={form.caseNumber}
+                  onChange={updateField}
+                  placeholder="e.g. OS/102/2026 or CRL/54/2026"
+                  required
+                  hasError={step4Submitted && !form.caseNumber.trim()}
+                  errorMessage="Case number is required"
+                />
+                <SelectField
+                  label="Court Type / Case Type"
+                  name="caseType"
+                  value={form.caseType}
+                  onChange={updateField}
+                  options={['Petition','Appeal','Suit','Application','Execution','Review','Original Suit','Writ Petition','Special Leave Petition']}
+                  required
+                  hasError={step4Submitted && !form.caseType.trim()}
+                  errorMessage="Court / case type is required"
+                />
+                <InputField
+                  label="City / District"
+                  name="courtLocation"
+                  value={form.courtLocation}
+                  onChange={updateField}
+                  placeholder="e.g. Mumbai, South Mumbai District"
+                  required
+                  hasError={step4Submitted && !form.courtLocation.trim()}
+                  errorMessage="City / District is required"
+                />
                 <InputField  label="Judge Name"     name="judgeName"     value={form.judgeName}     onChange={updateField} placeholder="Hon. Justice..." />
                 <SelectField label="Current Stage"  name="stage"         value={form.stage}         onChange={updateField} options={['Pre Filing','Filed','Notice','Written Statement','Evidence','Cross Examination','Arguments','Judgment','Execution']} />
               </div>
@@ -579,25 +640,55 @@ function ReviewSection({ title, items }: { title: string; items: [string, string
 }
 
 /* ============================================================
-   FIELD COMPONENTS — UNCHANGED
+   FIELD COMPONENTS — ENHANCED WITH VALIDATION STATES
 ============================================================ */
-function InputField({ label, name, value, onChange, placeholder, required, type = 'text' }: { label: string; name: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; placeholder?: string; required?: boolean; type?: string }) {
+function InputField({ label, name, value, onChange, placeholder, required, type = 'text', hasError, errorMessage }: { label: string; name: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; placeholder?: string; required?: boolean; type?: string; hasError?: boolean; errorMessage?: string }) {
   return (
     <div>
       <label style={labelStyle}>{label}{required && <span style={{ color: '#ef4444' }}> *</span>}</label>
-      <input type={type} name={name} value={value} placeholder={placeholder} onChange={onChange} style={inputStyle} />
+      <input
+        type={type}
+        name={name}
+        value={value}
+        placeholder={placeholder}
+        onChange={onChange}
+        style={{
+          ...inputStyle,
+          border: hasError ? '1.5px solid #ef4444' : inputStyle.border,
+          background: hasError ? '#fef2f2' : '#fff',
+        }}
+      />
+      {hasError && errorMessage && (
+        <span style={{ display: 'block', marginTop: 4, fontSize: 12, color: '#ef4444', fontWeight: 500 }}>
+          {errorMessage}
+        </span>
+      )}
     </div>
   )
 }
 
-function SelectField({ label, name, value, options, onChange }: { label: string; name: string; value: string; options: string[]; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void }) {
+function SelectField({ label, name, value, options, onChange, required, hasError, errorMessage }: { label: string; name: string; value: string; options: string[]; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; required?: boolean; hasError?: boolean; errorMessage?: string }) {
   return (
     <div>
-      <label style={labelStyle}>{label}</label>
-      <select name={name} value={value} onChange={onChange} style={inputStyle}>
+      <label style={labelStyle}>{label}{required && <span style={{ color: '#ef4444' }}> *</span>}</label>
+      <select
+        name={name}
+        value={value}
+        onChange={onChange}
+        style={{
+          ...inputStyle,
+          border: hasError ? '1.5px solid #ef4444' : inputStyle.border,
+          background: hasError ? '#fef2f2' : '#fff',
+        }}
+      >
         <option value="">Select</option>
         {options.map(option => <option key={option} value={option}>{option}</option>)}
       </select>
+      {hasError && errorMessage && (
+        <span style={{ display: 'block', marginTop: 4, fontSize: 12, color: '#ef4444', fontWeight: 500 }}>
+          {errorMessage}
+        </span>
+      )}
     </div>
   )
 }

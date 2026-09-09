@@ -25,6 +25,26 @@ export default function HearingHistory({ refresh }: Props) {
   const [aiHearingId, setAiHearingId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [reminderId,  setReminderId]  = useState<string | null>(null)
+  const [selectedHearingDetails, setSelectedHearingDetails] = useState<any | null>(null)
+  const [detailsLoading, setDetailsLoading] = useState(false)
+
+  async function openHearingDetails(hearingId: string) {
+    setDetailsLoading(true)
+    // Show instant cached data first if present
+    const local = hearings.find(h => h.id === hearingId)
+    setSelectedHearingDetails(local || { id: hearingId })
+    try {
+      if (selectedCaseId) {
+        const freshHearings = await hearingsApi.getByCaseId(selectedCaseId)
+        const fresh = Array.isArray(freshHearings) ? freshHearings.find((h: any) => h.id === hearingId) : null
+        if (fresh) setSelectedHearingDetails(fresh)
+      }
+    } catch (e) {
+      console.error('Failed to refresh hearing details:', e)
+    } finally {
+      setDetailsLoading(false)
+    }
+  }
 
   async function sendReminder(hearingId: string) {
     setReminderId(hearingId)
@@ -161,8 +181,12 @@ export default function HearingHistory({ refresh }: Props) {
                     {/* Card header */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>
-                          {new Date(hearing.hearingDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        <div
+                          onClick={() => openHearingDetails(hearing.id)}
+                          style={{ fontWeight: 700, fontSize: 13, color: '#0f172a', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                          title="Click to view hearing details"
+                        >
+                          <span>{new Date(hearing.hearingDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                           {isUpcoming ? (
                             <span style={{
                               fontSize: 10,
@@ -172,8 +196,6 @@ export default function HearingHistory({ refresh }: Props) {
                               color: '#16a34a',
                               fontWeight: 700,
                               border: '1px solid #86efac',
-                              marginLeft: 8,
-                              verticalAlign: 'middle',
                             }}>
                               UPCOMING
                             </span>
@@ -186,8 +208,6 @@ export default function HearingHistory({ refresh }: Props) {
                               color: '#64748b',
                               fontWeight: 700,
                               border: '1px solid #e2e8f0',
-                              marginLeft: 8,
-                              verticalAlign: 'middle',
                             }}>
                               PAST
                             </span>
@@ -199,6 +219,15 @@ export default function HearingHistory({ refresh }: Props) {
                       {/* Action buttons */}
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                         {index === 0 && <span style={{ background: 'rgba(59,130,246,0.1)', color: '#1d4ed8', padding: '3px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700 }}>LATEST</span>}
+
+                        {/* View Details popup button */}
+                        <button
+                          onClick={() => openHearingDetails(hearing.id)}
+                          title="View dynamic hearing details"
+                          style={{ fontSize: 10, padding: '4px 8px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#f1f5f9', color: '#0f172a', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}
+                        >
+                          <i className="ti ti-eye" style={{ fontSize: 11 }} /> Details
+                        </button>
 
                         {/* Add to Google Calendar */}
                         <AddToCalButton kind="hearing" caseId={selectedCaseId ?? ''} id={hearing.id} title="Add hearing to Google Calendar" />
@@ -394,6 +423,119 @@ export default function HearingHistory({ refresh }: Props) {
               <button onClick={() => handleDelete(confirmDeleteId)} disabled={!!deletingId} style={{ flex: 1, padding: '11px', border: 'none', borderRadius: 8, background: '#dc2626', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, fontSize: 13 }}>
                 {deletingId ? 'Deleting...' : 'Yes, Delete'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── DYNAMIC HEARING DETAILS POPUP MODAL ── */}
+      {selectedHearingDetails && (
+        <div onClick={() => setSelectedHearingDetails(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 640, maxHeight: '88vh', overflowY: 'auto', background: '#fff', borderRadius: 20, padding: 28, boxShadow: '0 25px 70px rgba(0,0,0,0.25)', border: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: '#eff6ff', color: '#2563eb' }}>
+                    {selectedHearingDetails.stage || 'Hearing Proceeding'}
+                  </span>
+                  <span style={{ fontSize: 12, color: '#64748b' }}>
+                    ID: {selectedHearingDetails.id}
+                  </span>
+                </div>
+                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#0f172a' }}>
+                  {new Date(selectedHearingDetails.hearingDate || selectedHearingDetails.HearingDate || '').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}
+                </h2>
+              </div>
+              <button
+                onClick={() => setSelectedHearingDetails(null)}
+                style={{ width: 34, height: 34, border: 'none', borderRadius: 8, background: '#f1f5f9', color: '#64748b', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {detailsLoading && (
+              <div style={{ fontSize: 12, color: '#2563eb', padding: '6px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <i className="ti ti-loader animate-spin" /> Fetching latest hearing records...
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Proceedings / What happened */}
+              <div style={{ padding: 14, background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
+                  Proceedings / What Happened
+                </div>
+                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: '#334155', whiteSpace: 'pre-wrap' }}>
+                  {selectedHearingDetails.whatHappened || 'No description recorded.'}
+                </p>
+              </div>
+
+              {/* Judge Observations */}
+              {selectedHearingDetails.judgeObservation && (
+                <div style={{ padding: 14, background: '#fffbeb', borderRadius: 12, border: '1px solid #fde68a' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#b45309', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span>⚖️ Judge's Observation</span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: '#92400e' }}>
+                    {selectedHearingDetails.judgeObservation}
+                  </p>
+                </div>
+              )}
+
+              {/* Next Objective */}
+              {selectedHearingDetails.nextObjective && (
+                <div style={{ padding: 14, background: '#eff6ff', borderRadius: 12, border: '1px solid #bfdbfe' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
+                    Next Objective / Next Hearing Date
+                  </div>
+                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: '#1e40af' }}>
+                    {selectedHearingDetails.nextObjective}
+                  </p>
+                </div>
+              )}
+
+              {/* Orders */}
+              {selectedHearingDetails.orders && selectedHearingDetails.orders.length > 0 && (
+                <div style={{ padding: 14, background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+                    Court Orders & Compliance ({selectedHearingDetails.orders.length})
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {selectedHearingDetails.orders.map((o: any) => (
+                      <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#fff', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12 }}>
+                        <span style={{ color: '#0f172a', fontWeight: 500 }}>{o.text}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                          {o.responsible && <span style={{ fontSize: 11, color: '#64748b' }}>({o.responsible})</span>}
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: o.done ? '#dcfce7' : '#fee2e2', color: o.done ? '#16a34a' : '#dc2626' }}>
+                            {o.done ? 'Done' : (o.deadline ? `Due ${new Date(o.deadline).toLocaleDateString('en-IN')}` : 'Pending')}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
+                <button
+                  onClick={() => {
+                    const toEdit = { ...selectedHearingDetails }
+                    setSelectedHearingDetails(null)
+                    setEditHearing(toEdit)
+                  }}
+                  style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', color: '#0f172a', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}
+                >
+                  <i className="ti ti-edit" /> Edit Record
+                </button>
+                <button
+                  onClick={() => setSelectedHearingDetails(null)}
+                  style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#0f172a', color: '#fff', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -138,8 +138,7 @@ export default function HearingsPage() {
 
             {/* ── HEARING DIARY TAB ── */}
             {activeTab === 'Hearing Diary' && (
-              <div style={{ display: 'grid', gridTemplateColumns: '42% 58%', gap: 24 }}>
-                <HearingForm onSaved={handleSaved} />
+              <div style={{ width: '100%' }}>
                 <HearingHistory refresh={refreshCount} />
               </div>
             )}
@@ -362,36 +361,39 @@ export default function HearingsPage() {
                     ))}
                   </div>
 
-                  {/* Full-width Card: Hearing Record Form / Quick Action */}
+                  {/* Full-width Card: Hearing History banner */}
                   <div
                     style={{
                       background: '#e2e8f0',
                       borderRadius: 24,
                       padding: '16px',
                       display: 'flex',
-                      flexDirection: 'column',
-                      gap: 12,
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Quick Proceeding Note</span>
-                      <button
-                        onClick={() => setShowAddModal(true)}
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 700,
-                          color: '#0f172a',
-                          background: '#f8fafc',
-                          border: 'none',
-                          padding: '4px 10px',
-                          borderRadius: 12,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        + Detailed Entry
-                      </button>
+                    <div>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', display: 'block' }}>Hearing Proceedings</span>
+                      <span style={{ fontSize: 11, color: '#64748b' }}>Manage case hearings & orders</span>
                     </div>
-                    <HearingForm onSaved={handleSaved} />
+                    <button
+                      onClick={() => setShowAddModal(true)}
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: '#ffffff',
+                        background: '#3b82f6',
+                        border: 'none',
+                        padding: '8px 14px',
+                        borderRadius: 12,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      <i className="ti ti-plus" /> Add Hearing
+                    </button>
                   </div>
                 </div>
 
