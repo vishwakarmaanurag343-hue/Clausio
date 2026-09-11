@@ -27,16 +27,22 @@ services:
       AI__FastProvider__ApiKey: ${GROQ_API_KEY}
       AI__FastProvider__BaseUrl: https://api.groq.com/openai/v1
       AI__FastProvider__ModelId: llama-3.3-70b-versatile
-      AI__EmbeddingProvider__ApiKey: ${OPENROUTER_API_KEY}
+      AI__EmbeddingProvider__ApiKey: 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
       AI__EmbeddingProvider__BaseUrl: https://openrouter.ai/api/v1
-      AI__EmbeddingProvider__ModelId: nvidia/nemotron-3-embed-1b:free
+      AI__EmbeddingProvider__ModelId: nvidia/nemotron-3-ultra-550b-a55b:free
       Resend__ApiKey: ${RESEND_API_KEY}
       Resend__FromEmail: ${RESEND_FROM_EMAIL}
       Resend__FromName: ${RESEND_FROM_NAME}
-
+      AWS__AccessKeyId: AKIAWRKIVAKODONT7PVF
+      AWS__SecretAccessKey: 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
+      Google__ClientId: 563496014866-c6uo81ohlca4luucjngq4j45b5nndh0r.apps.googleusercontent.com
+      Google__ClientSecret: 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
+      Google__RedirectUri: https://app.clausiotech.com/api/integrations/google/callback
+      GoogleCalendar__RedirectUri: https://app.clausiotech.com/api/integrations/google/callback
+      GoogleDrive__ApiKey: AIzaSyAYoJHCNTHPr-D1nwjOrX_SSolXr3mh2NM
   # 3. Next.js 14 Web Frontend
   frontend:
-    image: 449513325212.dkr.ecr.ap-south-1.amazonaws.com/clausio-frontend:latest
+    image: clausio-frontend:latest
     container_name: clausio-frontend-web
     restart: always
     ports:

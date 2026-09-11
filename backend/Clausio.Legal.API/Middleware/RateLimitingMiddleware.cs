@@ -38,10 +38,17 @@ namespace Clausio.Legal.API.Middleware
                 await _next(context);
                 return;
             }
-            var isAuth    = context.Request.Path.StartsWithSegments("/api/auth/login");
+            // Login has its own account-level brute-force protection in AuthService.
+            // Do not apply the generic IP rate limiter to normal login/logout/login flows.
+            if (context.Request.Path.StartsWithSegments("/api/auth/login"))
+            {
+                await _next(context);
+                return;
+            }
+
             var now       = DateTime.UtcNow;
-            var maxReq    = isAuth ? MAX_AUTH       : MAX_REQUESTS;
-            var windowSec = isAuth ? AUTH_WINDOW    : WINDOW_SECONDS;
+            var maxReq     = MAX_REQUESTS;
+            var windowSec  = WINDOW_SECONDS;
 
             var entry = _requestCounts.GetOrAdd(ip, _ =>
                 new RateLimitEntry(0, now.AddSeconds(windowSec)));
@@ -62,9 +69,7 @@ namespace Clausio.Legal.API.Middleware
                 context.Response.ContentType = "application/json";
                 await context.Response.WriteAsync(JsonSerializer.Serialize(new
                 {
-                    message    = isAuth
-                        ? "Too many login attempts. Try again in 5 minutes."
-                        : "Too many requests. Please slow down.",
+                    message    = "Too many requests. Please slow down.",
                     retryAfter = (int)(entry.WindowExpiry - now).TotalSeconds,
                     status     = 429
                 }));

@@ -204,6 +204,17 @@ public class DocumentsController(IDocumentService documentService, ClausioDbCont
             return BadRequest(new { message = "Invalid Google Drive folder URL. Please paste a valid folder sharing link." });
         var folderId = folderMatch.Groups[1].Value;
 
+        // Google Drive shared links may contain a resource key.
+        // Google requires this key in the X-Goog-Drive-Resource-Keys header.
+        string? resourceKey = null;
+        var resourceKeyMatch = System.Text.RegularExpressions.Regex.Match(
+            urlStr,
+            @"[?&]resourcekey=([^&]+)",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        if (resourceKeyMatch.Success)
+            resourceKey = Uri.UnescapeDataString(resourceKeyMatch.Groups[1].Value);
+
         var apiKey = configuration["GoogleDrive:ApiKey"] ?? "";
         if (string.IsNullOrEmpty(apiKey))
             return BadRequest(new { message = "Google Drive folder import requires API configuration. Please import files individually using individual file links." });
@@ -215,6 +226,15 @@ public class DocumentsController(IDocumentService documentService, ClausioDbCont
             $"&pageSize=20";
 
         var listClient = httpClientFactory.CreateClient();
+
+        if (!string.IsNullOrEmpty(resourceKey))
+        {
+            listClient.DefaultRequestHeaders.Remove("X-Goog-Drive-Resource-Keys");
+            listClient.DefaultRequestHeaders.Add(
+                "X-Goog-Drive-Resource-Keys",
+                $"{folderId}/{resourceKey}");
+        }
+
         string listResponse;
         try
         {

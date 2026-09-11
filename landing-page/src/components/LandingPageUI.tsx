@@ -2393,7 +2393,7 @@ export default function LandingPageUI() {
           {/* Right-Aligned High-Fashion / Skeuomorphic Editorial Headline */}
           <motion.div
             style={{ opacity: textOpacity, y: textY }}
-            className="absolute right-6 md:right-12 lg:right-16 xl:right-24 top-[50%] -translate-y-1/2 z-40 flex flex-col items-end text-right max-w-md lg:max-w-xl xl:max-w-2xl"
+            className="absolute right-6 md:right-12 lg:right-16 xl:right-24 top-[56%] -translate-y-1/2 z-40 flex flex-col items-end text-right max-w-md lg:max-w-xl xl:max-w-2xl"
           >
             {/* Skeuomorphic Embossed Tag */}
             <div className="flex items-center space-x-3 px-3 py-1 rounded-full skeuo-inset text-[10px] md:text-[11px] font-mono uppercase tracking-[0.32em] font-semibold text-[#5A4839] mb-3">
