@@ -8,9 +8,12 @@ import type { UpdateChannel } from './WhatsAppUpdate'
 interface Props {
   message:    string
   generating: boolean
-  onRegenerate: (tone: string, language: string) => void
+  onRegenerate: (tone: string, language: string, options?: any) => void
   channel: UpdateChannel
   clientName?: string
+  currentTone?: string
+  currentLanguage?: string
+  currentOptions?: any
   onSent?: (channel: 'whatsapp' | 'email', preview: string) => void
   onSendEmail?: () => Promise<void>
   sending?: boolean
@@ -28,11 +31,30 @@ function extractUpdate(raw: string): ParsedUpdate {
 
   const parsed = parseAiJson<any>(text)
   if (parsed && typeof parsed === 'object' && (parsed.body ?? parsed.Body)) {
+    let rawBody = String(parsed.body ?? parsed.Body ?? '')
+    // If the body itself contains a stringified JSON (e.g. {"subject":"","body":"..."})
+    if (rawBody.trim().startsWith('{') && rawBody.includes('"body"')) {
+      const nested = parseAiJson<any>(rawBody)
+      if (nested && (nested.body ?? nested.Body)) {
+        rawBody = String(nested.body ?? nested.Body ?? '')
+      }
+    }
     return {
       subject: String(parsed.subject ?? parsed.Subject ?? ''),
-      body: String(parsed.body ?? parsed.Body ?? ''),
+      body: rawBody,
       actionRequired: parsed.actionRequired ? String(parsed.actionRequired) : null,
     }
+  }
+
+  // If text starts with '{' and contains '"body":', extract the body value even if JSON is malformed/truncated
+  const bodyFieldMatch = text.match(/"body"\s*:\s*"((?:[^"\\]|\\.)*?)"/)
+  if (bodyFieldMatch && bodyFieldMatch[1]) {
+    try {
+      const unescaped = JSON.parse(`"${bodyFieldMatch[1]}"`)
+      const subjMatch = text.match(/"subject"\s*:\s*"((?:[^"\\]|\\.)*?)"/)
+      const subj = subjMatch ? JSON.parse(`"${subjMatch[1]}"`) : ''
+      return { subject: subj, body: unescaped, actionRequired: null }
+    } catch { }
   }
 
   // Legacy / free-form fallback: reuse the old field-extraction heuristics.
@@ -138,7 +160,19 @@ function GeneratingIndicator() {
   )
 }
 
-export default function WhatsAppPreview({ message, generating, onRegenerate, channel, clientName, onSent, onSendEmail, sending }: Props) {
+export default function WhatsAppPreview({
+  message,
+  generating,
+  onRegenerate,
+  channel,
+  clientName,
+  currentTone,
+  currentLanguage,
+  currentOptions,
+  onSent,
+  onSendEmail,
+  sending
+}: Props) {
   const [translating, setTranslating] = useState(false)
   const [copied,       setCopied]     = useState(false)
   const [translated,   setTranslated] = useState('')
@@ -449,7 +483,7 @@ export default function WhatsAppPreview({ message, generating, onRegenerate, cha
         }}
       >
         <button
-          onClick={() => onRegenerate('Reassuring', 'Hinglish (Hindi + English)')}
+          onClick={() => onRegenerate(currentTone || 'Reassuring', currentLanguage || 'English', currentOptions)}
           disabled={generating}
           style={{ ...secondaryButton, cursor: generating ? 'not-allowed' : 'pointer' }}
         >

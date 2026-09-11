@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export type UpdateChannel = 'whatsapp' | 'email'
 
@@ -15,10 +15,11 @@ interface Props {
   onGenerate: (tone: string, language: string, options: UpdateOptions) => void
   generating: boolean
   channel: UpdateChannel
+  onStateChange?: (state: { tone: string; language: string; options: UpdateOptions }) => void
 }
 
-export default function WhatsAppUpdate({ onGenerate, generating, channel }: Props) {
-  const [language, setLanguage] = useState('Hinglish (Hindi + English)')
+export default function WhatsAppUpdate({ onGenerate, generating, channel, onStateChange }: Props) {
+  const [language, setLanguage] = useState('English')
   const [tone, setTone] = useState('Reassuring')
 
   const [includeHearing, setIncludeHearing] = useState(true)
@@ -27,6 +28,19 @@ export default function WhatsAppUpdate({ onGenerate, generating, channel }: Prop
   const [includeFeeReminder, setIncludeFeeReminder] = useState(false)
 
   const isEmail = channel === 'email'
+
+  useEffect(() => {
+    onStateChange?.({
+      tone,
+      language,
+      options: {
+        includeHearing,
+        includeNextDate,
+        includeActionItem,
+        includeFeeReminder,
+      }
+    })
+  }, [tone, language, includeHearing, includeNextDate, includeActionItem, includeFeeReminder, onStateChange])
 
   return (
     <div

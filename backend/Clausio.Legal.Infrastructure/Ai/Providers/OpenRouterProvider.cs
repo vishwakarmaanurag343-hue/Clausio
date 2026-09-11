@@ -77,10 +77,11 @@ public class OpenRouterProvider : ILLMProvider
 
         if (!string.IsNullOrWhiteSpace(preferredProvider))
         {
+            var providers = preferredProvider.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             requestBody["provider"] = new Dictionary<string, object>
             {
-                ["order"] = new[] { preferredProvider },
-                ["allow_fallbacks"] = false
+                ["order"] = providers,
+                ["allow_fallbacks"] = true
             };
         }
 
@@ -134,10 +135,13 @@ public class OpenRouterProvider : ILLMProvider
 
     private async Task<string> CallApiAsync(string model, string systemPrompt, string userPrompt, bool stream, string? preferredProvider, CancellationToken cancellationToken)
     {
+        bool isClientUpdate = systemPrompt.Contains("CLIENT-UPDATE TASK", StringComparison.OrdinalIgnoreCase);
+        int maxTokens = isClientUpdate ? 2048 : _completionMaxTokens;
+
         var requestBody = new Dictionary<string, object>
         {
             ["model"] = model,
-            ["max_tokens"] = _completionMaxTokens,
+            ["max_tokens"] = maxTokens,
             ["temperature"] = 0.1,
             ["stream"] = stream,
             ["messages"] = new[]
@@ -147,12 +151,18 @@ public class OpenRouterProvider : ILLMProvider
             }
         };
 
+        if (isClientUpdate)
+        {
+            requestBody["reasoning"] = new Dictionary<string, object> { ["effort"] = "none" };
+        }
+
         if (!string.IsNullOrWhiteSpace(preferredProvider))
         {
+            var providers = preferredProvider.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             requestBody["provider"] = new Dictionary<string, object>
             {
-                ["order"] = new[] { preferredProvider },
-                ["allow_fallbacks"] = false
+                ["order"] = providers,
+                ["allow_fallbacks"] = true
             };
         }
 
@@ -184,10 +194,7 @@ public class OpenRouterProvider : ILLMProvider
 
         if (string.IsNullOrWhiteSpace(responseText))
         {
-            if (message.TryGetProperty("reasoning_content", out var reasoningProp) && reasoningProp.ValueKind == JsonValueKind.String)
-                responseText = reasoningProp.GetString();
-            else if (message.TryGetProperty("reasoning", out var rProp) && rProp.ValueKind == JsonValueKind.String)
-                responseText = rProp.GetString();
+            _logger.LogWarning("[OpenRouterProvider] Empty content received from model {Model}. Raw response: {Raw}", model, responseJson);
         }
 
         // If content contains reasoning, prefer the last well-formed JSON block or content itself

@@ -40,7 +40,15 @@ public class HybridRetriever : IHybridRetriever
 
         try
         {
-            // 1. Fetch Vector candidates
+            // 1. Quick check: does this case even have chunks?
+            var allCaseChunks = await _vectorRetriever.GetAllChunksForCaseAsync(caseId, cancellationToken);
+            if (!allCaseChunks.Any())
+            {
+                _logger.LogInformation("[HybridRetriever] No chunks uploaded for CaseId: {CaseId}. Skipping retrieval.", caseId);
+                return new List<(DocumentChunk Chunk, double FusedScore)>();
+            }
+
+            // 2. Fetch Vector candidates
             List<DocumentChunk> vectorCandidates = new();
             try
             {
@@ -55,8 +63,7 @@ public class HybridRetriever : IHybridRetriever
                 _logger.LogWarning(embEx, "[HybridRetriever] Vector embedding retrieval failed. Proceeding with BM25 keyword retrieval.");
             }
 
-            // 2. Fetch BM25 candidates
-            var allCaseChunks = await _vectorRetriever.GetAllChunksForCaseAsync(caseId, cancellationToken);
+            // 3. Fetch BM25 candidates
             _bm25Retriever.BuildIndex(allCaseChunks);
             var bm25Candidates = _bm25Retriever.Search(query, topK: 30);
 

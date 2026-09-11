@@ -124,12 +124,63 @@ public class AiService : IAiService
         var channel = isEmail ? "Email" : "WhatsApp";
         var parameters = new Dictionary<string, object> { { "DocumentType", $"Client Update ({channel})" } };
 
-        var instructions = string.Join("\n",
+        var mustContain = new List<string>();
+        var mustAbsent = new List<string>();
+
+        if (request.IncludeHearing)
+            mustContain.Add("- Latest hearing summary and status update from case context");
+        else
+            mustAbsent.Add("- Latest hearing details or hearing recap");
+
+        if (request.IncludeNextDate)
+            mustContain.Add("- Next scheduled hearing date or timeline if available");
+        else
+            mustAbsent.Add("- Specific next hearing date");
+
+        if (request.IncludeActionItem)
+            mustContain.Add("- Action required by the client");
+        else
+            mustAbsent.Add("- Action items or tasks for client");
+
+        if (request.IncludeFeeReminder)
+            mustContain.Add("- Reminder regarding pending fees or payment");
+        else
+            mustAbsent.Add("- Fees, invoices or financial payment requests");
+
+        if (!string.IsNullOrWhiteSpace(request.AdditionalInstructions))
+            mustContain.Add($"- Note: {request.AdditionalInstructions.Trim()}");
+
+        var targetLang = string.IsNullOrWhiteSpace(request.Language) ? "English" : request.Language.Trim();
+        var langDirective = targetLang.StartsWith("English", StringComparison.OrdinalIgnoreCase)
+            ? "LANGUAGE: English (Write 100% in English only. Do NOT use Hindi or Hinglish words)."
+            : targetLang.StartsWith("Hinglish", StringComparison.OrdinalIgnoreCase)
+            ? "LANGUAGE: Hinglish (Hindi written in Roman script mixed naturally with English words)."
+            : targetLang.StartsWith("Hindi", StringComparison.OrdinalIgnoreCase)
+            ? "LANGUAGE: Hindi (Write in Devanagari script)."
+            : $"LANGUAGE: {targetLang}";
+
+        var instructionsList = new List<string>
+        {
             $"CHANNEL: {channel.ToUpperInvariant()}",
             $"TONE: {(string.IsNullOrWhiteSpace(request.Tone) ? "Reassuring" : request.Tone)}",
-            $"LANGUAGE: {(string.IsNullOrWhiteSpace(request.Language) ? "English" : request.Language)}",
-            "Draft the update for this case strictly per the channel format and output JSON contract.");
+            langDirective
+        };
 
+        if (mustContain.Any())
+        {
+            instructionsList.Add("CONTENT THE MESSAGE MUST CONTAIN:");
+            instructionsList.AddRange(mustContain);
+        }
+
+        if (mustAbsent.Any())
+        {
+            instructionsList.Add("CONTENT THAT MUST BE ABSENT:");
+            instructionsList.AddRange(mustAbsent);
+        }
+
+        instructionsList.Add("Draft the update for this case strictly per the channel format and output JSON contract.");
+
+        var instructions = string.Join("\n", instructionsList);
         return _pipeline.ExecuteAsync(caseId, instructions, "LegalDraft", parameters, cancellationToken);
     }
 

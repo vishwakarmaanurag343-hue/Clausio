@@ -138,6 +138,23 @@ public class OcrJobWorker : BackgroundService
             await db.SaveChangesAsync(ct);
 
             _logger.LogInformation("OCR completed for document {DocumentId}", documentId);
+
+            if (!string.IsNullOrWhiteSpace(document.ExtractedText))
+            {
+                try
+                {
+                    var retrievalEngine = scope.ServiceProvider.GetService<Clausio.Legal.Core.Interfaces.Retrieval.IRetrievalEngine>();
+                    if (retrievalEngine != null)
+                    {
+                        await retrievalEngine.ProcessDocumentAsync(document.Id, document.CaseId, document.ExtractedText, document.DocumentType, ct);
+                        _logger.LogInformation("Indexed OCR text into vector chunks for document {DocumentId}", documentId);
+                    }
+                }
+                catch (Exception idxEx)
+                {
+                    _logger.LogWarning(idxEx, "Failed to index OCR chunks for document {DocumentId}", documentId);
+                }
+            }
         }
         catch (Exception ex)
         {

@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Clausio.Legal.Core.Interfaces.Memory;
 using Clausio.Legal.Core.Interfaces.Retrieval;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -197,9 +198,70 @@ public class ContextEngine : IContextEngine
             sb.AppendLine($"Legal Issues: {caseMemory.LegalIssues}");
             sb.AppendLine("</case_context>");
         }
+        else
+        {
+            var basicCaseInfo = await _db.Cases.AsNoTracking().FirstOrDefaultAsync(c => c.Id == caseId, cancellationToken);
+            if (basicCaseInfo != null)
+            {
+                sb.AppendLine("<case_context>");
+                sb.AppendLine($"Title: {basicCaseInfo.Name}");
+                sb.AppendLine($"Type: {basicCaseInfo.CaseType}");
+                sb.AppendLine($"Status: {basicCaseInfo.Status}");
+                sb.AppendLine($"Stage: {basicCaseInfo.Stage}");
+                sb.AppendLine($"Court: {basicCaseInfo.Court}");
+                sb.AppendLine("</case_context>");
+            }
+        }
 
-        // 2. Retrieve precedents or relevant documents for drafting
-        var query = $"Template or precedents for {documentType}. {specificInstructions}";
+        // 1.5 For Client Update, fetch live case details and recent hearing directly
+        var isClientUpdate = documentType.Contains("Client Update", StringComparison.OrdinalIgnoreCase);
+        if (isClientUpdate)
+        {
+            var caseRecord = await _db.Cases
+                .AsNoTracking()
+                .Include(c => c.Client)
+                .Include(c => c.Hearings.OrderByDescending(h => h.HearingDate).Take(2))
+                    .ThenInclude(h => h.Orders)
+                .FirstOrDefaultAsync(c => c.Id == caseId, cancellationToken);
+
+            if (caseRecord != null)
+            {
+                sb.AppendLine("<case_record>");
+                sb.AppendLine($"Case Title: {caseRecord.Name}");
+                sb.AppendLine($"Case Number: {caseRecord.CaseNumber}");
+                sb.AppendLine($"Court: {caseRecord.Court} {caseRecord.CourtLocation}".Trim());
+                sb.AppendLine($"Stage: {caseRecord.Stage}");
+                sb.AppendLine($"Status: {caseRecord.Status}");
+                if (caseRecord.Client != null)
+                {
+                    var clientName = $"{caseRecord.Client.FirstName} {caseRecord.Client.LastName}".Trim();
+                    sb.AppendLine($"Client Name: {clientName}");
+                }
+                if (caseRecord.NextHearing.HasValue)
+                {
+                    sb.AppendLine($"Next Scheduled Hearing: {caseRecord.NextHearing.Value:dd MMMM yyyy}");
+                }
+
+                if (caseRecord.Hearings != null && caseRecord.Hearings.Any())
+                {
+                    sb.AppendLine("Recent Hearings:");
+                    foreach (var h in caseRecord.Hearings)
+                    {
+                        sb.AppendLine($"- Hearing Date: {h.HearingDate:dd MMMM yyyy}, Stage: {h.Stage}, Judge: {h.Judge}");
+                        if (!string.IsNullOrWhiteSpace(h.WhatHappened))
+                            sb.AppendLine($"  Summary: {h.WhatHappened}");
+                        if (!string.IsNullOrWhiteSpace(h.JudgeObservation))
+                            sb.AppendLine($"  Judge Observation: {h.JudgeObservation}");
+                        if (!string.IsNullOrWhiteSpace(h.NextObjective))
+                            sb.AppendLine($"  Next Objective: {h.NextObjective}");
+                    }
+                }
+                sb.AppendLine("</case_record>");
+            }
+        }
+        var query = isClientUpdate 
+            ? $"Case status, latest hearing, order, outcome. {specificInstructions}" 
+            : $"Template or precedents for {documentType}. {specificInstructions}";
         var relevantChunks = await _retrievalEngine.GetContextAsync(query, caseId, cancellationToken);
         if (relevantChunks.Any())
         {

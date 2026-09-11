@@ -58,9 +58,11 @@ public class DocumentClassifierService(
     private async Task<(string Category, int Confidence, string Description)>
         ClassifyWithAiAsync(string content, string filename, CancellationToken ct)
     {
-        var apiKey  = config["AI:DeepProvider:ApiKey"] ?? config["AI:FastProvider:ApiKey"] ?? "";
-        var baseUrl = config["AI:DeepProvider:BaseUrl"] ?? "https://integrate.api.nvidia.com/v1";
-        var model   = "meta/llama-3.1-8b-instruct";
+        var apiKey  = config["AI:OpenRouter:ApiKey"] 
+                   ?? Environment.GetEnvironmentVariable("OPENROUTER_API_KEY") 
+                   ?? "";
+        var baseUrl = config["AI:OpenRouter:BaseUrl"] ?? "https://openrouter.ai/api/v1";
+        var model   = config["AI:Research:ModelId"] ?? "z-ai/glm-5.3-flash";
 
         using var http = new HttpClient();
         http.DefaultRequestHeaders.Authorization =

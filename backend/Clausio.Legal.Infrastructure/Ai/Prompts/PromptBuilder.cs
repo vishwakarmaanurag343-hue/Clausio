@@ -147,11 +147,16 @@ public class PromptBuilder : IPromptBuilder
         var sb = new System.Text.StringBuilder();
 
         // Conversational chat (GeneralChat) uses fluid, natural conversational standards
+        // ClientUpdate uses its own focused layperson instructions without court pleading standards
         // Formal drafting tasks use the comprehensive courtroom pleading standards
         if (templateName.Equals("GeneralChat", StringComparison.OrdinalIgnoreCase))
         {
             sb.AppendLine(ClausioStandards.ConversationalChat).AppendLine();
             sb.AppendLine("=== CONTEXT & CASE BACKGROUND ===");
+            sb.Append(template.SystemInstruction);
+        }
+        else if (templateName.Equals("ClientUpdate", StringComparison.OrdinalIgnoreCase))
+        {
             sb.Append(template.SystemInstruction);
         }
         else

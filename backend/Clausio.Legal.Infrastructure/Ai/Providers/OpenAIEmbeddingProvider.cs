@@ -20,6 +20,7 @@ public class OpenAIEmbeddingProvider : IEmbeddingProvider
     private readonly string _baseUrl;
     private readonly string _apiKey;
     private readonly string _modelId;
+    private readonly string[]? _providers;
 
     public OpenAIEmbeddingProvider(IConfiguration config, ILogger<OpenAIEmbeddingProvider> logger, HttpClient httpClient)
     {
@@ -28,6 +29,16 @@ public class OpenAIEmbeddingProvider : IEmbeddingProvider
         _apiKey = config["AI:EmbeddingProvider:ApiKey"] ?? string.Empty;
         _baseUrl = config["AI:EmbeddingProvider:BaseUrl"] ?? "https://api.openai.com/v1";
         _modelId = config["AI:EmbeddingProvider:ModelId"] ?? "text-embedding-3-small";
+        
+        var providersConfig = config["AI:EmbeddingProvider:Providers"];
+        if (!string.IsNullOrWhiteSpace(providersConfig))
+        {
+            _providers = providersConfig.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        }
+        else
+        {
+            _providers = new[] { "Nebius", "DeepInfra" };
+        }
         
         _http.DefaultRequestHeaders.Add("User-Agent", "ClausioLegalAI/1.0");
         _http.Timeout = TimeSpan.FromSeconds(60);
@@ -47,15 +58,25 @@ public class OpenAIEmbeddingProvider : IEmbeddingProvider
             return texts.Select(_ => Array.Empty<float>()).ToList();
         }
 
-        _logger.LogInformation("Generating embeddings for {Count} texts using model {Model}", texts.Count, _modelId);
+        _logger.LogInformation("Generating embeddings for {Count} texts using model {Model} (Providers: {Providers})", 
+            texts.Count, _modelId, _providers != null ? string.Join(", ", _providers) : "default");
 
-        var requestBody = new
+        var requestDict = new Dictionary<string, object>
         {
-            model = _modelId,
-            input = texts
+            ["model"] = _modelId,
+            ["input"] = texts
         };
 
-        var json = JsonSerializer.Serialize(requestBody);
+        if (_providers != null && _providers.Length > 0 && _baseUrl.Contains("openrouter.ai", StringComparison.OrdinalIgnoreCase))
+        {
+            requestDict["provider"] = new Dictionary<string, object>
+            {
+                ["order"] = _providers,
+                ["allow_fallbacks"] = false
+            };
+        }
+
+        var json = JsonSerializer.Serialize(requestDict);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/embeddings");

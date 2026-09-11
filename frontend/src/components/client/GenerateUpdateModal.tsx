@@ -12,7 +12,7 @@ export default function GenerateUpdateModal({
   onClose,
   onGenerate,
 }: Props) {
-  const [language, setLanguage] = useState('Hinglish')
+  const [language, setLanguage] = useState('English')
   const [tone, setTone] = useState('Reassuring')
   const [length, setLength] = useState('Medium')
   const [notes, setNotes] = useState('')

@@ -15,7 +15,7 @@ public class DocumentChunk : BaseEntity
     
     public required string TextContent { get; set; }
     
-    [Column(TypeName = "vector(1536)")]
+    [Column(TypeName = "vector(4096)")]
     public Pgvector.Vector? Embedding { get; set; }
     
     [Column(TypeName = "jsonb")]

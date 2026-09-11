@@ -31,6 +31,15 @@ export default function ClientPage() {
     sentAt: Date
   }>>([])
 
+  const [currentTone, setCurrentTone] = useState('Reassuring')
+  const [currentLanguage, setCurrentLanguage] = useState('English')
+  const [currentOptions, setCurrentOptions] = useState<UpdateOptions>({
+    includeHearing: true,
+    includeNextDate: true,
+    includeActionItem: false,
+    includeFeeReminder: false,
+  })
+
   useEffect(() => {
     if (!selectedCaseId) return
     casesApi.getById(selectedCaseId)
@@ -47,17 +56,23 @@ export default function ClientPage() {
       setError('Select a case first.')
       return
     }
+    const resolvedTone = tone || currentTone || 'Reassuring'
+    const resolvedLanguage = language || currentLanguage || 'English'
+    setCurrentTone(resolvedTone)
+    setCurrentLanguage(resolvedLanguage)
+    if (options) setCurrentOptions(options)
+
     setGenerating(true)
     setError('')
     try {
       const res = await aiApi.getWhatsApp(selectedCaseId, {
-        tone,
-        language,
+        tone: resolvedTone,
+        language: resolvedLanguage,
         channel,
-        includeHearing:    options?.includeHearing    ?? true,
-        includeNextDate:   options?.includeNextDate   ?? true,
-        includeActionItem: options?.includeActionItem ?? false,
-        includeFeeReminder: options?.includeFeeReminder ?? false,
+        includeHearing:    options?.includeHearing    ?? currentOptions.includeHearing,
+        includeNextDate:   options?.includeNextDate   ?? currentOptions.includeNextDate,
+        includeActionItem: options?.includeActionItem ?? currentOptions.includeActionItem,
+        includeFeeReminder: options?.includeFeeReminder ?? currentOptions.includeFeeReminder,
       })
       setMessage(res.message ?? res.result ?? '')
     } catch (err: any) {
@@ -251,7 +266,16 @@ export default function ClientPage() {
                 gap: 24,
               }}
             >
-              <WhatsAppUpdate onGenerate={generate} generating={generating} channel={channel} />
+              <WhatsAppUpdate
+                onGenerate={generate}
+                generating={generating}
+                channel={channel}
+                onStateChange={(st) => {
+                  setCurrentTone(st.tone)
+                  setCurrentLanguage(st.language)
+                  setCurrentOptions(st.options)
+                }}
+              />
 
               <WhatsAppPreview
                 message={message}
@@ -259,6 +283,9 @@ export default function ClientPage() {
                 onRegenerate={generate}
                 channel={channel}
                 clientName={clientName}
+                currentTone={currentTone}
+                currentLanguage={currentLanguage}
+                currentOptions={currentOptions}
                 onSent={handleSent}
                 onSendEmail={handleSendEmail}
                 sending={sending}
@@ -436,13 +463,25 @@ export default function ClientPage() {
               )}
               {activeTab === 'update' && (
                 <>
-                  <WhatsAppUpdate onGenerate={generate} generating={generating} channel={channel} />
+                  <WhatsAppUpdate
+                    onGenerate={generate}
+                    generating={generating}
+                    channel={channel}
+                    onStateChange={(st) => {
+                      setCurrentTone(st.tone)
+                      setCurrentLanguage(st.language)
+                      setCurrentOptions(st.options)
+                    }}
+                  />
                   <WhatsAppPreview
                     message={message}
                     generating={generating}
                     onRegenerate={generate}
                     channel={channel}
                     clientName={clientName}
+                    currentTone={currentTone}
+                    currentLanguage={currentLanguage}
+                    currentOptions={currentOptions}
                     onSent={handleSent}
                     onSendEmail={handleSendEmail}
                     sending={sending}

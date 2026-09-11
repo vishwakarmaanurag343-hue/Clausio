@@ -139,177 +139,136 @@ public class AIPipeline : IAIPipeline
         // holdings) into a case timeline / brief / evidence review. No precedent RAG.
         var ragDisabledTasks = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "Chronology", "Timeline", "Summarization", "Evidence", "FinancialProfile", "Readiness"
+            "Chronology", "Timeline", "Summarization", "Evidence", "FinancialProfile", "Readiness", "ClientUpdate"
         };
-        var ragEnabled = !ragDisabledTasks.Contains(taskType);
+        var draftDocType = parameters != null && parameters.ContainsKey("DocumentType")
+            ? parameters["DocumentType"]?.ToString() ?? ""
+            : "";
+        var isClientUpdate = taskType.Equals("ClientUpdate", StringComparison.OrdinalIgnoreCase)
+            || draftDocType.Contains("Client Update", StringComparison.OrdinalIgnoreCase);
+
+        var ragEnabled = !ragDisabledTasks.Contains(taskType) && !isClientUpdate;
 
         var ragTopK = taskType == "LegalResearch" ? 4 : 2; // Precedent work needs more corpus than chat/analysis
-        string ragQuery;
+        string ragQuery = userInput;
         string? caseCategory = null;
+
         if (taskType == "LegalResearch")
         {
-            // Keyword retrieval must run on the case's own substance — every non-tag
-            // line of the built context. The memory summary alone is often too thin
-            // (sometimes just the title echoed back) to extract legal terms from.
             var substance = string.Join("\n", contextXml.Split('\n')
                 .Where(line => !line.TrimStart().StartsWith("<"))
                 .Select(line => line.Trim()));
             ragQuery = substance.Length > 4000 ? substance[..4000] : substance;
 
-            // Map the case type onto the judgment corpus's own category labels so the
-            // topical backfill can rescue thin keyword sets with relevant material
             var typeLine = contextXml.Split('\n')
                 .FirstOrDefault(l => l.TrimStart().StartsWith("Type:"))?.Trim() ?? "";
             caseCategory = MapToCorpusCategory(typeLine);
         }
-        else
+        else if (taskType == "LegalDraft")
         {
-            ragQuery = userInput;
-            if (taskType == "LegalDraft") ragTopK = 5;
-            if (taskType == "LegalDraft")
+            ragTopK = 5;
+            ragQuery = draftDocType switch
             {
-                var draftDocType = parameters != null && parameters.ContainsKey("DocumentType")
-                    ? parameters["DocumentType"]?.ToString() ?? ""
-                    : "";
+                "Bail Application (Sessions Court)"
+                    => "bail sessions court triple test flight risk tampering personal liberty Article 21",
+                "Bail Application (High Court)"
+                    => "bail high court section 439 personal liberty prolonged custody Article 21",
+                "Anticipatory Bail"
+                    => "anticipatory bail section 438 apprehension arrest Gurbaksh Singh Sibbia",
+                "Bail (NDPS Act)"
+                    => "bail NDPS section 37 twin conditions commercial quantity narcotic drugs",
+                "Criminal Appeal"
+                    => "criminal appeal conviction acquittal reappreciation evidence reasonable doubt",
+                "Quashing Petition"
+                    => "quashing FIR article 226 section 482 abuse process Bhajan Lal categories",
+                "Discharge Application"
+                    => "discharge framing charges prima facie case L Muniswamy sessions court",
+                "Criminal Revision"
+                    => "criminal revision jurisdictional error interlocutory order section 397 401",
+                "Divorce Petition (Section 13 HMA)"
+                    => "divorce cruelty section 13 HMA irretrievable breakdown mental cruelty Samar Ghosh",
+                "Mutual Consent Divorce (Section 13B)"
+                    => "mutual consent divorce section 13B cooling period settlement terms",
+                "Maintenance (Section 24 HMA)"
+                    => "maintenance section 24 HMA Rajnesh Neha interim maintenance pendente lite husband income",
+                "Child Custody Application"
+                    => "child custody welfare paramount Nil Ratan Kundu minor guardianship",
+                "Restitution of Conjugal Rights"
+                    => "restitution conjugal rights section 9 HMA reasonable excuse withdrawal society",
+                "Domestic Violence Application (PWDVA)"
+                    => "domestic violence section 12 shared household monetary relief protection order",
+                "Cheque Bounce Complaint (Section 138 NI Act)"
+                    => "cheque bounce section 138 NI Act statutory notice legally enforceable debt presumption 139",
+                "Summary Suit (Order 37 CPC)"
+                    => "summary suit Order 37 CPC leave to defend triable issue debt liquidated demand",
+                "Money Recovery Suit"
+                    => "money recovery suit limitation period cause of action breach contract debt",
+                "Consumer Complaint (CPA 2019)"
+                    => "consumer complaint deficiency service unfair trade practice pecuniary jurisdiction",
+                "Injunction Application (Order 39 Rules 1 & 2)"
+                    => "temporary injunction prima facie case balance of convenience irreparable injury Order 39",
+                "Partition Suit"
+                    => "partition suit coparcenary property share preliminary decree ancestral",
+                "Eviction Petition (Rent Control)"
+                    => "eviction bona fide requirement arrears rent subletting tenant landlord",
+                "Specific Performance Suit"
+                    => "specific performance readiness willingness Section 16c contract immovable property",
+                "Affidavit"
+                    => "affidavit sworn statement deponent verification court",
+                "Agreement / Contract"
+                    => "agreement contract breach damages specific performance terms",
+                "Legal Opinion"
+                    => "legal opinion advice statutory interpretation legal position",
+                "Notice / Show Cause Notice"
+                    => "show cause notice natural justice opportunity heard reply",
+                "Succession Certificate"
+                    => "succession certificate Indian Succession Act debts securities movable",
+                "Writ Petition (Article 226)"
+                    => "writ petition Article 226 fundamental rights mandamus certiorari prohibition",
+                "Legal Notice"
+                    => "legal notice demand payment breach contract pre-litigation",
+                var d when d.Contains("Client Update", StringComparison.OrdinalIgnoreCase)
+                    => "hearing trial procedure notice status order",
+                _ => string.IsNullOrEmpty(draftDocType)
+                    ? userInput
+                    : $"{draftDocType} judgment precedent Indian court"
+            };
 
-                ragQuery = draftDocType switch
-                {
-                    "Bail Application (Sessions Court)"
-                        => "bail sessions court triple test flight risk tampering personal liberty Article 21",
-                    "Bail Application (High Court)"
-                        => "bail high court section 439 personal liberty prolonged custody Article 21",
-                    "Anticipatory Bail"
-                        => "anticipatory bail section 438 apprehension arrest Gurbaksh Singh Sibbia",
-                    "Bail (NDPS Act)"
-                        => "bail NDPS section 37 twin conditions commercial quantity narcotic drugs",
-                    "Criminal Appeal"
-                        => "criminal appeal conviction acquittal reappreciation evidence reasonable doubt",
-                    "Quashing Petition"
-                        => "quashing FIR article 226 section 482 abuse process Bhajan Lal categories",
-                    "Discharge Application"
-                        => "discharge framing charges prima facie case L Muniswamy sessions court",
-                    "Criminal Revision"
-                        => "criminal revision jurisdictional error interlocutory order section 397 401",
-                    "Divorce Petition (Section 13 HMA)"
-                        => "divorce cruelty section 13 HMA irretrievable breakdown mental cruelty Samar Ghosh",
-                    "Mutual Consent Divorce (Section 13B)"
-                        => "mutual consent divorce section 13B cooling period settlement terms",
-                    "Maintenance (Section 24 HMA)"
-                        => "maintenance section 24 HMA Rajnesh Neha interim maintenance pendente lite husband income",
-                    "Child Custody Application"
-                        => "child custody welfare paramount Nil Ratan Kundu minor guardianship",
-                    "Domestic Violence Application (PWDVA)"
-                        => "domestic violence PWDVA protection order residence order monetary relief section 18 19 20",
-                    "Restitution of Conjugal Rights"
-                        => "restitution conjugal rights section 9 HMA reasonable excuse withdrawal society",
-                    "Permanent Alimony (Section 25 HMA)"
-                        => "permanent alimony section 25 HMA gross sum monthly payment income assets",
-                    "Civil Plaint / Suit"
-                        => "civil suit plaint cause of action limitation jurisdiction CPC Order 7",
-                    "Written Statement"
-                        => "written statement preliminary objections denial Order VIII CPC para-wise reply",
-                    "Interim Injunction Application"
-                        => "injunction prima facie balance of convenience irreparable injury Dalpat Kumar",
-                    "Stay Application"
-                        => "stay decree Order 41 Rule 5 balance of convenience appeal pending",
-                    "Civil Appeal"
-                        => "civil appeal reappreciation evidence first appellate court decree Section 96 CPC",
-                    "Execution Petition"
-                        => "execution decree Order 21 CPC attachment judgment debtor property",
-                    "Contempt Petition"
-                        => "contempt court wilful disobedience order Punj Lloyd civil contempt",
-                    "Specific Performance Suit"
-                        => "specific performance agreement to sell readiness willingness 2018 amendment right",
-                    "Declaratory Suit"
-                        => "declaratory suit section 34 Specific Relief Act legal character title",
-                    "Partition Suit"
-                        => "partition suit Hindu Undivided Family coparcenary share property division",
-                    "Cheque Bounce Complaint (Section 138)"
-                        => "cheque bounce section 138 NI Act dishonour demand notice limitation 30 days",
-                    "NI Act Legal Notice (15-day)"
-                        => "cheque bounce notice 15 days section 138 proviso demand payment RPAD",
-                    "Consumer Complaint"
-                        => "consumer complaint deficiency service unfair trade practice compensation forum",
-                    "Consumer Complaint Reply"
-                        => "consumer complaint reply opposite party maintainability jurisdiction limitation",
-                    "Reply to Legal Notice"
-                        => "reply to legal notice paragraph wise response denial admission objection demand notice breach contract",
-                    "GST Appeal"
-                        => "GST appeal appellate authority section 107 CGST pre-deposit demand order",
-                    "GST Show Cause Notice Reply"
-                        => "GST show cause notice section 73 74 CGST natural justice reply fraud suppression",
-                    "GST Writ Petition (Article 226)"
-                        => "GST writ petition Article 226 jurisdiction natural justice unreasonable demand",
-                    "Income Tax Appeal (CIT(A) / ITAT)"
-                        => "income tax appeal CIT ITAT section 246A 253 assessment addition penalty",
-                    "RERA Complaint"
-                        => "RERA complaint builder delay possession section 18 interest compensation defect",
-                    "Eviction Suit"
-                        => "eviction suit tenancy rent arrears Transfer of Property Act landlord tenant",
-                    "Arbitration Section 9 (Interim Relief)"
-                        => "arbitration section 9 interim relief injunction before award Arcel India",
-                    "Arbitration Section 34 (Set Aside Award)"
-                        => "arbitration section 34 set aside award patent illegality public policy Associated Builders",
-                    "NCLT Petition (IBC Section 9)"
-                        => "NCLT insolvency section 9 IBC operational creditor demand notice default CIRP",
-                    "NCLT Petition Section 241/242"
-                        => "NCLT petition sections 241 242 Companies Act oppression mismanagement minority shareholder protection",
-                    "NCLT Petition (Section 241/242 — Oppression)"
-                        => "NCLT oppression mismanagement section 241 242 Companies Act minority shareholder petition Cyrus Mistry Needle Industries",
-                    "Affidavit"
-                        => "affidavit sworn statement deponent verification court",
-                    "Agreement / Contract"
-                        => "agreement contract breach damages specific performance terms",
-                    "Legal Opinion"
-                        => "legal opinion advice statutory interpretation legal position",
-                    "Notice / Show Cause Notice"
-                        => "show cause notice natural justice opportunity heard reply",
-                    "Succession Certificate"
-                        => "succession certificate Indian Succession Act debts securities movable",
-                    "Writ Petition (Article 226)"
-                        => "writ petition Article 226 fundamental rights mandamus certiorari prohibition",
-                    "Legal Notice"
-                        => "legal notice demand payment breach contract pre-litigation",
-                    _ => string.IsNullOrEmpty(draftDocType)
-                        ? userInput
-                        : $"{draftDocType} judgment precedent Indian court"
-                };
-
-                caseCategory = draftDocType switch
-                {
-                    var d when d.Contains("Bail") || d.Contains("Criminal") ||
-                               d.Contains("Quashing") || d.Contains("Discharge") ||
-                               d.Contains("Anticipatory") || d.Contains("NDPS")
-                        => "Criminal Law",
-                    var d when d.Contains("Divorce") || d.Contains("Maintenance") ||
-                               d.Contains("Custody") || d.Contains("Domestic Violence") ||
-                               d.Contains("Conjugal") || d.Contains("Alimony") ||
-                               d.Contains("HMA") || d.Contains("PWDVA")
-                        => "Family Law",
-                    var d when d.Contains("GST") || d.Contains("Income Tax")
-                        => "Tax Law",
-                    var d when d.Contains("Consumer")
-                        => "Consumer Law",
-                    var d when d.Contains("NI Act") || d.Contains("Cheque")
-                        => "NI Act",
-                    var d when d.Contains("Writ") || d.Contains("Article 226") ||
-                               d.Contains("Constitutional")
-                        => "Constitutional Law",
-                    var d when d.Contains("RERA") || d.Contains("Eviction") ||
-                               d.Contains("Civil") || d.Contains("Injunction") ||
-                               d.Contains("Execution") || d.Contains("Contempt") ||
-                               d.Contains("Partition") || d.Contains("Declaratory") ||
-                               d.Contains("Specific Performance") || d.Contains("Stay") ||
-                               d.Contains("Written Statement")
-                        => "Property Law",
-                    var d when d.Contains("Reply to Legal Notice")
-                        => "Corporate Law",
-                    var d when d.Contains("Oppression")
-                        => "Corporate Law",
-                    _ => (string?)null
-                };
-            }
+            caseCategory = draftDocType switch
+            {
+                var d when d.Contains("Bail") || d.Contains("Criminal") ||
+                           d.Contains("Quashing") || d.Contains("Discharge") ||
+                           d.Contains("Anticipatory") || d.Contains("NDPS")
+                    => "Criminal Law",
+                var d when d.Contains("Divorce") || d.Contains("Maintenance") ||
+                           d.Contains("Custody") || d.Contains("Domestic Violence") ||
+                           d.Contains("Conjugal") || d.Contains("Alimony") ||
+                           d.Contains("HMA") || d.Contains("PWDVA")
+                    => "Family Law",
+                var d when d.Contains("GST") || d.Contains("Income Tax")
+                    => "Tax Law",
+                var d when d.Contains("Consumer")
+                    => "Consumer Law",
+                var d when d.Contains("NI Act") || d.Contains("Cheque")
+                    => "NI Act",
+                var d when d.Contains("Writ") || d.Contains("Article 226") ||
+                           d.Contains("Constitutional")
+                    => "Constitutional Law",
+                var d when d.Contains("RERA") || d.Contains("Eviction") ||
+                           d.Contains("Civil") || d.Contains("Injunction") ||
+                           d.Contains("Execution") || d.Contains("Contempt") ||
+                           d.Contains("Partition") || d.Contains("Declaratory") ||
+                           d.Contains("Specific Performance") || d.Contains("Stay") ||
+                           d.Contains("Written Statement")
+                    => "Property Law",
+                var d when d.Contains("Reply to Legal Notice")
+                    => "Corporate Law",
+                var d when d.Contains("Oppression")
+                    => "Corporate Law",
+                _ => (string?)null
+            };
         }
+
         var judgmentChunks = ragEnabled
             ? await _judgmentSearch.SearchAsync(ragQuery, ragTopK, caseCategory, cancellationToken)
             : new List<string>();

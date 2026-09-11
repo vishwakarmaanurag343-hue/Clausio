@@ -152,16 +152,30 @@ public class JudgmentSearchService(
 
             var results = new List<(string text, int score, string caseName)>();
 
-            // Query Judgments table
-            foreach (var keyword in keywords.Take(5))
+            // 1. Search in our own Judgments table using combined keyword filter
+            var topKeywords = keywords.Take(5).ToList();
+            if (topKeywords.Any())
             {
-                var jList = await db.Judgments
-                    .AsNoTracking()
-                    .Where(j => EF.Functions.ILike(j.FullText ?? "", $"%{keyword}%")
-                             || EF.Functions.ILike(j.RatioDecidendi ?? "", $"%{keyword}%")
-                             || EF.Functions.ILike(j.Citation, $"%{keyword}%")
-                             || EF.Functions.ILike(j.ShortName ?? "", $"%{keyword}%"))
-                    .Take(20)
+                // Query judgments matching any keyword in a single round-trip
+                var queryable = db.Judgments.AsNoTracking();
+                var firstKw = topKeywords[0];
+                var predicate = queryable.Where(j => 
+                    EF.Functions.ILike(j.FullText ?? "", $"%{firstKw}%")
+                    || EF.Functions.ILike(j.RatioDecidendi ?? "", $"%{firstKw}%")
+                    || EF.Functions.ILike(j.Citation, $"%{firstKw}%")
+                    || EF.Functions.ILike(j.ShortName ?? "", $"%{firstKw}%"));
+
+                foreach (var kw in topKeywords.Skip(1))
+                {
+                    predicate = predicate.Union(queryable.Where(j =>
+                        EF.Functions.ILike(j.FullText ?? "", $"%{kw}%")
+                        || EF.Functions.ILike(j.RatioDecidendi ?? "", $"%{kw}%")
+                        || EF.Functions.ILike(j.Citation, $"%{kw}%")
+                        || EF.Functions.ILike(j.ShortName ?? "", $"%{kw}%")));
+                }
+
+                var jList = await predicate
+                    .Take(30)
                     .Select(j => new {
                         CaseName = j.ShortName ?? j.Citation,
                         j.Citation,
@@ -172,7 +186,7 @@ public class JudgmentSearchService(
 
                 foreach (var j in jList)
                 {
-                    var score = keywords.Count(k => j.Text.Contains(k, StringComparison.OrdinalIgnoreCase));
+                    var score = topKeywords.Count(k => j.Text.Contains(k, StringComparison.OrdinalIgnoreCase));
                     var label = !string.IsNullOrEmpty(j.Citation) ? j.Citation : $"{j.CaseName} ({j.Year})";
                     results.Add(($"[{label}] {j.Text}", score, j.CaseName));
                 }
@@ -186,7 +200,7 @@ public class JudgmentSearchService(
                     .AsNoTracking()
                     .Where(j => j.CaseType == category)
                     .OrderBy(j => j.Id)
-                    .Take(800)
+                    .Take(400)
                     .Select(j => new { j.ChunkText, j.CaseName, j.Year })
                     .ToListAsync(ct);
 
@@ -197,31 +211,35 @@ public class JudgmentSearchService(
                     results.Add(($"[{chunk.CaseName} ({chunk.Year})] {chunk.ChunkText}", score, chunk.CaseName ?? ""));
                 }
             }
-            else
+            else if (topKeywords.Any())
             {
-                foreach (var keyword in keywords.Take(5))
+                var chunkQueryable = db.JudgmentChunks.AsNoTracking();
+                var firstKw = topKeywords[0];
+                var chunkPredicate = chunkQueryable.Where(j => EF.Functions.ILike(j.ChunkText, $"%{firstKw}%"));
+
+                foreach (var kw in topKeywords.Skip(1))
                 {
-                    var chunks = await db.JudgmentChunks
-                        .AsNoTracking()
-                        .Where(j => EF.Functions.ILike(j.ChunkText, $"%{keyword}%"))
-                        .Take(20)
-                        .Select(j => new {
-                            j.ChunkText,
-                            j.CaseName,
-                            j.Year,
-                            j.CaseType
-                        })
-                        .ToListAsync(ct);
+                    chunkPredicate = chunkPredicate.Union(chunkQueryable.Where(j => EF.Functions.ILike(j.ChunkText, $"%{kw}%")));
+                }
 
-                    foreach (var chunk in chunks)
-                    {
-                        var text = chunk.ChunkText;
-                        var score = keywords.Count(k =>
-                            text.Contains(k, StringComparison.OrdinalIgnoreCase));
+                var chunks = await chunkPredicate
+                    .Take(30)
+                    .Select(j => new {
+                        j.ChunkText,
+                        j.CaseName,
+                        j.Year,
+                        j.CaseType
+                    })
+                    .ToListAsync(ct);
 
-                        var formatted = $"[{chunk.CaseName} ({chunk.Year})] {chunk.ChunkText}";
-                        results.Add((formatted, score, chunk.CaseName ?? ""));
-                    }
+                foreach (var chunk in chunks)
+                {
+                    var text = chunk.ChunkText;
+                    var score = topKeywords.Count(k =>
+                        text.Contains(k, StringComparison.OrdinalIgnoreCase));
+
+                    var formatted = $"[{chunk.CaseName} ({chunk.Year})] {chunk.ChunkText}";
+                    results.Add((formatted, score, chunk.CaseName ?? ""));
                 }
             }
 

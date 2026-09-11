@@ -17,7 +17,12 @@ public interface IDocumentService
     Task<(Stream Stream, string ContentType, string FileName)?> OpenAsync(Guid caseId, Guid id, CancellationToken cancellationToken = default);
 }
 
-public class DocumentService(ClausioDbContext db, IDocumentStorage storage, IDocumentTextExtractor textExtractor, IAiJobQueueService jobQueue) : IDocumentService
+public class DocumentService(
+    ClausioDbContext db, 
+    IDocumentStorage storage, 
+    IDocumentTextExtractor textExtractor, 
+    IAiJobQueueService jobQueue,
+    Clausio.Legal.Core.Interfaces.Retrieval.IRetrievalEngine retrievalEngine) : IDocumentService
 {
     public Task<List<Document>> ListAsync(Guid caseId, CancellationToken cancellationToken = default) =>
         db.Documents.AsNoTracking().Where(d => d.CaseId == caseId).OrderByDescending(d => d.CreatedAt).ToListAsync(cancellationToken);
@@ -54,6 +59,16 @@ public class DocumentService(ClausioDbContext db, IDocumentStorage storage, IDoc
 
         db.Documents.Add(entity);
         await db.SaveChangesAsync(cancellationToken);
+
+        // If text was extracted, index it into vector chunks immediately
+        if (!string.IsNullOrWhiteSpace(extractedText))
+        {
+            try
+            {
+                await retrievalEngine.ProcessDocumentAsync(documentId, caseId, extractedText, documentType, cancellationToken);
+            }
+            catch { /* non-blocking */ }
+        }
 
         await jobQueue.EnqueueJobAsync("ocr_extraction", new
         {
