@@ -26,18 +26,16 @@ public class TokenRouterProvider : ILLMProvider
     {
         _logger = logger;
         _http = httpClient;
-        _apiKey = config["AI:Groq:ApiKey"]
-               ?? config["AI:OpenRouter:ApiKey"]
+        _apiKey = config["AI:OpenRouter:ApiKey"]
+               ?? Environment.GetEnvironmentVariable("OPENROUTER_API_KEY")
                ?? config["AI:DeepProvider:ApiKey"]
-               ?? throw new InvalidOperationException("AI:Groq:ApiKey or AI:OpenRouter:ApiKey missing");
+               ?? config["AI:Groq:ApiKey"]
+               ?? throw new InvalidOperationException("AI:OpenRouter:ApiKey or OPENROUTER_API_KEY environment variable is missing");
 
-        _baseUrl = config["AI:Groq:BaseUrl"]
-                ?? config["AI:DeepProvider:BaseUrl"]
-                ?? config["AI:OpenRouter:BaseUrl"]
-                ?? "https://api.groq.com/openai/v1";
+        _baseUrl = config["AI:OpenRouter:BaseUrl"]
+                ?? "https://openrouter.ai/api/v1";
 
-        // Non-streaming completions need room for a multi-page structured answer (Analysis-page
-        // briefs / chronology / evidence). A 4096 cap was truncating case summaries to one page.
+        // Non-streaming completions need room for a multi-page structured answer
         _completionMaxTokens = int.TryParse(config["AI:AnalysisMaxTokens"], out var mt) && mt > 0 ? mt : 8192;
         
         _http.DefaultRequestHeaders.Add("User-Agent", "ClausioLegalAI/1.0");

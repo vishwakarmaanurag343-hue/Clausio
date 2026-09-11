@@ -15,251 +15,121 @@ namespace Clausio.Legal.Infrastructure.Ai.Router;
 
 public class AIRouter : IAIRouter
 {
-    private readonly TokenRouterProvider _deepProvider;
-    private readonly OpenRouterProvider _fastProvider;
+    private readonly TokenRouterProvider _tokenRouterProvider;
+    private readonly OpenRouterProvider _openRouterProvider;
     private readonly ILogger<AIRouter> _logger;
-    private readonly string _deepModel;
-    private readonly string[] _fastModels;
-    private readonly AsyncRetryPolicy _fastRetryPolicy;
+    
+    // DRAFTING: DeepSeek V4 Flash 0731 via OpenInference on OpenRouter
+    private readonly string _draftingModel;
+    private readonly string _draftingProvider;
+
+    // DEEP RESEARCH: GLM 5.3 Flash via DeepInfra on OpenRouter
+    private readonly string _researchModel;
+    private readonly string _researchProvider;
 
     public AIRouter(
-        TokenRouterProvider deepProvider, 
-        OpenRouterProvider fastProvider, 
+        TokenRouterProvider tokenRouterProvider, 
+        OpenRouterProvider openRouterProvider, 
         IConfiguration config, 
         ILogger<AIRouter> logger)
     {
-        _deepProvider = deepProvider;
-        _fastProvider = fastProvider;
+        _tokenRouterProvider = tokenRouterProvider;
+        _openRouterProvider = openRouterProvider;
         _logger = logger;
 
-        _deepModel = config["AI:Groq:DeepModel"] ?? config["AI:DeepProvider:ModelId"] ?? "openai/gpt-oss-120b";
-        var modelsSection = config.GetSection("AI:FastProvider:FallbackModels")
-            .GetChildren()
-            .Select(c => c.Value)
-            .Where(v => !string.IsNullOrEmpty(v))
-            .Select(v => v!)
-            .ToArray();
+        _draftingModel = config["AI:Drafting:ModelId"] 
+                      ?? "deepseek/deepseek-v4-flash-0731";
+        _draftingProvider = config["AI:Drafting:Provider"] 
+                         ?? "open-inference";
 
-        if (modelsSection.Length > 0)
-        {
-            _fastModels = modelsSection;
-        }
-        else
-        {
-            _fastModels = new[]
-            {
-                config["AI:Groq:FastModel"] ?? "openai/gpt-oss-120b",
-                "openai/gpt-oss-20b",
-                "qwen/qwen3.6-27b"
-            };
-        }
-
-        // Polly retry policy: Retry once for fast models
-        _fastRetryPolicy = Policy
-            .Handle<Exception>()
-            .RetryAsync(1, onRetry: (exception, retryCount) =>
-            {
-                _logger.LogWarning("Fast provider failed. Retrying... (Attempt {RetryCount}). Error: {Error}", retryCount, exception.Message);
-            });
+        _researchModel = config["AI:Research:ModelId"] 
+                      ?? "z-ai/glm-5.3-flash";
+        _researchProvider = config["AI:Research:Provider"] 
+                         ?? "deepinfra";
     }
 
     public async Task<string> CompleteAsync(string systemPrompt, string userPrompt, string promptType = "chat", CancellationToken cancellationToken = default)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var estimatedPromptTokens = (systemPrompt.Length + userPrompt.Length) / 4;
-        var modelType = SelectModelType(promptType, systemPrompt, userPrompt);
         
-        _logger.LogInformation("[Router:Complete] PromptType={PromptType}, ModelType={ModelType}, EstPromptTokens~{Tokens}", promptType, modelType, estimatedPromptTokens);
-        
-        // Build ordered list of models based on complexity classification
-        var modelsToTry = new List<string>();
-        if (modelType == "DEEP")
-        {
-            if (!string.IsNullOrEmpty(_deepModel)) modelsToTry.Add(_deepModel.Trim());
-            foreach (var m in _fastModels)
-            {
-                var trimmed = m.Trim();
-                if (!string.IsNullOrEmpty(trimmed) && !modelsToTry.Contains(trimmed)) modelsToTry.Add(trimmed);
-            }
-        }
-        else
-        {
-            foreach (var m in _fastModels)
-            {
-                var trimmed = m.Trim();
-                if (!string.IsNullOrEmpty(trimmed) && !modelsToTry.Contains(trimmed)) modelsToTry.Add(trimmed);
-            }
-            if (!string.IsNullOrEmpty(_deepModel) && !modelsToTry.Contains(_deepModel.Trim())) modelsToTry.Add(_deepModel.Trim());
-        }
+        bool isDrafting = IsDraftingTask(promptType);
+        string model = isDrafting ? _draftingModel : _researchModel;
+        string provider = isDrafting ? _draftingProvider : _researchProvider;
+        string taskCategory = isDrafting ? "DRAFTING" : "RESEARCH_ANALYSIS";
 
-        string result = string.Empty;
-        foreach (var model in modelsToTry)
-        {
-            try
-            {
-                _logger.LogInformation("[Router:Complete] Attempting LLM call with model: {Model} (Target: {Type})", model, modelType);
-                result = await _fastProvider.CompleteAsync(model, systemPrompt, userPrompt, cancellationToken);
-                if (!string.IsNullOrEmpty(result))
-                {
-                    _logger.LogInformation("[Router:Complete] Successfully generated completion using model: {Model}", model);
-                    break;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning("[Router:Complete] Model {Model} failed ({Error}). Trying next fallback model...", model, ex.Message);
-                if (ex.Message.Contains("429") || ex.Message.Contains("TooManyRequests") || ex.Message.Contains("rate_limit"))
-                {
-                    _logger.LogInformation("[Router] Rate limited — waiting 25 seconds...");
-                    await Task.Delay(25000, cancellationToken);
-                }
-            }
-        }
+        _logger.LogInformation("[Router:Complete] Category={Category}, PromptType={PromptType}, Model={Model}, ProviderPref={Provider}, EstPromptTokens~{Tokens}", 
+            taskCategory, promptType, model, provider, estimatedPromptTokens);
 
-        if (string.IsNullOrEmpty(result))
+        try
         {
-            _logger.LogError("[Router:Complete] All external LLM models failed.");
-            throw new InvalidOperationException("All AI LLM models failed to generate a response. Please verify your API key or model network access.");
-        }
+            var result = await _openRouterProvider.CompleteAsync(model, systemPrompt, userPrompt, provider, cancellationToken);
+            
+            if (string.IsNullOrWhiteSpace(result))
+            {
+                _logger.LogError("[Router:Complete] Model {Model} returned empty response for {Category}.", model, taskCategory);
+                throw new InvalidOperationException($"Model {model} returned an empty response.");
+            }
 
-        sw.Stop();
-        var estimatedCompletionTokens = result.Length / 4;
-        _logger.LogInformation("[Router:Complete] Completed. LatencyMs={Ms}, EstCompletionTokens~{Tokens}, TotalTokens~{Total}",
-            sw.ElapsedMilliseconds, estimatedCompletionTokens, estimatedPromptTokens + estimatedCompletionTokens);
-        
-        return result;
+            sw.Stop();
+            var estimatedCompletionTokens = result.Length / 4;
+            _logger.LogInformation("[Router:Complete] Finished. Model={Model}, Provider={Provider}, LatencyMs={Ms}, EstCompletionTokens~{Tokens}",
+                model, provider, sw.ElapsedMilliseconds, estimatedCompletionTokens);
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Router:Complete] {Category} call to OpenRouter with Model {Model} (Provider: {Provider}) failed: {Error}", 
+                taskCategory, model, provider, ex.Message);
+            throw;
+        }
     }
 
     public async IAsyncEnumerable<string> StreamCompleteAsync(string systemPrompt, string userPrompt, string promptType = "chat", [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var modelType = SelectModelType(promptType, systemPrompt, userPrompt);
-        
-        var modelsToTry = new List<string>();
-        if (modelType == "DEEP")
-        {
-            modelsToTry.Add(_deepModel);
-        }
-        else
-        {
-            modelsToTry.AddRange(_fastModels.Select(m => m.Trim()));
-            if (!modelsToTry.Contains(_deepModel))
-            {
-                modelsToTry.Add(_deepModel);
-            }
-        }
+        bool isDrafting = IsDraftingTask(promptType);
+        string model = isDrafting ? _draftingModel : _researchModel;
+        string provider = isDrafting ? _draftingProvider : _researchProvider;
+        string taskCategory = isDrafting ? "DRAFTING" : "RESEARCH_ANALYSIS";
 
-        foreach (var model in modelsToTry)
+        _logger.LogInformation("[Router:Stream] Category={Category}, PromptType={PromptType}, Model={Model}, ProviderPref={Provider}", 
+            taskCategory, promptType, model, provider);
+
+        var stream = _openRouterProvider.StreamCompleteAsync(model, systemPrompt, userPrompt, provider, cancellationToken);
+        var enumerator = stream.GetAsyncEnumerator(cancellationToken);
+
+        try
         {
-            _logger.LogInformation("[Router] Attempting to stream with model: {Model}", model);
-            bool hasYielded = false;
-            bool failed = false;
-
-            IAsyncEnumerable<string> stream;
-            try
+            while (true)
             {
-                stream = _fastProvider.StreamCompleteAsync(model, systemPrompt, userPrompt, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning("[Router] Failed to initialize stream for model {Model}: {Error}. Trying next fallback...", model, ex.Message);
-                continue;
-            }
-
-            var enumerator = stream.GetAsyncEnumerator(cancellationToken);
-            try
-            {
-                while (true)
+                bool moveNext;
+                try
                 {
-                    bool moveNext;
-                    try
-                    {
-                        moveNext = await enumerator.MoveNextAsync();
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning("[Router] Streaming model {Model} failed: {Error}.", model, ex.Message);
-                        failed = true;
-                        break;
-                    }
-
-                    if (!moveNext) break;
-
-                    hasYielded = true;
-                    yield return enumerator.Current;
+                    moveNext = await enumerator.MoveNextAsync();
                 }
-            }
-            finally
-            {
-                await enumerator.DisposeAsync();
-            }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[Router:Stream] Streaming {Category} with model {Model} (Provider: {Provider}) failed mid-stream: {Error}", 
+                        taskCategory, model, provider, ex.Message);
+                    throw;
+                }
 
-            if (!failed && hasYielded)
-            {
-                // Completed successfully!
-                yield break;
-            }
+                if (!moveNext) break;
 
-            if (hasYielded)
-            {
-                // If it already started streaming chunks to the user before failing mid-stream, stop.
-                yield break;
+                yield return enumerator.Current;
             }
-
-            _logger.LogWarning("[Router] Model {Model} failed before producing output. Automatically switching to next model...", model);
+        }
+        finally
+        {
+            await enumerator.DisposeAsync();
         }
     }
 
-    private string SelectModelType(string promptType, string systemPrompt, string userPrompt)
+    private static bool IsDraftingTask(string promptType)
     {
-        int complexityScore = CalculateComplexityScore(promptType, systemPrompt, userPrompt);
-        
-        if (complexityScore >= 60)
-        {
-            _logger.LogInformation("[Router] Task '{PromptType}' assigned DEEP model (ComplexityScore={Score}).", promptType, complexityScore);
-            return "DEEP";
-        }
-
-        _logger.LogInformation("[Router] Task '{PromptType}' assigned FAST model (ComplexityScore={Score}).", promptType, complexityScore);
-        return "FAST";
-    }
-
-    private int CalculateComplexityScore(string promptType, string systemPrompt, string userPrompt)
-    {
-        int score = 0;
-
-        // 1. Task Type Base Rules
-        score += promptType.ToLowerInvariant() switch
-        {
-            "legaldraft" => 50,
-            "deepresearch" => 60,
-            "analysis" => 40,
-            "contradiction" => 45,
-            "actionplan" => 35,
-            // Analysis-page whole-record tasks — a full case brief / chronology / evidence
-            // review over a long file needs the DEEP model's reasoning and output budget.
-            "summarization" => 45,
-            "chronology" => 45,
-            "timeline" => 45,
-            "evidence" => 45,
-            "hearingprep" => 40,
-            "witnessprep" => 35,
-            "prep" => 25,
-            _ => 10
-        };
-
-        // 2. Length-based Heuristics
-        var combinedLen = systemPrompt.Length + userPrompt.Length;
-        if (combinedLen > 10000) score += 35;
-        else if (combinedLen > 4000) score += 20;
-
-        // 3. Legal Statutory Keyword Density Rules
-        var legalKeywords = new[] { "supreme court", "high court", "section", "article", "ipc", "crpc", "cpc", "statute", "precedent", "ratio decidendi", "interim relief", "stay order", "affidavit", "writ petition" };
-        var lowerPrompt = userPrompt.ToLowerInvariant();
-        foreach (var kw in legalKeywords)
-        {
-            if (lowerPrompt.Contains(kw)) score += 5;
-        }
-
-        return score;
+        return promptType.Equals("LegalDraft", StringComparison.OrdinalIgnoreCase)
+            || promptType.Equals("Draft", StringComparison.OrdinalIgnoreCase)
+            || promptType.Equals("Drafting", StringComparison.OrdinalIgnoreCase);
     }
 }

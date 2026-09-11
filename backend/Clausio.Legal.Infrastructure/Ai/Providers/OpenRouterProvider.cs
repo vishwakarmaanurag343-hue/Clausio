@@ -26,19 +26,16 @@ public class OpenRouterProvider : ILLMProvider
     {
         _logger = logger;
         _http = httpClient;
-        _apiKey = config["AI:Groq:ApiKey"]
-               ?? config["AI:OpenRouter:ApiKey"]
+        _apiKey = config["AI:OpenRouter:ApiKey"]
+               ?? Environment.GetEnvironmentVariable("OPENROUTER_API_KEY")
                ?? config["AI:FastProvider:ApiKey"]
-               ?? throw new InvalidOperationException("AI:Groq:ApiKey or AI:OpenRouter:ApiKey missing");
+               ?? config["AI:Groq:ApiKey"]
+               ?? throw new InvalidOperationException("AI:OpenRouter:ApiKey or OPENROUTER_API_KEY environment variable is missing");
 
-        _baseUrl = config["AI:Groq:BaseUrl"]
-                ?? config["AI:FastProvider:BaseUrl"]
-                ?? config["AI:OpenRouter:BaseUrl"]
-                ?? "https://api.groq.com/openai/v1";
+        _baseUrl = config["AI:OpenRouter:BaseUrl"]
+                ?? "https://openrouter.ai/api/v1";
 
-        // Non-streaming completions (the Analysis-page briefs, chronology, evidence review,
-        // non-stream chat) need room for a multi-page structured answer — a 4096 cap was
-        // truncating case summaries to a single page.
+        // Non-streaming completions (analysis briefs, chronology, evidence review) need room for multi-page answers
         _completionMaxTokens = int.TryParse(config["AI:AnalysisMaxTokens"], out var mt) && mt > 0 ? mt : 8192;
         
         _http.DefaultRequestHeaders.Add("User-Agent", "ClausioLegalAI/1.0");
@@ -47,13 +44,23 @@ public class OpenRouterProvider : ILLMProvider
 
     public async Task<string> CompleteAsync(string model, string systemPrompt, string userPrompt, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("OpenRouter CompleteAsync called for model {Model}", model);
-        return await CallApiAsync(model, systemPrompt, userPrompt, false, cancellationToken);
+        return await CompleteAsync(model, systemPrompt, userPrompt, null, cancellationToken);
     }
 
-    public async IAsyncEnumerable<string> StreamCompleteAsync(string model, string systemPrompt, string userPrompt, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public async Task<string> CompleteAsync(string model, string systemPrompt, string userPrompt, string? preferredProvider, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("OpenRouter StreamCompleteAsync called for model {Model}", model);
+        _logger.LogInformation("OpenRouter CompleteAsync called for model {Model}, ProviderPreference: {Provider}", model, preferredProvider ?? "default");
+        return await CallApiAsync(model, systemPrompt, userPrompt, false, preferredProvider, cancellationToken);
+    }
+
+    public IAsyncEnumerable<string> StreamCompleteAsync(string model, string systemPrompt, string userPrompt, CancellationToken cancellationToken = default)
+    {
+        return StreamCompleteAsync(model, systemPrompt, userPrompt, null, cancellationToken);
+    }
+
+    public async IAsyncEnumerable<string> StreamCompleteAsync(string model, string systemPrompt, string userPrompt, string? preferredProvider, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("OpenRouter StreamCompleteAsync called for model {Model}, ProviderPreference: {Provider}", model, preferredProvider ?? "default");
 
         var requestBody = new Dictionary<string, object>
         {
@@ -67,31 +74,30 @@ public class OpenRouterProvider : ILLMProvider
                 new { role = "user", content = userPrompt }
             }
         };
-        if (_baseUrl.Contains("sarvam.ai", StringComparison.OrdinalIgnoreCase))
+
+        if (!string.IsNullOrWhiteSpace(preferredProvider))
         {
-            requestBody["reasoning_effort"] = "low";
-        }
-        else
-        {
-            requestBody["reasoning_effort"] = model.Contains("gpt-oss", StringComparison.OrdinalIgnoreCase) ? "low" : "none";
+            requestBody["provider"] = new Dictionary<string, object>
+            {
+                ["order"] = new[] { preferredProvider },
+                ["allow_fallbacks"] = false
+            };
         }
 
         var json = JsonSerializer.Serialize(requestBody);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/chat/completions");
-        if (_apiKey.StartsWith("sk_", StringComparison.OrdinalIgnoreCase) && _baseUrl.Contains("sarvam.ai", StringComparison.OrdinalIgnoreCase))
-        {
-            request.Headers.Add("api-subscription-key", _apiKey);
-        }
-        else
-        {
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-        }
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
         request.Content = content;
 
         using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var err = await response.Content.ReadAsStringAsync(cancellationToken);
+            _logger.LogError("[OpenRouterProvider] Stream model {Model} failed: {Status} - {Error}", model, response.StatusCode, err);
+            throw new HttpRequestException($"Model {model} returned {response.StatusCode}: {err}");
+        }
 
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var reader = new StreamReader(stream);
@@ -113,7 +119,7 @@ public class OpenRouterProvider : ILLMProvider
                     var delta = parsed.RootElement.GetProperty("choices")[0].GetProperty("delta");
                     if (delta.TryGetProperty("content", out var contentProp))
                     {
-                        chunk = contentProp.GetString();
+                        chunk = contentProp.GetString() ?? "";
                     }
                 }
                 catch { /* Ignore parse errors */ }
@@ -126,7 +132,7 @@ public class OpenRouterProvider : ILLMProvider
         }
     }
 
-    private async Task<string> CallApiAsync(string model, string systemPrompt, string userPrompt, bool stream, CancellationToken cancellationToken)
+    private async Task<string> CallApiAsync(string model, string systemPrompt, string userPrompt, bool stream, string? preferredProvider, CancellationToken cancellationToken)
     {
         var requestBody = new Dictionary<string, object>
         {
@@ -141,27 +147,20 @@ public class OpenRouterProvider : ILLMProvider
             }
         };
 
-        if (_baseUrl.Contains("sarvam.ai", StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrWhiteSpace(preferredProvider))
         {
-            requestBody["reasoning_effort"] = "low";
-        }
-        else
-        {
-            requestBody["reasoning_effort"] = model.Contains("gpt-oss", StringComparison.OrdinalIgnoreCase) ? "low" : "none";
+            requestBody["provider"] = new Dictionary<string, object>
+            {
+                ["order"] = new[] { preferredProvider },
+                ["allow_fallbacks"] = false
+            };
         }
 
         var json = JsonSerializer.Serialize(requestBody);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/chat/completions");
-        if (_apiKey.StartsWith("sk_", StringComparison.OrdinalIgnoreCase) && _baseUrl.Contains("sarvam.ai", StringComparison.OrdinalIgnoreCase))
-        {
-            request.Headers.Add("api-subscription-key", _apiKey);
-        }
-        else
-        {
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-        }
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
         request.Content = content;
 
         var response = await _http.SendAsync(request, cancellationToken);
