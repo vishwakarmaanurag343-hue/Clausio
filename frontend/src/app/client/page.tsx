@@ -143,9 +143,15 @@ export default function ClientPage() {
     }
   }, [selectedCaseId, clientEmail, manualEmail, message, clientName, handleSent])
 
+  const handleStateChange = useCallback((st: { tone: string; language: string; options: UpdateOptions }) => {
+    setCurrentTone(st.tone)
+    setCurrentLanguage(st.language)
+    setCurrentOptions(st.options)
+  }, [])
+
   return (
     <>
-      <div className="glass-panel mobile-client-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: 'calc(100vh - 32px)', overflow: 'hidden', margin: '16px', padding: 20, borderRadius: 24 }}>
+      <div className="glass-panel mobile-client-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: 'calc(100vh - 32px)', overflowY: 'auto', margin: '16px', padding: 20, borderRadius: 24 }}>
         
         {/* ── DESKTOP CLIENT VIEW ── */}
         <div className="desktop-client-view" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -270,11 +276,7 @@ export default function ClientPage() {
                 onGenerate={generate}
                 generating={generating}
                 channel={channel}
-                onStateChange={(st) => {
-                  setCurrentTone(st.tone)
-                  setCurrentLanguage(st.language)
-                  setCurrentOptions(st.options)
-                }}
+                onStateChange={handleStateChange}
               />
 
               <WhatsAppPreview
@@ -467,11 +469,7 @@ export default function ClientPage() {
                     onGenerate={generate}
                     generating={generating}
                     channel={channel}
-                    onStateChange={(st) => {
-                      setCurrentTone(st.tone)
-                      setCurrentLanguage(st.language)
-                      setCurrentOptions(st.options)
-                    }}
+                    onStateChange={handleStateChange}
                   />
                   <WhatsAppPreview
                     message={message}

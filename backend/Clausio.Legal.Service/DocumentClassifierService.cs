@@ -58,9 +58,16 @@ public class DocumentClassifierService(
     private async Task<(string Category, int Confidence, string Description)>
         ClassifyWithAiAsync(string content, string filename, CancellationToken ct)
     {
-        var apiKey  = config["AI:OpenRouter:ApiKey"] 
-                   ?? Environment.GetEnvironmentVariable("OPENROUTER_API_KEY") 
-                   ?? "";
+        var rawKey = Environment.GetEnvironmentVariable("OPENROUTER_API_KEY");
+        if (string.IsNullOrWhiteSpace(rawKey) || rawKey.Contains("YOUR_OPENROUTER_API_KEY", StringComparison.OrdinalIgnoreCase))
+        {
+            var confKey = config["AI:OpenRouter:ApiKey"] ?? config["AI:FastProvider:ApiKey"];
+            if (!string.IsNullOrWhiteSpace(confKey) && !confKey.Contains("YOUR_OPENROUTER_API_KEY", StringComparison.OrdinalIgnoreCase))
+            {
+                rawKey = confKey;
+            }
+        }
+        var apiKey  = rawKey ?? "";
         var baseUrl = config["AI:OpenRouter:BaseUrl"] ?? "https://openrouter.ai/api/v1";
         var model   = config["AI:Research:ModelId"] ?? "z-ai/glm-5.3-flash";
 

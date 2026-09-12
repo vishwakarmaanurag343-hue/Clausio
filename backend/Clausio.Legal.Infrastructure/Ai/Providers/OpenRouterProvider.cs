@@ -26,11 +26,31 @@ public class OpenRouterProvider : ILLMProvider
     {
         _logger = logger;
         _http = httpClient;
-        _apiKey = config["AI:OpenRouter:ApiKey"]
-               ?? Environment.GetEnvironmentVariable("OPENROUTER_API_KEY")
-               ?? config["AI:FastProvider:ApiKey"]
-               ?? config["AI:Groq:ApiKey"]
-               ?? throw new InvalidOperationException("AI:OpenRouter:ApiKey or OPENROUTER_API_KEY environment variable is missing");
+        var rawKey = Environment.GetEnvironmentVariable("OPENROUTER_API_KEY");
+        if (string.IsNullOrWhiteSpace(rawKey) || rawKey.Contains("YOUR_OPENROUTER_API_KEY", StringComparison.OrdinalIgnoreCase))
+        {
+            var configCandidates = new[]
+            {
+                config["AI:OpenRouter:ApiKey"],
+                config["AI:FastProvider:ApiKey"],
+                config["AI:DeepProvider:ApiKey"],
+                config["AI:Groq:ApiKey"]
+            };
+
+            foreach (var candidate in configCandidates)
+            {
+                if (!string.IsNullOrWhiteSpace(candidate) && 
+                    !candidate.Contains("YOUR_OPENROUTER_API_KEY", StringComparison.OrdinalIgnoreCase))
+                {
+                    rawKey = candidate;
+                    break;
+                }
+            }
+        }
+
+        _apiKey = !string.IsNullOrWhiteSpace(rawKey) && !rawKey.Contains("YOUR_OPENROUTER_API_KEY", StringComparison.OrdinalIgnoreCase)
+            ? rawKey
+            : throw new InvalidOperationException("Valid OpenRouter API key was not found in environment or configuration.");
 
         _baseUrl = config["AI:OpenRouter:BaseUrl"]
                 ?? "https://openrouter.ai/api/v1";
@@ -156,11 +176,6 @@ public class OpenRouterProvider : ILLMProvider
                 new { role = "user", content = userPrompt }
             }
         };
-
-        if (isClientUpdate)
-        {
-            requestBody["reasoning"] = new Dictionary<string, object> { ["effort"] = "none" };
-        }
 
         if (!string.IsNullOrWhiteSpace(preferredProvider))
         {
