@@ -327,7 +327,15 @@ public class AIPipeline : IAIPipeline
         if (taskType == "LegalDraft")
         {
             var docType = parameters != null && parameters.ContainsKey("DocumentType") ? parameters["DocumentType"]?.ToString() ?? "Document" : "Document";
-            response = await _draftEngine.DraftDocumentAsync(caseId, docType, context.FinalUserPrompt, context.CaseMemoryXml, cancellationToken);
+            // Drafts can take longer with large case files + style references + RAG judgments.
+            // Use a 300s timeout to avoid the HttpClient 180s hard limit.
+            using var draftCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            draftCts.CancelAfter(TimeSpan.FromSeconds(300));
+            try {
+                response = await _draftEngine.DraftDocumentAsync(caseId, docType, context.FinalUserPrompt, context.CaseMemoryXml, draftCts.Token);
+            } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+                response = "The AI took too long to generate the draft. Please try with a shorter case file or fewer documents.";
+            }
         }
         else
         {
@@ -488,13 +496,18 @@ public class AIPipeline : IAIPipeline
             contextXml += BuildReferenceBlock(streamRef);
         _logger.LogInformation("[Pipeline:Stream] Context assembled. Size={Chars} chars", contextXml.Length);
 
+        // === STEP 2.5: PII Tokenization (DPDP Act Compliance) ===
+        var tokenizedContextXml = await _piiTokenService.TokenizeAsync(contextXml, caseId, cancellationToken);
+        var tokenizedUserInput = await _piiTokenService.TokenizeAsync(userInput, caseId, cancellationToken);
+        var tokenMap = await _piiTokenService.GetTokenMapAsync(caseId, cancellationToken);
+
         // === Progress: Phase 3 ===
         yield return FormatProgressChunk("Retrieving legal evidence...");
         await Task.Delay(50, cancellationToken); // Simulate retrieval step display
 
         // === STEP 3: Prompt Builder ===
         var templateName = ResolveTemplate(taskType, parameters);
-        var variables = new Dictionary<string, string> { { "CONTEXT", contextXml } };
+        var variables = new Dictionary<string, string> { { "CONTEXT", tokenizedContextXml } };
         var systemPrompt = _promptBuilder.BuildSystemPrompt(templateName, variables);
         _logger.LogInformation("[Pipeline:Stream] Prompt built. Template={Template}", templateName);
 
@@ -506,8 +519,19 @@ public class AIPipeline : IAIPipeline
 
         // === STEP 4: Stream from AI Router ===
         var responseSb = new System.Text.StringBuilder();
-        await foreach (var chunk in _router.StreamCompleteAsync(systemPrompt, userInput, taskType, cancellationToken))
+        await foreach (var rawChunk in _router.StreamCompleteAsync(systemPrompt, tokenizedUserInput, taskType, cancellationToken))
         {
+            var chunk = rawChunk;
+            if (!chunk.StartsWith("[sys]") && tokenMap.Count > 0)
+            {
+                // Detokenize synthetic PII tokens on the fly
+                foreach (var (token, realVal) in tokenMap)
+                {
+                    if (chunk.Contains(token))
+                        chunk = chunk.Replace(token, realVal);
+                }
+            }
+
             if (!chunk.StartsWith("[sys]"))
             {
                 responseSb.Append(chunk);

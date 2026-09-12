@@ -237,6 +237,36 @@ public class AiController(IAiService aiService, IJudgmentAnalysisService judgmen
         return Ok(new { draft = result });
     }
 
+    // ✅ Real-time token streaming for legal drafting (Perceived latency < 1 second)
+    [HttpPost("draft/stream/{caseId:guid}")]
+    public async Task StreamDraft(Guid caseId, [FromBody] DraftRequestDto request, CancellationToken cancellationToken)
+    {
+        Response.ContentType = "text/event-stream";
+        Response.Headers.Append("Cache-Control", "no-cache");
+        Response.Headers.Append("X-Accel-Buffering", "no");
+
+        try
+        {
+            var stream = aiService.StreamDraftDocumentAsync(caseId, request, cancellationToken);
+            await foreach (var chunk in stream)
+            {
+                var jsonChunk = System.Text.Json.JsonSerializer.Serialize(chunk);
+                var data = $"data: {jsonChunk}\n\n";
+                await Response.WriteAsync(data, cancellationToken);
+                await Response.Body.FlushAsync(cancellationToken);
+            }
+
+            await Response.WriteAsync("data: [DONE]\n\n", cancellationToken);
+            await Response.Body.FlushAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            var data = $"data: [sys] ERROR: {ex.Message}\n\n";
+            await Response.WriteAsync(data, cancellationToken);
+            await Response.Body.FlushAsync(cancellationToken);
+        }
+    }
+
     // ✅ Returns { judgments: [{ caseName, citation, year, court, caseType, ratioDecidendi, howToUse, similarityLevel, chunkText, relevanceScore }] }
     // Judgment Analysis — Similar Case Finder. Searches the verified JudgmentChunks corpus for the current case.
     [HttpGet("judgment-analysis/{caseId:guid}")]

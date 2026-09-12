@@ -485,19 +485,32 @@ export default function DraftsTab() {
     setDraft('')
     setCustomDraftText(null)
     setIsEditing(false)
+    setSavedDraft(null)
+    setVersions([])
+    setViewingVersion(null)
+    setDiffSelection([])
+    setEditingAfterFinal(false)
+    setActionError('')
+
+    let accumulatedDraft = ''
     try {
-      const res = await aiApi.getDraft(targetCaseId, { draftType: draftType || 'Bail Application', instructions }, selectedRefId || undefined)
-      const rawContent = res?.draft ?? res?.result ?? res
-      setDraft(typeof rawContent === 'object' ? JSON.stringify(rawContent) : String(rawContent))
-      // Fresh generation starts unsaved — "Save Draft" creates Version 1
-      setSavedDraft(null)
-      setVersions([])
-      setViewingVersion(null)
-      setDiffSelection([])
-      setEditingAfterFinal(false)
-      setActionError('')
-    } catch (err: any) {
-      setError(err.message || 'Failed to generate draft. Please try again.')
+      // ✅ Real-time token streaming: first word appears in < 1s
+      const stream = aiApi.getDraftStream(targetCaseId, { draftType: draftType || 'Bail Application', instructions }, selectedRefId || undefined)
+      for await (const chunk of stream) {
+        if (!chunk.startsWith('[sys]')) {
+          accumulatedDraft += chunk
+          setDraft(accumulatedDraft)
+        }
+      }
+    } catch (streamErr: any) {
+      // Fallback to standard synchronous draft if stream encountered an error
+      try {
+        const res = await aiApi.getDraft(targetCaseId, { draftType: draftType || 'Bail Application', instructions }, selectedRefId || undefined)
+        const rawContent = res?.draft ?? res?.result ?? res
+        setDraft(typeof rawContent === 'object' ? JSON.stringify(rawContent) : String(rawContent))
+      } catch (err: any) {
+        setError(err.message || 'Failed to generate draft. Please try again.')
+      }
     } finally {
       setGenerating(false)
     }
@@ -1202,7 +1215,7 @@ export default function DraftsTab() {
             </div>
 
             <div style={{ padding: '24px' }}>
-              {generating && (
+              {generating && !activeText && (
                 <DraftingProgressIndicator draftType={draftType} />
               )}
 
@@ -1221,8 +1234,20 @@ export default function DraftsTab() {
                 </div>
               )}
 
-              {!generating && activeText && (
+              {activeText && (
                 <>
+                  {generating && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 16px', padding: '10px 16px', background: 'rgba(239, 246, 255, 0.85)', backdropFilter: 'blur(8px)', border: '1px solid #bfdbfe', borderRadius: 12, fontSize: 13, color: '#1d4ed8', fontWeight: 600, boxShadow: '0 2px 10px rgba(37,99,235,0.08)' }}>
+                      <span className="relative flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-600"></span>
+                      </span>
+                      <span>Drafting in real-time...</span>
+                      <span style={{ fontSize: 11, fontWeight: 500, color: '#3b82f6', marginLeft: 'auto' }}>
+                        Live Stream Active
+                      </span>
+                    </div>
+                  )}
                   {viewingVersion !== null && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 12px', padding: '8px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, fontSize: 12, color: '#1e40af' }}>
                       <i className="ti ti-eye" style={{ fontSize: 14 }} />

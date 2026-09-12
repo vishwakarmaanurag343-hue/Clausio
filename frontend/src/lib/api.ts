@@ -523,6 +523,53 @@ export const aiApi = {
   getWitness: (caseId: string, data: any, refId?: string) => send('POST', `/ai/witness/${caseId}${refQ(refId)}`, data, 'Failed to generate witness intelligence'),
   translate: (data: any) => send('POST', '/ai/translate', data, 'Failed to translate'),
   getDraft: (caseId: string, data: any, refId?: string) => send('POST', `/ai/draft/${caseId}${refQ(refId)}`, data, 'Failed to generate draft'),
+  getDraftStream: async function* (caseId: string, data: any, refId?: string): AsyncGenerator<string, void, unknown> {
+    const token = getToken()
+    const res = await fetch(`${BASE}/ai/draft/stream/${caseId}${refQ(refId)}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(data)
+    })
+
+    if (!res.ok) {
+      throw new Error('Failed to get legal draft stream')
+    }
+
+    if (!res.body) {
+      throw new Error('No response body')
+    }
+
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const dataStr = line.slice(6)
+          if (dataStr === '[DONE]') {
+            return
+          }
+          try {
+            const parsed = JSON.parse(dataStr)
+            yield typeof parsed === 'string' ? parsed : JSON.stringify(parsed)
+          } catch {
+            yield dataStr
+          }
+        }
+      }
+    }
+  },
   getCaseType: (data: any) => send('POST', '/ai/casetype', data, 'Failed to detect case type'),
 
   // Judgment Analysis (Analytics → Judgment Analysis)

@@ -49,8 +49,14 @@ public class OpenRouterProvider : ILLMProvider
 
     public async Task<string> CompleteAsync(string model, string systemPrompt, string userPrompt, string? preferredProvider, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("OpenRouter CompleteAsync called for model {Model}, ProviderPreference: {Provider}", model, preferredProvider ?? "default");
-        return await CallApiAsync(model, systemPrompt, userPrompt, false, preferredProvider, cancellationToken);
+        return await CompleteAsync(model, systemPrompt, userPrompt, preferredProvider, null, cancellationToken);
+    }
+
+    public async Task<string> CompleteAsync(string model, string systemPrompt, string userPrompt, string? preferredProvider, int? customMaxTokens, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("OpenRouter CompleteAsync called for model {Model}, ProviderPreference: {Provider}, MaxTokens: {Tokens}", 
+            model, preferredProvider ?? "default", customMaxTokens ?? _completionMaxTokens);
+        return await CallApiAsync(model, systemPrompt, userPrompt, false, preferredProvider, customMaxTokens, cancellationToken);
     }
 
     public IAsyncEnumerable<string> StreamCompleteAsync(string model, string systemPrompt, string userPrompt, CancellationToken cancellationToken = default)
@@ -133,10 +139,10 @@ public class OpenRouterProvider : ILLMProvider
         }
     }
 
-    private async Task<string> CallApiAsync(string model, string systemPrompt, string userPrompt, bool stream, string? preferredProvider, CancellationToken cancellationToken)
+    private async Task<string> CallApiAsync(string model, string systemPrompt, string userPrompt, bool stream, string? preferredProvider, int? customMaxTokens, CancellationToken cancellationToken)
     {
         bool isClientUpdate = systemPrompt.Contains("CLIENT-UPDATE TASK", StringComparison.OrdinalIgnoreCase);
-        int maxTokens = isClientUpdate ? 2048 : _completionMaxTokens;
+        int maxTokens = customMaxTokens ?? (isClientUpdate ? 2048 : _completionMaxTokens);
 
         var requestBody = new Dictionary<string, object>
         {

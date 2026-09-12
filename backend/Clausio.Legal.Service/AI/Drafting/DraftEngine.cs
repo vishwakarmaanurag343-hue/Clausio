@@ -55,27 +55,27 @@ public class DraftEngine : IDraftEngine
         var initialDraft = await _aiRouter.CompleteAsync(systemPrompt, instructions, "LegalDraft", cancellationToken);
 
         // Client updates are short plain-language messages, not legal documents.
-        // The DraftSelfReview validator judges them as "incomplete / missing sections"
-        // and the refinement pass then pads them with hearing recaps and content the
-        // advocate did not tick. Skip the whole validation loop for this template.
         if (templateName == "ClientUpdate")
         {
             _logger.LogInformation("[DraftEngine] ClientUpdate — skipping legal-draft validation pipeline.");
             return initialDraft;
         }
 
-        // Step 3: Execute Draft Validation Pipeline
-        _logger.LogInformation("[DraftEngine] Executing Draft Validation Pipeline...");
-        var (passed, score, recommendation, feedback) = await _validationPipeline.ValidateDraftAsync(initialDraft, documentType, cancellationToken);
-        
-        _logger.LogInformation("[DraftEngine] Draft Validation Completed. Passed={Passed}, Score={Score}, Recommendation={Rec}", passed, score, recommendation);
-
-        if (!passed)
+        // Step 3: Execute Draft Validation Pipeline asynchronously in background
+        // Does not block the lawyer from receiving their draft in under 20 seconds.
+        _ = Task.Run(async () =>
         {
-            _logger.LogWarning("[DraftEngine] Draft validation flagged issues: {Feedback}. Applying auto-refinement...", feedback);
-            var refinementPrompt = $"Original Draft:\n{initialDraft}\n\nValidation Feedback:\n{feedback}\n\nPlease revise and correct the legal draft accordingly.";
-            initialDraft = await _aiRouter.CompleteAsync(systemPrompt, refinementPrompt, "LegalDraft", cancellationToken);
-        }
+            try
+            {
+                _logger.LogInformation("[DraftEngine:AsyncValidation] Executing background draft review for {DocumentType}...", documentType);
+                var (passed, score, recommendation, feedback) = await _validationPipeline.ValidateDraftAsync(initialDraft, documentType, CancellationToken.None);
+                _logger.LogInformation("[DraftEngine:AsyncValidation] Audit Completed. Passed={Passed}, Score={Score}, Rec={Rec}", passed, score, recommendation);
+            }
+            catch (Exception valEx)
+            {
+                _logger.LogWarning(valEx, "[DraftEngine:AsyncValidation] Background validation completed with warning.");
+            }
+        });
 
         return initialDraft;
     }

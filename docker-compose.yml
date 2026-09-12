@@ -22,10 +22,10 @@ services:
       Jwt__Audience: ClausioClients
       AI__OpenRouter__ApiKey: ${OPENROUTER_API_KEY}
       AI__OpenRouter__BaseUrl: https://openrouter.ai/api/v1
-      AI__Drafting__ModelId: deepseek/deepseek-v4-flash-0731
-      AI__Drafting__Provider: open-inference
+      AI__Drafting__ModelId: z-ai/glm-5.3-flash
+      AI__Drafting__Provider: Relace,Wafer,DeepInfra,Morph,Novita,Makora
       AI__Research__ModelId: z-ai/glm-5.3-flash
-      AI__Research__Provider: deepinfra
+      AI__Research__Provider: Relace,Wafer,DeepInfra,Morph,Novita,Makora
       AI__EmbeddingProvider__ApiKey: ${OPENROUTER_API_KEY}
       AI__EmbeddingProvider__BaseUrl: https://openrouter.ai/api/v1
       AI__EmbeddingProvider__ModelId: qwen/qwen3-embedding-8b

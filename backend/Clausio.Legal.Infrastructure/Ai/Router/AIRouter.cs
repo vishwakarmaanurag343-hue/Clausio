@@ -38,9 +38,9 @@ public class AIRouter : IAIRouter
         _logger = logger;
 
         _draftingModel = config["AI:Drafting:ModelId"] 
-                      ?? "deepseek/deepseek-v4-flash-0731";
+                      ?? "z-ai/glm-5.3-flash";
         _draftingProvider = config["AI:Drafting:Provider"] 
-                         ?? "open-inference";
+                         ?? "deepinfra";
 
         _researchModel = config["AI:Research:ModelId"] 
                       ?? "z-ai/glm-5.3-flash";
@@ -61,9 +61,11 @@ public class AIRouter : IAIRouter
         _logger.LogInformation("[Router:Complete] Category={Category}, PromptType={PromptType}, Model={Model}, ProviderPref={Provider}, EstPromptTokens~{Tokens}", 
             taskCategory, promptType, model, provider, estimatedPromptTokens);
 
+        int? customMaxTokens = isDrafting ? 16384 : null;
+
         try
         {
-            var result = await _openRouterProvider.CompleteAsync(model, systemPrompt, userPrompt, provider, cancellationToken);
+            var result = await _openRouterProvider.CompleteAsync(model, systemPrompt, userPrompt, provider, customMaxTokens, cancellationToken);
             
             if (string.IsNullOrWhiteSpace(result))
             {

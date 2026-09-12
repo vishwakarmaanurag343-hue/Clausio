@@ -19,6 +19,9 @@ public interface IPiiTokenService
     // Restore tokens back to real names in AI response
     Task<string> DetokenizeAsync(string text, Guid caseId, CancellationToken ct = default);
 
+    // Get key-value map of Token -> RealValue for fast streaming detokenization
+    Task<Dictionary<string, string>> GetTokenMapAsync(Guid caseId, CancellationToken ct = default);
+
     // Register tokens when a case/client is created or updated
     Task RegisterCaseTokensAsync(Guid caseId, Client client, CancellationToken ct = default);
 }
@@ -72,6 +75,27 @@ public class PiiTokenService(
         }
 
         return text;
+    }
+
+    public async Task<Dictionary<string, string>> GetTokenMapAsync(Guid caseId, CancellationToken ct = default)
+    {
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (caseId == Guid.Empty) return map;
+
+        var vault = await sensitiveDb.TokenVault
+            .Where(t => t.CaseId == caseId)
+            .ToListAsync(ct);
+
+        foreach (var entry in vault)
+        {
+            var realValue = encryption.Decrypt(entry.RealValue);
+            if (!string.IsNullOrWhiteSpace(realValue))
+            {
+                map[entry.Token] = realValue;
+            }
+        }
+
+        return map;
     }
 
     public async Task RegisterCaseTokensAsync(

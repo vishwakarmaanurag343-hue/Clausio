@@ -30,6 +30,7 @@ public interface IAiService
     Task<string> PrepWitnessAsync(Guid caseId, WitnessPrepRequestDto request, CancellationToken cancellationToken = default);
     Task<string> ClassifyCaseTypeAsync(CaseTypeRequestDto request, CancellationToken cancellationToken = default);
     Task<string> DraftDocumentAsync(Guid caseId, DraftRequestDto request, CancellationToken cancellationToken = default);
+    IAsyncEnumerable<string> StreamDraftDocumentAsync(Guid caseId, DraftRequestDto request, CancellationToken cancellationToken = default);
 }
 
 public class AiService : IAiService
@@ -288,5 +289,11 @@ public class AiService : IAiService
     {
         var parameters = new Dictionary<string, object> { { "DocumentType", request.DraftType ?? "Document" } };
         return _pipeline.ExecuteAsync(caseId, request.Instructions ?? "Draft the document.", "LegalDraft", parameters, cancellationToken);
+    }
+
+    public IAsyncEnumerable<string> StreamDraftDocumentAsync(Guid caseId, DraftRequestDto request, CancellationToken cancellationToken = default)
+    {
+        var parameters = new Dictionary<string, object> { { "DocumentType", request.DraftType ?? "Document" } };
+        return _pipeline.StreamExecuteAsync(caseId, request.Instructions ?? "Draft the document.", "LegalDraft", parameters, cancellationToken);
     }
 }
