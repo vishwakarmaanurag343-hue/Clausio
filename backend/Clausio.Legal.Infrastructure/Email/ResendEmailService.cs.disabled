@@ -1,0 +1,56 @@
+using Clausio.Legal.Service;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Resend;
+
+namespace Clausio.Legal.Infrastructure.Email;
+
+public class ResendEmailService : IEmailService
+{
+    private readonly IResend _resend;
+    private readonly string _fromEmail;
+    private readonly string _fromName;
+    private readonly ILogger<ResendEmailService> _logger;
+
+    public ResendEmailService(
+        IResend resend,
+        IConfiguration config,
+        ILogger<ResendEmailService> logger)
+    {
+        _resend = resend;
+        _fromEmail = config["Resend:FromEmail"] ?? "noreply@clausiotech.com";
+        _fromName = config["Resend:FromName"] ?? "Clausio Legal";
+        _logger = logger;
+    }
+
+    public async Task<bool> SendEmailAsync(
+        string toEmail,
+        string toName,
+        string subject,
+        string htmlBody,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var message = new EmailMessage
+            {
+                From = $"{_fromName} <{_fromEmail}>",
+                To = { toEmail },
+                Subject = subject,
+                HtmlBody = htmlBody
+            };
+
+            var response = await _resend.EmailSendAsync(message, ct);
+            _logger.LogInformation(
+                "Email sent to {Email} via Resend. Id: {Id}", 
+                toEmail, response.Content);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, 
+                "Failed to send email to {Email} via Resend", toEmail);
+            return false;
+        }
+    }
+}
