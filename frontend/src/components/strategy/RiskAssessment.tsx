@@ -32,6 +32,26 @@ function categoryStyle(c?: string) { return CATEGORY_STYLE[c ?? ''] ?? { bg: '#f
 
 /** Extract the risks array from the model response. Returns null on ANY failure — callers must never render raw text. */
 function extractRisks(raw: unknown): CaseRisk[] | null {
+  if (typeof raw === 'string') {
+    const cleaned = raw.replace(/\[sys\][^\[]*/g, '').trim()
+    if (cleaned && !cleaned.includes('{')) {
+      const lines = cleaned.split('\n').filter((l: string) => l.trim())
+      const risks = lines
+        .filter((l: string) => /^\d+[.)\s]/.test(l.trim()))
+        .map((l: string) => ({
+          risk: l.replace(/^\d+[.)\s]+/, ''),
+          category: 'Evidentiary',
+          severity: 'Medium',
+          cause: l.replace(/^\d+[.)\s]+/, ''),
+          mitigation: 'Review and address this risk before the next hearing.'
+        }))
+      if (risks.length > 0) return risks
+    }
+  }
+  // Clean sys tags first
+  if (typeof raw === 'string') {
+    raw = raw.replace(/\[sys\][^\[]*/g, '').trim()
+  }
   let parsed: any = raw
   if (typeof raw === 'string') {
     if (!raw.trim()) return null
@@ -51,15 +71,22 @@ export default function RiskAssessment() {
 
   function loadRisks() {
     if (!selectedCaseId) return
-    setLoading(true); setError('')
-    aiApi.getRisks(selectedCaseId)
-      .then(res => {
-        const parsed = extractRisks(res.risks ?? res.result ?? res)
-        if (parsed) { setRisks(parsed); setLoaded(true) }
+    setLoading(true); setError(''); setRisks(null)
+    ;(async () => {
+      try {
+        const { aiStreams } = await import("@/lib/api")
+        let t = ""
+        for await (const c of aiStreams.risks(selectedCaseId)) { t += c }
+        console.log('RISK RAW:', t.substring(0, 300))
+        const parsed = extractRisks(t)
+        if (parsed && parsed.length > 0) { setRisks(parsed); setLoaded(true) }
         else setError('The AI response could not be read as risk cards. Please retry.')
-      })
-      .catch(err => setError(err.message || 'Failed to assess case risks'))
-      .finally(() => setLoading(false))
+      } catch (err: any) {
+        setError(err.message || 'Failed to assess case risks')
+      } finally {
+        setLoading(false)
+      }
+    })()
   }
 
   const counts = risks?.reduce<Record<string, number>>((acc, r) => {

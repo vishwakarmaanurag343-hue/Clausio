@@ -684,3 +684,44 @@ export const walletApi = {
       }>
     }>,
 }
+
+// ── STREAMING HELPERS FOR ALL AI FEATURES ──────────────────
+async function* sseStream(url: string, body?: any): AsyncGenerator<string, void, unknown> {
+  const token = getToken();
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) throw new Error(`Stream failed: ${res.status}`);
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') return;
+        if (data) yield data.replace(/\\n/g, '\n');
+      }
+    }
+  }
+}
+
+export const aiStreams = {
+  summary:         (caseId: string) => sseStream(`${BASE}/ai/summary/stream/${caseId}`),
+  chronology:      (caseId: string) => sseStream(`${BASE}/ai/chronology/stream/${caseId}`),
+  contradictions:  (caseId: string) => sseStream(`${BASE}/ai/contradictions/stream/${caseId}`),
+  research:        (caseId: string) => sseStream(`${BASE}/ai/research/stream/${caseId}`),
+  actionPlan:      (caseId: string) => sseStream(`${BASE}/ai/actionplan/stream/${caseId}`),
+  financial:       (caseId: string) => sseStream(`${BASE}/ai/financial/stream/${caseId}`),
+  readiness:       (caseId: string) => sseStream(`${BASE}/ai/readiness/stream/${caseId}`),
+  risks:           (caseId: string) => sseStream(`${BASE}/ai/risks/stream/${caseId}`),
+  recommendations: (caseId: string) => sseStream(`${BASE}/ai/recommendations/stream/${caseId}`),
+  witness:         (caseId: string) => sseStream(`${BASE}/ai/witness/stream/${caseId}`),
+};

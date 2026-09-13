@@ -79,14 +79,18 @@ export default function ActionPlan({ fullView = false }: Props) {
   function generate() {
     if (!selectedCaseId || generating) return
     setGenerating(true); setGenError(''); setSavedCount(null)
-    aiApi.getActionPlan(selectedCaseId)
-      .then(res => {
-        const parsed = extractPlan(res.actionPlan ?? res.result ?? res)
+    ;(async () => {
+      try {
+        const { aiStreams } = await import("@/lib/api")
+        let t = ""
+        for await (const c of aiStreams.actionPlan(selectedCaseId)) { t += c }
+        const parsed = extractPlan(t)
         if (parsed) setPlan(parsed)
         else setGenError('The AI response could not be read as plan cards. Please retry.')
-      })
-      .catch(err => setGenError(err.message || 'Failed to generate the working plan'))
-      .finally(() => setGenerating(false))
+      } catch (err: any) {
+        setGenError(err.message || 'Failed to generate the working plan')
+      } finally { setGenerating(false) }
+    })()
   }
 
   async function saveAllToMyPlan() {

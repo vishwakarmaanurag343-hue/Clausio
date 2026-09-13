@@ -44,8 +44,8 @@ export default function StrategyAssistant() {
     setLoading(true)
     setError('')
     try {
-      const res = await aiApi.getSummary(selectedCaseId)
-      const raw = res.summary ?? res.result ?? ""
+      let _t = ""; for await (const c of (await import("@/lib/api")).aiStreams.summary(selectedCaseId)) _t += c; const res = { result: _t }
+      const raw = res.result ?? ""
       const parsed = parseAiJson<any>(raw)
 
       // New four-section Summary contract ({summary:[{parties, reliefSought, keyFacts,

@@ -59,7 +59,7 @@ public class OpenRouterProvider : ILLMProvider
         _completionMaxTokens = int.TryParse(config["AI:AnalysisMaxTokens"], out var mt) && mt > 0 ? mt : 8192;
         
         _http.DefaultRequestHeaders.Add("User-Agent", "ClausioLegalAI/1.0");
-        _http.Timeout = TimeSpan.FromSeconds(180);
+        _http.Timeout = TimeSpan.FromSeconds(600);
     }
 
     public async Task<string> CompleteAsync(string model, string systemPrompt, string userPrompt, CancellationToken cancellationToken = default)
@@ -91,7 +91,7 @@ public class OpenRouterProvider : ILLMProvider
         var requestBody = new Dictionary<string, object>
         {
             ["model"] = model,
-            ["max_tokens"] = 4096,
+            ["max_tokens"] = 3000,
             ["temperature"] = 0.1,
             ["stream"] = true,
             ["messages"] = new[]

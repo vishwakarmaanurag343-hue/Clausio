@@ -61,8 +61,8 @@ export default function Contradictions() {
     if (!selectedCaseId || generating) return
     setGenerating(true); setError(''); setSavedAll(false); setMatches(null); setParseFailed(false)
     try {
-      const res  = await aiApi.getContradictions(selectedCaseId)
-      const list = extractContradictions(res.contradictions ?? res.result ?? res)
+      let _t = ""; for await (const c of (await import("@/lib/api")).aiStreams.contradictions(selectedCaseId)) _t += c; const res = { result: _t }
+      const list = extractContradictions(res.result ?? res)
       if (!list) { setParseFailed(true); return }
 
       // Show as flashcards first; nothing touches the DB until the advocate approves.
@@ -135,7 +135,7 @@ export default function Contradictions() {
   }
 
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 22, boxShadow: '0 2px 8px rgba(15,23,42,.04)' }}>
+    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 22, boxShadow: '0 2px 8px rgba(15,23,42,.04)', overflowX: 'hidden', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>

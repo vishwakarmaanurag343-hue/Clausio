@@ -22,10 +22,11 @@ services:
       Jwt__Audience: ClausioClients
       AI__OpenRouter__ApiKey: ${OPENROUTER_API_KEY}
       AI__OpenRouter__BaseUrl: https://openrouter.ai/api/v1
-      AI__Drafting__ModelId: z-ai/glm-5.3-flash
-      AI__Drafting__Provider: Relace,Wafer,DeepInfra,Morph,Novita,Makora
-      AI__Research__ModelId: z-ai/glm-5.3-flash
-      AI__Research__Provider: Relace,Wafer,DeepInfra,Morph,Novita,Makora
+      AI__Drafting__ModelId: meta-llama/llama-3.3-70b-instruct
+      AI__Drafting__Provider: 
+      AI__Research__ModelId: meta-llama/llama-3.3-70b-instruct
+      AI__Research__Provider:
+      AI__AnalysisMaxTokens: "4096"
       AI__EmbeddingProvider__ApiKey: ${OPENROUTER_API_KEY}
       AI__EmbeddingProvider__BaseUrl: https://openrouter.ai/api/v1
       AI__EmbeddingProvider__ModelId: qwen/qwen3-embedding-8b

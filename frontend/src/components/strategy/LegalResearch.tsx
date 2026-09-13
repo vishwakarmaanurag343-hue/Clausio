@@ -79,8 +79,8 @@ export default function LegalResearch() {
     setGenerating(true)
     setError(''); setSavedAll(false); setMatches(null); setParseFailed(false)
     try {
-      const res = await aiApi.getLegalResearch(selectedCaseId)
-      const cases = extractSimilarCases(res.judgments ?? res.result ?? res)
+      let _t = ""; for await (const c of (await import("@/lib/api")).aiStreams.research(selectedCaseId)) _t += c; const res = { result: _t }
+      const cases = extractSimilarCases(res.result ?? res)
       if (!cases) { setParseFailed(true); return }
 
       // Show as flashcards first; nothing touches the DB until the advocate approves.
@@ -122,7 +122,7 @@ export default function LegalResearch() {
   const unverifiedCount = research.length - verifiedCount
 
   return (
-    <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24, boxShadow: '0 2px 8px rgba(15,23,42,.04)' }}>
+    <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24, boxShadow: '0 2px 8px rgba(15,23,42,.04)', overflowX: 'hidden', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
 
       {/* Header — UNCHANGED */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>

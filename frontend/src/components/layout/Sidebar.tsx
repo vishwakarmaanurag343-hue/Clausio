@@ -42,8 +42,8 @@ const NAV = [
     group: 'Masters',
     superAdminOnly: true,
     items: [
-      { href: '/masters/users', icon: 'ti-users',        label: 'User Master',  key: 'masters/users' },
-      { href: '/masters/roles', icon: 'ti-shield-check', label: 'Roles Master', key: 'masters/roles' },
+      { href: '/masters/users', icon: 'ti-users',        label: 'User Master (Soon)',  key: 'masters/users', disabled: true },
+      { href: '/masters/roles', icon: 'ti-shield-check', label: 'Roles Master (Soon)', key: 'masters/roles', disabled: true },
     ],
   },
 ]
@@ -282,6 +282,25 @@ export default function Sidebar() {
 
             {section.items.map((item) => {
               const active = pathname === item.href
+              const isDisabled = (item as any).disabled && role !== 'SuperAdmin'
+              if (isDisabled && !expanded) return null
+              if (isDisabled) return (
+                <div
+                  key={item.href}
+                  title="Coming Soon"
+                  style={{
+                    display: 'flex', alignItems: 'center',
+                    justifyContent: expanded ? 'flex-start' : 'center',
+                    gap: expanded ? 12 : 0, margin: '4px 0',
+                    padding: expanded ? '0 12px' : 0, height: 40,
+                    borderRadius: 16, cursor: 'not-allowed',
+                    opacity: 0.4, textDecoration: 'none',
+                  }}
+                >
+                  <i className={`ti ${item.icon}`} style={{ fontSize: 18, color: '#94a3b8' }} />
+                  {expanded && <span style={{ fontSize: 13, color: '#94a3b8' }}>{item.label}</span>}
+                </div>
+              )
 
               return (
                 <Link

@@ -12,6 +12,21 @@ interface CaseRecommendation {
 
 /** Extract the recommendations array from the model response. Returns null on ANY failure — callers must never render raw text. */
 function extractRecommendations(raw: unknown): CaseRecommendation[] | null {
+  if (typeof raw === 'string') {
+    const cleaned = raw.replace(/\[sys\][^\[]*/g, '').trim()
+    if (cleaned && !cleaned.includes('{')) {
+      const lines = cleaned.split('\n').filter((l: string) => l.trim())
+      const recs = lines
+        .filter((l: string) => /^\d+[.)\s]/.test(l.trim()))
+        .map((l: string) => ({
+          recommendation: l.replace(/^\d+[.)\s]+/, ''),
+          reasoning: l.replace(/^\d+[.)\s]+/, ''),
+          priority: 'High',
+          addressesRisk: ''
+        }))
+      if (recs.length > 0) return recs
+    }
+  }
   let parsed: any = raw
   if (typeof raw === 'string') {
     if (!raw.trim()) return null
@@ -33,14 +48,19 @@ export default function RecommendationPanel() {
   function loadRecs() {
     if (!selectedCaseId) return
     setLoading(true); setError('')
-    aiApi.getRecommendations(selectedCaseId)
-      .then(res => {
-        const parsed = extractRecommendations(res.recommendations ?? res.result ?? res)
+    ;(async () => {
+      try {
+        const { aiStreams } = await import("@/lib/api")
+        let t = ""
+        for await (const c of aiStreams.recommendations(selectedCaseId)) { t += c }
+        t = t.replace(/\[sys\][^\[]*/g, '').trim()
+        const parsed = extractRecommendations(t)
         if (parsed) { setRecs(parsed); setLoaded(true) }
         else setError('The AI response could not be read as recommendation cards. Please retry.')
-      })
-      .catch(err => setError(err.message || 'Failed to generate recommendations'))
-      .finally(() => setLoading(false))
+      } catch (err: any) {
+        setError(err.message || 'Failed to generate recommendations')
+      } finally { setLoading(false) }
+    })()
   }
 
   function copyAll() {

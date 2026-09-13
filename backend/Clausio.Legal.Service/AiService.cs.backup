@@ -32,16 +32,6 @@ public interface IAiService
     Task<string> ClassifyCaseTypeAsync(CaseTypeRequestDto request, CancellationToken cancellationToken = default);
     Task<string> DraftDocumentAsync(Guid caseId, DraftRequestDto request, CancellationToken cancellationToken = default);
     IAsyncEnumerable<string> StreamDraftDocumentAsync(Guid caseId, DraftRequestDto request, CancellationToken cancellationToken = default);
-    IAsyncEnumerable<string> StreamSummaryAsync(Guid caseId, CancellationToken cancellationToken = default);
-    IAsyncEnumerable<string> StreamChronologyAsync(Guid caseId, CancellationToken cancellationToken = default);
-    IAsyncEnumerable<string> StreamContradictionsAsync(Guid caseId, CancellationToken cancellationToken = default);
-    IAsyncEnumerable<string> StreamResearchAsync(Guid caseId, CancellationToken cancellationToken = default);
-    IAsyncEnumerable<string> StreamActionPlanAsync(Guid caseId, CancellationToken cancellationToken = default);
-    IAsyncEnumerable<string> StreamFinancialAsync(Guid caseId, CancellationToken cancellationToken = default);
-    IAsyncEnumerable<string> StreamReadinessAsync(Guid caseId, CancellationToken cancellationToken = default);
-    IAsyncEnumerable<string> StreamRisksAsync(Guid caseId, CancellationToken cancellationToken = default);
-    IAsyncEnumerable<string> StreamRecommendationsAsync(Guid caseId, CancellationToken cancellationToken = default);
-    IAsyncEnumerable<string> StreamWitnessAsync(Guid caseId, CancellationToken cancellationToken = default);
 }
 
 public class AiService : IAiService
@@ -312,34 +302,4 @@ public class AiService : IAiService
         var parameters = new Dictionary<string, object> { { "DocumentType", request.DraftType ?? "Document" } };
         return _pipeline.StreamExecuteAsync(caseId, request.Instructions ?? "Draft the document.", "LegalDraft", parameters, cancellationToken);
     }
-    // ── STREAMING METHODS FOR ALL AI FEATURES ──────────────────
-    public IAsyncEnumerable<string> StreamSummaryAsync(Guid caseId, CancellationToken cancellationToken = default)
-        => _pipeline.StreamExecuteAsync(caseId, "Summarize this case comprehensively.", "Summarization", null, cancellationToken);
-
-    public IAsyncEnumerable<string> StreamChronologyAsync(Guid caseId, CancellationToken cancellationToken = default)
-        => _pipeline.StreamExecuteAsync(caseId, "Build a detailed chronological timeline of events.", "Chronology", null, cancellationToken);
-
-    public IAsyncEnumerable<string> StreamContradictionsAsync(Guid caseId, CancellationToken cancellationToken = default)
-        => _pipeline.StreamExecuteAsync(caseId, "Detect and analyze contradictions in evidence and statements.", "Contradiction", null, cancellationToken);
-
-    public IAsyncEnumerable<string> StreamResearchAsync(Guid caseId, CancellationToken cancellationToken = default)
-        => _pipeline.StreamExecuteAsync(caseId, "Conduct comprehensive legal research for this case.", "LegalResearch", null, cancellationToken);
-
-    public IAsyncEnumerable<string> StreamActionPlanAsync(Guid caseId, CancellationToken cancellationToken = default)
-        => _pipeline.StreamExecuteAsync(caseId, "Generate a strategic action plan for this case.", "ActionPlan", null, cancellationToken);
-
-    public IAsyncEnumerable<string> StreamFinancialAsync(Guid caseId, CancellationToken cancellationToken = default)
-        => _pipeline.StreamExecuteAsync(caseId, "Analyze financial aspects and implications of this case.", "FinancialProfile", null, cancellationToken);
-
-    public IAsyncEnumerable<string> StreamReadinessAsync(Guid caseId, CancellationToken cancellationToken = default)
-        => _pipeline.StreamExecuteAsync(caseId, "Assess trial readiness comprehensively.", "Readiness", null, cancellationToken);
-
-    public IAsyncEnumerable<string> StreamRisksAsync(Guid caseId, CancellationToken cancellationToken = default)
-        => _pipeline.StreamExecuteAsync(caseId, "Identify and analyze all risks in this case.", "Analysis", null, cancellationToken);
-
-    public IAsyncEnumerable<string> StreamRecommendationsAsync(Guid caseId, CancellationToken cancellationToken = default)
-        => _pipeline.StreamExecuteAsync(caseId, "Generate strategic recommendations for this case.", "Analysis", null, cancellationToken);
-
-    public IAsyncEnumerable<string> StreamWitnessAsync(Guid caseId, CancellationToken cancellationToken = default)
-        => _pipeline.StreamExecuteAsync(caseId, "Prepare witness cross-examination strategy.", "Analysis", null, cancellationToken);
 }

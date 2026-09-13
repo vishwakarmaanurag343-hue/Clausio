@@ -83,7 +83,7 @@ export default function CrossExamination() {
   const availableObjectives = OBJECTIVE_MAP[witnessType] ?? OBJECTIVE_MAP['Respondent']
 
   return (
-    <div>
+    <div style={{ overflowX: 'hidden', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>

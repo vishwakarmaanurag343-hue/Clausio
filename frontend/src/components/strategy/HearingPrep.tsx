@@ -33,11 +33,13 @@ export default function HearingPrep({ caseType = '' }: Props) {
 
   async function generate() {
     if (!selectedCaseId) { setError('Select a case first.'); return }
-    setLoading(true); setError('')
+    setLoading(true); setError(''); setBrief('')
     try {
-      const res  = await aiApi.getPrep(selectedCaseId)
-      const text = res.brief ?? res.preparation ?? res.result ?? ''
-      setBrief(text)
+      let accumulated = ''
+      for await (const chunk of aiApi.getPrepStream(selectedCaseId)) {
+        accumulated += chunk
+        setBrief(accumulated)
+      }
     } catch (err: any) { setError(err.message) }
     finally { setLoading(false) }
   }

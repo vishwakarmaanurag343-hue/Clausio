@@ -202,7 +202,9 @@ export default function AnalysisPage() {
         sizeBytes: d.sizeBytes || d.fileSize || d.size || 0,
       })))
       setTimeline(tlArr)
-      if (tlArr.length > 0) setStatus('completed')
+      // Only restore completed state if user previously ran analysis in this session
+      // Don't auto-jump to completed on page load
+      // if (tlArr.length > 0) setStatus('completed')
     }).catch(err => {
       console.error(err)
       setDocuments([])
