@@ -379,6 +379,7 @@ export default function AnalysisPage() {
   // read (never renders raw JSON).
   const saveSummaryFromAi = useCallback(async (): Promise<boolean> => {
     if (!selectedCaseId) return true
+    setGeneratingSummary(true)
     try {
       const res = await aiApi.getSummary(selectedCaseId)
       console.log('[Summary] Raw API response keys:', Object.keys(res).filter(k => k.includes('result') || k.includes('summary')))
@@ -427,6 +428,8 @@ export default function AnalysisPage() {
       setError('Unable to load analysis. Please try again.')
       setSummaryParseFailed(true)
       return false
+    } finally {
+      setGeneratingSummary(false)
     }
   }, [selectedCaseId])
 

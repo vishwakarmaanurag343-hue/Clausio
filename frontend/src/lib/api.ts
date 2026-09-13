@@ -520,6 +520,41 @@ export const aiApi = {
   getReadiness: (caseId: string, refId?: string) => send('POST', `/ai/readiness/${caseId}${refQ(refId)}`, undefined, 'Failed to generate readiness report'),
   getEmergency: (caseId: string, data: any) => send('POST', `/ai/emergency/${caseId}`, data, 'Failed to generate emergency response'),
   getPrep: (caseId: string, refId?: string) => send('POST', `/ai/prep/${caseId}${refQ(refId)}`, undefined, 'Failed to generate prep notes'),
+  getPrepStream: async function* (caseId: string, refId?: string): AsyncGenerator<string, void, unknown> {
+    const token = getToken()
+    const res = await fetch(`${BASE}/ai/prep/stream/${caseId}${refQ(refId)}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      }
+    })
+
+    if (!res.ok) {
+      throw new Error('Failed to get hearing prep stream')
+    }
+
+    const reader = res.body?.getReader()
+    const decoder = new TextDecoder()
+    if (!reader) return
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      
+      const chunk = decoder.decode(value, { stream: true })
+      const lines = chunk.split('\n')
+      
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6)
+          if (data === '[DONE]') return
+          // unescape newlines
+          yield data.replace(/\\n/g, '\n')
+        }
+      }
+    }
+  },
   getWitness: (caseId: string, data: any, refId?: string) => send('POST', `/ai/witness/${caseId}${refQ(refId)}`, data, 'Failed to generate witness intelligence'),
   translate: (data: any) => send('POST', '/ai/translate', data, 'Failed to translate'),
   getDraft: (caseId: string, data: any, refId?: string) => send('POST', `/ai/draft/${caseId}${refQ(refId)}`, data, 'Failed to generate draft'),

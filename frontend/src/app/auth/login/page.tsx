@@ -97,7 +97,7 @@ export default function LoginPage() {
           ? errorMessage.split(':').slice(1).join(':')
           : email
         window.location.href =
-          `http://localhost:3000/signup` +
+          `/signup` +
           `?email=${encodeURIComponent(unverifiedEmail.trim())}` +
           `&step=otp`
         return

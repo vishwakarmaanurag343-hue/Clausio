@@ -13,7 +13,7 @@ public class GoogleCalendarSettings
     public string ClientId { get; set; } = string.Empty;
     public string ClientSecret { get; set; } = string.Empty;
     public string RedirectUri { get; set; } = "http://localhost:5123/api/integrations/google/callback";
-    public string FrontendUrl { get; set; } = "http://localhost:3001";
+    public string FrontendUrl { get; set; } = "http://localhost:3000";
     public string TimeZone { get; set; } = "Asia/Kolkata";
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(ClientId) && !string.IsNullOrWhiteSpace(ClientSecret);
@@ -110,7 +110,7 @@ public class GoogleCalendarClient
             ClientId     = config["GoogleCalendar:ClientId"] ?? "",
             ClientSecret = config["GoogleCalendar:ClientSecret"] ?? "",
             RedirectUri  = config["GoogleCalendar:RedirectUri"] ?? "http://localhost:5123/api/integrations/google/callback",
-            FrontendUrl  = config["GoogleCalendar:FrontendUrl"] ?? "http://localhost:3001",
+            FrontendUrl  = config["GoogleCalendar:FrontendUrl"] ?? "http://localhost:3000",
             TimeZone     = config["GoogleCalendar:TimeZone"] ?? "Asia/Kolkata",
         };
         _logger = logger;

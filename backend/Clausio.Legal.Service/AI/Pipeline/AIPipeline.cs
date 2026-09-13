@@ -344,11 +344,11 @@ public class AIPipeline : IAIPipeline
             // structured extraction (chronology, summary, evidence). 25s was cutting those
             // off mid-generation and returning an unparseable error string to the UI.
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeoutCts.CancelAfter(TimeSpan.FromSeconds(180));
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(290));
             try {
                 response = await _router.CompleteAsync(context.SystemPrompt, context.FinalUserPrompt, taskType, timeoutCts.Token);
             } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-                response = "The AI took too long to respond. Please try again with a shorter query.";
+                response = "{ \"error\": \"The AI took too long to respond. Please try again with a shorter query.\", \"strategy\": \"Generation timed out. The AI took too long to respond.\" }";
             }
         }
 

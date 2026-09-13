@@ -22,6 +22,7 @@ export default function HearingHistory({ refresh }: Props) {
   const [aiLoading,   setAiLoading]   = useState(false)
   const [aiBrief,     setAiBrief]     = useState<PrepBrief | null>(null)
   const [aiError,     setAiError]     = useState('')
+  const [aiSysMessage, setAiSysMessage] = useState('')
   const [aiHearingId, setAiHearingId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [reminderId,  setReminderId]  = useState<string | null>(null)
@@ -116,13 +117,32 @@ export default function HearingHistory({ refresh }: Props) {
     setAiLoading(true)
     setAiBrief(null)
     setAiError('')
+    setAiSysMessage('')
+    let rawJson = ''
     try {
-      const res = await aiApi.getPrep(selectedCaseId)
-      const brief = parsePrepBrief(res.brief ?? res.result)
-      if (brief) setAiBrief(brief)
+      for await (const chunk of aiApi.getPrepStream(selectedCaseId)) {
+        if (chunk.includes('[sys]')) {
+          const sysMatch = chunk.match(/\[sys\](.*?)(?=\[sys\]|$)/g);
+          if (sysMatch) {
+            const lastSys = sysMatch[sysMatch.length - 1];
+            setAiSysMessage(lastSys.replace('[sys]', '').trim());
+          }
+          // Remove all [sys] messages from rawJson
+          rawJson += chunk.replace(/\[sys\].*?(?=\[sys\]|\n|$)/g, '');
+        } else {
+          rawJson += chunk
+        }
+        
+        // Try to parse midway (unlikely to succeed until the end, but worth trying)
+        const brief = parsePrepBrief(rawJson)
+        if (brief) setAiBrief(brief)
+      }
+      
+      const finalBrief = parsePrepBrief(rawJson)
+      if (finalBrief) setAiBrief(finalBrief)
       else {
         setAiError('AI did not return the expected structured format.')
-        console.error('[AI Prep] Unparseable payload:', res.brief ?? res.result)
+        console.error('[AI Prep] Unparseable payload:', rawJson)
       }
     } catch (err: any) {
       setAiError(err.message || 'Could not reach the AI service.')
@@ -315,6 +335,14 @@ export default function HearingHistory({ refresh }: Props) {
                         })}
                       </div>
                     )}
+
+                  {/* AI Prep System Message */}
+                  {aiLoading && aiHearingId === hearing.id && aiSysMessage && !aiBrief && (
+                    <div style={{ marginTop: 12, padding: '12px 16px', background: 'rgba(59,130,246,0.05)', borderRadius: 8, border: '1px solid rgba(59,130,246,0.2)', display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div className="spinner" style={{ width: 14, height: 14, border: '2px solid rgba(59,130,246,0.3)', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                      <span style={{ fontSize: 13, color: '#2563eb', fontWeight: 500, fontFamily: 'monospace' }}>{aiSysMessage}</span>
+                    </div>
+                  )}
 
                     {/* AI Prep Result */}
                     {aiHearingId === hearing.id && (

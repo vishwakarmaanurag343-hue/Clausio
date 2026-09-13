@@ -11,7 +11,7 @@ interface Props {
   disabled?: boolean
 }
 
-const VOICE_URL = 'http://localhost:8000/api/voice'
+const VOICE_URL = process.env.NEXT_PUBLIC_VOICE_URL || 'http://localhost:8000/api/voice'
 
 export default function CaseDescriptionInput({ value, onChange, disabled }: Props) {
   const [mode, setMode] = useState<Mode>('type')

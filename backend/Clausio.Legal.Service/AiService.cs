@@ -27,6 +27,7 @@ public interface IAiService
     Task<string> GenerateCaseRecommendationsAsync(Guid caseId, CancellationToken cancellationToken = default);
     Task<string> EmergencyTriageAsync(Guid caseId, EmergencyRequestDto request, CancellationToken cancellationToken = default);
     Task<string> PrepHearingAsync(Guid caseId, CancellationToken cancellationToken = default);
+    IAsyncEnumerable<string> StreamPrepHearingAsync(Guid caseId, CancellationToken cancellationToken = default);
     Task<string> PrepWitnessAsync(Guid caseId, WitnessPrepRequestDto request, CancellationToken cancellationToken = default);
     Task<string> ClassifyCaseTypeAsync(CaseTypeRequestDto request, CancellationToken cancellationToken = default);
     Task<string> DraftDocumentAsync(Guid caseId, DraftRequestDto request, CancellationToken cancellationToken = default);
@@ -273,6 +274,11 @@ public class AiService : IAiService
 
     public Task<string> PrepHearingAsync(Guid caseId, CancellationToken cancellationToken = default)
         => _pipeline.ExecuteAsync(caseId,
+            "Prepare today's hearing strategy brief strictly from the case context.",
+            "HearingPrep", null, cancellationToken);
+
+    public IAsyncEnumerable<string> StreamPrepHearingAsync(Guid caseId, CancellationToken cancellationToken = default)
+        => _pipeline.StreamExecuteAsync(caseId,
             "Prepare today's hearing strategy brief strictly from the case context.",
             "HearingPrep", null, cancellationToken);
 

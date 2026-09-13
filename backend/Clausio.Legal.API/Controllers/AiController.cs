@@ -213,6 +213,37 @@ public class AiController(IAiService aiService, IJudgmentAnalysisService judgmen
         return Ok(new { brief = result });
     }
 
+    // ✅ Real-time token streaming for hearing prep (Perceived latency < 1 second)
+    [HttpPost("prep/stream/{caseId:guid}")]
+    public async Task StreamPrep(Guid caseId, CancellationToken cancellationToken)
+    {
+        Response.ContentType = "text/event-stream";
+        Response.Headers.Append("Cache-Control", "no-cache");
+        Response.Headers.Append("X-Accel-Buffering", "no");
+
+        try
+        {
+            var stream = aiService.StreamPrepHearingAsync(caseId, cancellationToken);
+            await foreach (var chunk in stream)
+            {
+                if (cancellationToken.IsCancellationRequested) break;
+                // SSE format
+                var sanitizedChunk = chunk.Replace("\n", "\\n").Replace("\r", "");
+                await Response.WriteAsync($"data: {sanitizedChunk}\n\n", cancellationToken);
+                await Response.Body.FlushAsync(cancellationToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Client disconnected normally
+        }
+        finally
+        {
+            await Response.WriteAsync("data: [DONE]\n\n", CancellationToken.None);
+            await Response.Body.FlushAsync(CancellationToken.None);
+        }
+    }
+
     // ✅ Returns { intelligence: "..." } — matches frontend aiApi.getWitness()
     [HttpPost("witness/{caseId:guid}")]
     public async Task<IActionResult> Witness(Guid caseId, [FromBody] WitnessPrepRequestDto request, CancellationToken cancellationToken)
@@ -250,9 +281,10 @@ public class AiController(IAiService aiService, IJudgmentAnalysisService judgmen
             var stream = aiService.StreamDraftDocumentAsync(caseId, request, cancellationToken);
             await foreach (var chunk in stream)
             {
-                var jsonChunk = System.Text.Json.JsonSerializer.Serialize(chunk);
-                var data = $"data: {jsonChunk}\n\n";
-                await Response.WriteAsync(data, cancellationToken);
+                if (cancellationToken.IsCancellationRequested) break;
+                // SSE format
+                var sanitizedChunk = chunk.Replace("\n", "\\n").Replace("\r", "");
+                await Response.WriteAsync($"data: {sanitizedChunk}\n\n", cancellationToken);
                 await Response.Body.FlushAsync(cancellationToken);
             }
 
