@@ -266,7 +266,7 @@ export default function ClientPage() {
             <div
               style={{
                 flex: 1,
-                minHeight: 0,
+                minHeight: '600px',
                 display: 'grid',
                 gridTemplateColumns: '36% 64%',
                 gap: 24,

@@ -79,10 +79,7 @@ export default function StrategyPage() {
 
               {/* Content */}
               {activeTab === 'Risk Assessment' && (
-                <div style={{ display: 'grid', gridTemplateColumns: '38% 62%', gap: 24 }}>
-                  <RiskAssessment key={`risk-${refresh}`} />
-                  <ActionPlan     key={`action-${refresh}`} />
-                </div>
+                <RiskAssessment key={`risk-${refresh}`} />
               )}
               {activeTab === 'Recommendations' && <RecommendationPanel key={`recs-${refresh}`} />}
               {activeTab === 'Action Plan'      && <ActionPlan         key={`plan-${refresh}`} fullView />}

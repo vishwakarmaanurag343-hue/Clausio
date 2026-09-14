@@ -453,6 +453,76 @@ function renderStructuredJSON(data: any): React.ReactNode {
     )
   }
 
+  // Witness / Cross Examination pattern
+  if (data.crossExaminationQuestions || data.witnessProfile || data.preparationTips || data.likelyQuestionsFromCourt) {
+    const sections: Record<string, { icon: string; color: 'green' | 'red' | 'amber' | 'blue' | 'purple'; border: string }> = {
+      crossExaminationQuestions: { icon: '❓', color: 'blue', border: '#93c5fd' },
+      likelyQuestionsFromCourt: { icon: '⚖️', color: 'purple', border: '#a5b4fc' },
+      likelyQuestionsFromOpposingCounsel: { icon: '🎯', color: 'red', border: '#fca5a5' },
+      preparationTips: { icon: '📋', color: 'green', border: '#86efac' },
+      strongPointsInTestimony: { icon: '💪', color: 'green', border: '#86efac' },
+      weakPointsVsCaseRecord: { icon: '⚠️', color: 'red', border: '#fca5a5' },
+      admissionsAlreadyMade: { icon: '📝', color: 'amber', border: '#fcd34d' },
+      omissions: { icon: '🔍', color: 'amber', border: '#fcd34d' },
+      biasAndCredibility: { icon: '🧐', color: 'amber', border: '#fcd34d' },
+      doNotAsk: { icon: '🚫', color: 'red', border: '#fca5a5' },
+    }
+    const labelMap: Record<string, string> = {
+      crossExaminationQuestions: 'Cross Examination Questions',
+      likelyQuestionsFromCourt: 'Likely Questions From Court',
+      likelyQuestionsFromOpposingCounsel: 'Likely Questions From Opposing Counsel',
+      preparationTips: 'Preparation Tips',
+      strongPointsInTestimony: 'Strong Points In Testimony',
+      weakPointsVsCaseRecord: 'Weak Points vs Case Record',
+      admissionsAlreadyMade: 'Admissions Already Made',
+      omissions: 'Omissions',
+      biasAndCredibility: 'Bias & Credibility',
+      doNotAsk: 'Do Not Ask',
+    }
+
+    // Witness profile card
+    const wp = data.witnessProfile
+    const overall = data.overallAssessment
+
+    return (
+      <div style={{ fontFamily: 'Inter,-apple-system,sans-serif' }}>
+        {wp && typeof wp === 'object' && (
+          <FlashCard title="Witness Profile" icon="👤" borderColor="#818cf8">
+            {Object.entries(wp).map(([k, v]) => {
+              const label = k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim()
+              const val = String(v ?? 'Not available')
+              if (val === 'Not available in the case record' || val === 'null') return null
+              return <KVRow key={k} label={label} value={val} />
+            })}
+          </FlashCard>
+        )}
+        {overall && (
+          <FlashCard title="Overall Assessment" icon="📊" borderColor="#86efac">
+            <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.75 }}>{String(overall)}</div>
+          </FlashCard>
+        )}
+        {Object.entries(sections).map(([key, cfg]) => {
+          const val = data[key]
+          if (!val) return null
+          const items = Array.isArray(val) ? val : [String(val)]
+          const validItems = items.filter((v: any) => {
+            const s = typeof v === 'object' ? JSON.stringify(v) : String(v)
+            return s && s !== 'Not available in the case record' && s !== '"Not available in the case record"' && s !== '[]' && s.length > 5
+          })
+          if (validItems.length === 0) return null
+          return (
+            <FlashCard key={key} title={labelMap[key] ?? key} icon={cfg.icon} borderColor={cfg.border}>
+              {validItems.map((item: any, idx: number) => {
+                const text = typeof item === 'object' ? JSON.stringify(item) : String(item)
+                return <BulletItem key={idx} text={text} color={cfg.color} />
+              })}
+            </FlashCard>
+          )
+        })}
+      </div>
+    )
+  }
+
   // Generic object → KV flash card
   return (
     <FlashCard title="AI Analysis" icon="📋" borderColor="#818cf8">

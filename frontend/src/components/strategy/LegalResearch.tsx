@@ -20,10 +20,29 @@ function extractSimilarCases(raw: unknown): SimilarCase[] | null {
   let parsed: any = raw
   if (typeof raw === 'string') {
     if (!raw.trim()) return null
-    parsed = parseAiJson<any>(raw.trim())
+    // Clean sys tags
+    const cleaned = raw.replace(/\[sys\][^\[]*/g, '').trim()
+    if (!cleaned) return null
+    parsed = parseAiJson<any>(cleaned)
+    // If model returned plain text instead of JSON
+    if (!parsed && cleaned.length > 20) {
+      return [{
+        citation: 'AI Research Result',
+        court: '',
+        courtAndYear: '',
+        caseType: '',
+        ratioDecidendi: cleaned,
+        orderSummary: cleaned,
+        whyRelevantToThisCase: '',
+        howToUse: '',
+        similarityLevel: 'Medium',
+        fullJudgmentUrl: '',
+      } as any]
+    }
   }
   if (Array.isArray(parsed)) return parsed.filter((c: any) => c && typeof c === 'object')
   if (parsed && Array.isArray(parsed.similarCases)) return parsed.similarCases.filter((c: any) => c && typeof c === 'object')
+  if (parsed && Array.isArray(parsed.judgments)) return parsed.judgments.filter((c: any) => c && typeof c === 'object')
   return null
 }
 

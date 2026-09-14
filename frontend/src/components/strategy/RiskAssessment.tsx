@@ -77,7 +77,6 @@ export default function RiskAssessment() {
         const { aiStreams } = await import("@/lib/api")
         let t = ""
         for await (const c of aiStreams.risks(selectedCaseId)) { t += c }
-        console.log('RISK RAW:', t.substring(0, 300))
         const parsed = extractRisks(t)
         if (parsed && parsed.length > 0) { setRisks(parsed); setLoaded(true) }
         else setError('The AI response could not be read as risk cards. Please retry.')
