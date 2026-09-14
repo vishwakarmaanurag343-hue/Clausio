@@ -543,6 +543,35 @@ public class AIPipeline : IAIPipeline
         var elapsedMs = sw.ElapsedMilliseconds;
         var fullResponse = responseSb.ToString();
 
+        // === CREDIT DEDUCTION for streaming (same logic as ExecuteAsync) ===
+        var streamUserId = _currentUser.UserId;
+        var streamUserRole = _currentUser.Role ?? "";
+        var streamIsAdminAssuming = _currentUser.OriginalUserId.HasValue;
+        var streamShouldCharge = streamUserId != Guid.Empty
+            && streamUserRole != "SuperAdmin"
+            && !streamIsAdminAssuming
+            && !string.IsNullOrWhiteSpace(fullResponse)
+            && !fullResponse.StartsWith("[ERROR]", StringComparison.OrdinalIgnoreCase)
+            && !fullResponse.StartsWith("[SECURITY ALERT]", StringComparison.OrdinalIgnoreCase);
+
+        if (streamShouldCharge)
+        {
+            try
+            {
+                var creditCost = WalletService.Costs.GetValueOrDefault(taskType, WalletService.Costs["default"]);
+                await _walletService.DeductAsync(
+                    streamUserId, creditCost, taskType,
+                    $"{taskType} — {creditCost} credit{(creditCost == 1 ? "" : "s")} used",
+                    default);
+                _logger.LogInformation("[Pipeline:Stream] Credits deducted. UserId={UserId}, Cost={Cost}, TaskType={TaskType}",
+                    streamUserId, creditCost, taskType);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[Pipeline:Stream] Credit deduction error. UserId={UserId}", streamUserId);
+            }
+        }
+
         _ = Task.Run(async () =>
         {
             try

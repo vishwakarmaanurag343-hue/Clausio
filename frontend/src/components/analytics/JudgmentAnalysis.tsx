@@ -108,8 +108,8 @@ export default function JudgmentAnalysis({ caseId }: Props) {
     setReporting(true); setReportErr(''); setReport('')
     try {
       const res = await aiApi.getApplicabilityReport(activeCaseId, {
-        judgmentText: j.chunkText,
-        judgmentName: j.caseName,
+        judgmentText: j.chunkText || j.ratioDecidendi || j.caseName || '',
+        judgmentName: j.caseName || j.citation || 'Selected Judgment',
         caseName: selectedCaseName || 'the current case',
       })
       setReport(res?.report ?? res?.result ?? '')
@@ -346,7 +346,7 @@ export default function JudgmentAnalysis({ caseId }: Props) {
           {reporting && <LoadingBlock label="Working up the judgment for court use…" />}
 
           {report && !reporting && (
-            <div style={{ ...cardSt, padding: 16 }}>
+            <div style={{ ...cardSt, padding: 16, overflowX: 'hidden', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
                 <button onClick={copyReport} style={ghostBtn}>
                   <i className={`ti ${copied ? 'ti-check' : 'ti-copy'}`} /> {copied ? 'Copied!' : 'Copy Report'}
