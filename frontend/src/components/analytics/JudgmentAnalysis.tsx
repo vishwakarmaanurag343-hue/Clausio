@@ -94,7 +94,9 @@ export default function JudgmentAnalysis({ caseId }: Props) {
         judgment1Text: a.chunkText, judgment1Name: a.caseName,
         judgment2Text: b.chunkText, judgment2Name: b.caseName,
       })
-      setComparison(res?.comparison ?? res?.result ?? '')
+      const compText = res?.comparison ?? res?.result ?? ''
+      setComparison(compText)
+      try { localStorage.setItem(`clausio_comparison_${selectedCaseId}`, compText) } catch {}
     } catch (err: any) {
       setCompareErr(err?.message || 'Failed to compare judgments.')
     } finally {
@@ -112,7 +114,9 @@ export default function JudgmentAnalysis({ caseId }: Props) {
         judgmentName: j.caseName || j.citation || 'Selected Judgment',
         caseName: selectedCaseName || 'the current case',
       })
-      setReport(res?.report ?? res?.result ?? '')
+      const reportText = res?.report ?? res?.result ?? ''
+      setReport(reportText)
+      try { localStorage.setItem(`clausio_report_${selectedCaseId}`, reportText) } catch {}
     } catch (err: any) {
       setReportErr(err?.message || 'Failed to get applicability report.')
     } finally {

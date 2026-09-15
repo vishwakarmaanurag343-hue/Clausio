@@ -114,10 +114,15 @@ export default function HearingHistory({ refresh }: Props) {
   async function getAiPrep(hearingId: string) {
     if (!selectedCaseId) return
     setAiHearingId(hearingId)
-    setAiLoading(true)
-    setAiBrief(null)
     setAiError('')
     setAiSysMessage('')
+    // Restore from cache first
+    try {
+      const cached = localStorage.getItem(`clausio_hearingprep_${hearingId}`)
+      if (cached) { setAiBrief(JSON.parse(cached)); setAiLoading(false); return }
+    } catch {}
+    setAiLoading(true)
+    setAiBrief(null)
     let rawJson = ''
     try {
       for await (const chunk of aiApi.getPrepStream(selectedCaseId)) {
@@ -139,8 +144,10 @@ export default function HearingHistory({ refresh }: Props) {
       }
       
       const finalBrief = parsePrepBrief(rawJson)
-      if (finalBrief) setAiBrief(finalBrief)
-      else {
+      if (finalBrief) {
+        setAiBrief(finalBrief)
+        try { localStorage.setItem(`clausio_hearingprep_${hearingId}`, JSON.stringify(finalBrief)) } catch {}
+      } else {
         setAiError('AI did not return the expected structured format.')
         console.error('[AI Prep] Unparseable payload:', rawJson)
       }
@@ -267,7 +274,7 @@ export default function HearingHistory({ refresh }: Props) {
                           onClick={() => getAiPrep(hearing.id)}
                           style={{ fontSize: 10, padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(124,58,237,0.3)', background: 'rgba(124,58,237,0.06)', color: '#7c3aed', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}
                         >
-                          <i className="ti ti-sparkles" style={{ fontSize: 11 }} /> AI Prep
+                          <i className="ti ti-sparkles" style={{ fontSize: 11 }} /> {(() => { try { return localStorage.getItem(`clausio_hearingprep_${hearing.id}`) ? 'View Prep' : 'AI Prep' } catch { return 'AI Prep' } })()}
                         </button>
 
                         {/* Edit button */}

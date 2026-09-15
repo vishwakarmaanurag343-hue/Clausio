@@ -51,6 +51,19 @@ export default function HearingsPage() {
     if (activeTab === 'Witness Intelligence') loadWitnesses()
   }, [activeTab, selectedCaseId])
 
+  // Restore cached witness briefs from localStorage
+  useEffect(() => {
+    if (!selectedCaseId || witnesses.length === 0) return
+    const restored: Record<string, WitnessBrief | null> = {}
+    witnesses.forEach(w => {
+      try {
+        const cached = localStorage.getItem(`clausio_witness_${w.id}`)
+        if (cached) restored[w.id] = JSON.parse(cached)
+      } catch {}
+    })
+    if (Object.keys(restored).length > 0) setWitnessBriefs(prev => ({ ...prev, ...restored }))
+  }, [witnesses, selectedCaseId])
+
   async function addWitness() {
     if (!selectedCaseId || !wForm.name.trim()) return
     setWSaving(true)
@@ -80,7 +93,9 @@ export default function HearingsPage() {
       })
       const brief = parseWitnessBrief(res.intelligence ?? res.result)   // null ⇒ error card, never raw dump
       setWitnessBriefs(prev => ({ ...prev, [w.id]: brief }))
-      if (!brief) {
+      if (brief) {
+        try { localStorage.setItem(`clausio_witness_${w.id}`, JSON.stringify(brief)) } catch {}
+      } else {
         setWitnessErrors(prev => ({ ...prev, [w.id]: 'AI did not return the expected structured format.' }))
         console.error('[Witness AI] Unparseable payload:', res.intelligence ?? res.result)
       }

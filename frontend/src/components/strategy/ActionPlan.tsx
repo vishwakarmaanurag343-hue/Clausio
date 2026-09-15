@@ -76,6 +76,16 @@ export default function ActionPlan({ fullView = false }: Props) {
 
   useEffect(() => { load() }, [load])
 
+  // Restore cached AI plan when case changes
+  useEffect(() => {
+    if (!selectedCaseId) return
+    try {
+      const cached = localStorage.getItem(`clausio_actionplan_${selectedCaseId}`)
+      if (cached) { setPlan(JSON.parse(cached)) }
+      else { setPlan(null) }
+    } catch {}
+  }, [selectedCaseId])
+
   function generate() {
     if (!selectedCaseId || generating) return
     setGenerating(true); setGenError(''); setSavedCount(null)
@@ -85,7 +95,7 @@ export default function ActionPlan({ fullView = false }: Props) {
         let t = ""
         for await (const c of aiStreams.actionPlan(selectedCaseId)) { t += c }
         const parsed = extractPlan(t)
-        if (parsed) setPlan(parsed)
+        if (parsed) { setPlan(parsed); try { localStorage.setItem(`clausio_actionplan_${selectedCaseId}`, JSON.stringify(parsed)) } catch {} }
         else setGenError('The AI response could not be read as plan cards. Please retry.')
       } catch (err: any) {
         setGenError(err.message || 'Failed to generate the working plan')

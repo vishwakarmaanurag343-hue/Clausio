@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useCaseStore } from '@/lib/store'
 import { aiApi, parseAiJson } from '@/lib/api'
 
@@ -45,6 +45,16 @@ export default function RecommendationPanel() {
   const [loaded,  setLoaded]  = useState(false)
   const [copied,  setCopied]  = useState(false)
 
+  // Restore cached output when case changes
+  useEffect(() => {
+    if (!selectedCaseId) return
+    try {
+      const cached = localStorage.getItem(`clausio_recs_${selectedCaseId}`)
+      if (cached) { const parsed = JSON.parse(cached); setRecs(parsed); setLoaded(true) }
+      else { setRecs(null); setLoaded(false) }
+    } catch {}
+  }, [selectedCaseId])
+
   function loadRecs() {
     if (!selectedCaseId) return
     setLoading(true); setError('')
@@ -55,7 +65,7 @@ export default function RecommendationPanel() {
         for await (const c of aiStreams.recommendations(selectedCaseId)) { t += c }
         t = t.replace(/\[sys\][^\[]*/g, '').trim()
         const parsed = extractRecommendations(t)
-        if (parsed) { setRecs(parsed); setLoaded(true) }
+        if (parsed) { setRecs(parsed); setLoaded(true); try { localStorage.setItem(`clausio_recs_${selectedCaseId}`, JSON.stringify(parsed)) } catch {} }
         else setError('The AI response could not be read as recommendation cards. Please retry.')
       } catch (err: any) {
         setError(err.message || 'Failed to generate recommendations')
@@ -87,7 +97,7 @@ export default function RecommendationPanel() {
           )}
           <button onClick={loadRecs} disabled={loading}
             style={{ height: 36, padding: '0 14px', border: 'none', borderRadius: 8, background: loading ? '#93c5fd' : '#2563eb', color: '#fff', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: 12, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <i className="ti ti-sparkles" style={{ fontSize: 13 }} />{loading ? 'Generating...' : loaded ? 'Refresh' : 'Generate'}
+            <i className="ti ti-sparkles" style={{ fontSize: 13 }} />{loading ? 'Generating...' : loaded ? 'Regenerate' : 'Generate'}
           </button>
         </div>
       </div>

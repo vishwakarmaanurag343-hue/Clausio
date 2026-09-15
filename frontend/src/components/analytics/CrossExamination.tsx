@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useCaseStore } from '@/lib/store'
 import { aiApi, parseAiJson } from '@/lib/api'
 import AIResponseFormatter from '@/components/common/AIResponseFormatter'
@@ -29,6 +29,23 @@ export default function CrossExamination() {
   const [copiedIdx,      setCopiedIdx]      = useState<number | null>(null)
   const [copiedAll,      setCopiedAll]      = useState(false)
 
+  // Restore cached output when case changes
+  useEffect(() => {
+    if (!selectedCaseId) return
+    try {
+      const cached = localStorage.getItem(`clausio_crossexam_${selectedCaseId}`)
+      if (cached) {
+        const { result: r, rawText: rt, witnessName: wn, witnessType: wt } = JSON.parse(cached)
+        if (r) setResult(r)
+        if (rt) setRawText(rt)
+        if (wn) setWitnessName(wn)
+        if (wt) setWitnessType(wt)
+      } else {
+        setResult(null); setRawText('')
+      }
+    } catch {}
+  }, [selectedCaseId])
+
   function toggleObj(obj: string) {
     setObjectives(prev => prev.includes(obj) ? prev.filter(o => o !== obj) : [...prev, obj])
   }
@@ -47,8 +64,13 @@ export default function CrossExamination() {
       })
       const raw    = res.intelligence ?? res.result ?? ''
       const parsed = parseAiJson<any>(raw)
-      if (parsed) setResult(parsed)
-      else        setRawText(raw)
+      if (parsed) {
+        setResult(parsed)
+        try { localStorage.setItem(`clausio_crossexam_${selectedCaseId}`, JSON.stringify({ result: parsed, rawText: '', witnessName, witnessType })) } catch {}
+      } else {
+        setRawText(raw)
+        try { localStorage.setItem(`clausio_crossexam_${selectedCaseId}`, JSON.stringify({ result: null, rawText: raw, witnessName, witnessType })) } catch {}
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to generate questions.')
     } finally { setLoading(false) }
@@ -148,7 +170,7 @@ export default function CrossExamination() {
           <button onClick={generate} disabled={loading || !witnessName.trim()}
             style={{ width: '100%', padding: '13px', borderRadius: 10, border: 'none', background: loading ? '#93c5fd' : '#2563eb', color: '#fff', fontWeight: 700, fontSize: 14, cursor: loading || !witnessName.trim() ? 'not-allowed' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: !witnessName.trim() ? 0.6 : 1 }}>
             <i className={`ti ${loading ? 'ti-loader animate-spin' : 'ti-sparkles'}`} />
-            {loading ? 'Generating Questions...' : 'Generate Cross Exam Questions'}
+            {loading ? 'Generating Questions...' : (result || rawText) ? 'Regenerate Questions' : 'Generate Cross Exam Questions'}
           </button>
 
           {/* What AI generates */}

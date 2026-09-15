@@ -500,6 +500,7 @@ export default function DraftsTab() {
         if (!chunk.startsWith('[sys]')) {
           accumulatedDraft += chunk
           setDraft(accumulatedDraft)
+          try { localStorage.setItem(`clausio_draft_${selectedCaseId}`, accumulatedDraft) } catch {}
         }
       }
     } catch (streamErr: any) {
@@ -530,6 +531,7 @@ export default function DraftsTab() {
   async function handleSaveDraft() {
     if (!selectedCaseId || !activeText.trim()) return
     setSavingDraft(true)
+      try { localStorage.removeItem(`clausio_draft_${selectedCaseId}`) } catch {}
     setActionError('')
     try {
       const saved: SavedDraftFull = await draftsApi.create({

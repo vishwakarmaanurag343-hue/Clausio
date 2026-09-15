@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useCaseStore } from '@/lib/store'
 import { aiApi } from '@/lib/api'
 
@@ -31,6 +31,16 @@ export default function HearingPrep({ caseType = '' }: Props) {
 
   const hearingTypes = getHearingTypesForCaseType(caseType)
 
+  // Restore cached output when case changes
+  useEffect(() => {
+    if (!selectedCaseId) return
+    try {
+      const cached = localStorage.getItem(`clausio_hearing_${selectedCaseId}`)
+      if (cached) { setBrief(cached); setSection(null) }
+      else setBrief('')
+    } catch {}
+  }, [selectedCaseId])
+
   async function generate() {
     if (!selectedCaseId) { setError('Select a case first.'); return }
     setLoading(true); setError(''); setBrief('')
@@ -40,6 +50,7 @@ export default function HearingPrep({ caseType = '' }: Props) {
         accumulated += chunk
         setBrief(accumulated)
       }
+      try { localStorage.setItem(`clausio_hearing_${selectedCaseId}`, accumulated) } catch {}
     } catch (err: any) { setError(err.message) }
     finally { setLoading(false) }
   }
@@ -108,7 +119,7 @@ export default function HearingPrep({ caseType = '' }: Props) {
           </div>
           <button onClick={generate} disabled={loading}
             style={{ height: 42, padding: '0 20px', border: 'none', borderRadius: 10, background: loading ? '#93c5fd' : '#2563eb', color: '#fff', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 13, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
-            <i className="ti ti-sparkles" />{loading ? 'Generating...' : 'Generate Brief'}
+            <i className="ti ti-sparkles" />{loading ? 'Generating...' : brief ? 'Regenerate Brief' : 'Generate Brief'}
           </button>
         </div>
 

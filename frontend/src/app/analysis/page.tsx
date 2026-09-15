@@ -176,6 +176,26 @@ export default function AnalysisPage() {
       .finally(() => setCasesLoading(false))
   }, [])
 
+  // Restore cached summary and evidence when case changes
+  useEffect(() => {
+    if (!selectedCaseId) { setSummaryCards(null); setEvidenceCards([]); setEvidenceSummary(''); setMissingEvidence([]); return }
+    try {
+      const cachedSummary = localStorage.getItem(`clausio_summary_${selectedCaseId}`)
+      if (cachedSummary) { setSummaryCards(JSON.parse(cachedSummary)); setSummaryParseFailed(false) }
+      else setSummaryCards(null)
+    } catch {}
+    try {
+      const cachedEvidence = localStorage.getItem(`clausio_evidence_${selectedCaseId}`)
+      if (cachedEvidence) {
+        const { cards, summary, gaps } = JSON.parse(cachedEvidence)
+        setEvidenceCards(cards ?? [])
+        setEvidenceSummary(summary ?? '')
+        setMissingEvidence(gaps ?? [])
+        setEvidenceFetched(true)
+      }
+    } catch {}
+  }, [selectedCaseId])
+
   // Load the selected case's documents + any saved timeline. Results persist across
   // refresh; a case that has never been analysed stays on the selector so the advocate
   // can review its documents before running.
@@ -231,6 +251,9 @@ export default function AnalysisPage() {
       setEvidenceSummary(obj && typeof obj?.evidenceSummary === 'string' ? obj.evidenceSummary : '')
       setMissingEvidence(gaps)
       setEvidenceParseFailed(!cards)
+      if (cards) {
+        try { localStorage.setItem(`clausio_evidence_${selectedCaseId}`, JSON.stringify({ cards, summary: obj?.evidenceSummary ?? '', gaps })) } catch {}
+      }
       return !!cards
     } catch {
       setEvidenceParseFailed(true)
@@ -418,6 +441,7 @@ export default function AnalysisPage() {
       )) {
         setSummaryCards(summaryData)
         setSummaryParseFailed(false)
+        try { localStorage.setItem(`clausio_summary_${selectedCaseId}`, JSON.stringify(summaryData)) } catch {}
         return true
       } else {
         console.error('[Summary] Could not extract summary from:', parsed)

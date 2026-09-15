@@ -40,6 +40,16 @@ export default function ClientPage() {
     includeFeeReminder: false,
   })
 
+  // Restore cached message when case/channel changes
+  useEffect(() => {
+    if (!selectedCaseId) return
+    try {
+      const cached = localStorage.getItem(`clausio_client_msg_${selectedCaseId}_${channel}`)
+      if (cached) setMessage(cached)
+      else setMessage('')
+    } catch {}
+  }, [selectedCaseId, channel])
+
   useEffect(() => {
     if (!selectedCaseId) return
     casesApi.getById(selectedCaseId)
@@ -74,7 +84,9 @@ export default function ClientPage() {
         includeActionItem: options?.includeActionItem ?? currentOptions.includeActionItem,
         includeFeeReminder: options?.includeFeeReminder ?? currentOptions.includeFeeReminder,
       })
-      setMessage(res.message ?? res.result ?? '')
+      const msg = res.message ?? res.result ?? ''
+      setMessage(msg)
+      try { localStorage.setItem(`clausio_client_msg_${selectedCaseId}_${channel}`, msg) } catch {}
     } catch (err: any) {
       setError(err.message || 'Failed to generate client update')
     } finally {

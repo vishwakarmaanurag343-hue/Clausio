@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useCaseStore } from '@/lib/store'
 import { aiApi, parseAiJson } from '@/lib/api'
 import type { CaseSummaryResponse } from '@/types/AIResponse'
@@ -39,6 +39,21 @@ export default function StrategyAssistant() {
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState('')
 
+  // Restore cached output when case changes
+  useEffect(() => {
+    if (!selectedCaseId) return
+    try {
+      const cached = localStorage.getItem(`clausio_strategy_${selectedCaseId}`)
+      if (cached) {
+        const { summary: s, rawText: rt } = JSON.parse(cached)
+        if (s) setSummary(s)
+        if (rt) setRawText(rt)
+      } else {
+        setSummary(null); setRawText('')
+      }
+    } catch {}
+  }, [selectedCaseId])
+
   async function generateStrategy() {
     if (!selectedCaseId) { setError('Select a case first.'); return }
     setLoading(true)
@@ -54,19 +69,24 @@ export default function StrategyAssistant() {
       // doesn't assert them.
       const entry = Array.isArray(parsed) ? parsed[0] : Array.isArray(parsed?.summary) ? parsed.summary[0] : null
       if (entry && typeof entry === 'object' && (entry.parties || entry.keyFacts || entry.reliefSought || entry.proceduralHistory)) {
-        setSummary({
+        const earlySum = {
           coreFacts:     [entry.parties, entry.keyFacts].filter(Boolean).join('\n\n'),
           currentStage:  entry.proceduralHistory ?? '',
           keyStrengths:  [],
           keyWeaknesses: [],
           nextSteps:     entry.reliefSought ? [`Relief sought in the case: ${entry.reliefSought}`] : [],
           fullSummary:   '',
-        })
+        }
+        setSummary(earlySum)
+        try { localStorage.setItem(`clausio_strategy_${selectedCaseId}`, JSON.stringify({ summary: earlySum, rawText: '' })) } catch {}
         return
       }
 
-      setSummary(parseAiJson<CaseSummaryResponse>(raw))
-      setRawText(parsed ? "" : raw)
+      const finalSummary = parseAiJson<CaseSummaryResponse>(raw)
+      const finalRaw = parsed ? "" : raw
+      setSummary(finalSummary)
+      setRawText(finalRaw)
+      try { localStorage.setItem(`clausio_strategy_${selectedCaseId}`, JSON.stringify({ summary: finalSummary, rawText: finalRaw })) } catch {}
     } catch (err: any) {
       setError(err.message || 'Failed to generate strategy')
     } finally {
@@ -110,7 +130,7 @@ export default function StrategyAssistant() {
         </div>
 
         <button onClick={generateStrategy} disabled={loading} style={{ ...primaryButton, opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}>
-          {loading ? 'Generating...' : 'Generate Strategy'}
+          {loading ? 'Generating...' : summary ? 'Regenerate Strategy' : 'Generate Strategy'}
         </button>
       </div>
 
@@ -158,7 +178,7 @@ export default function StrategyAssistant() {
           </select>
 
           <button onClick={generateStrategy} disabled={loading} style={{ ...primaryButton, opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}>
-            {loading ? '...' : 'Analyze'}
+            {loading ? '...' : summary ? 'Re-Analyze' : 'Analyze'}
           </button>
         </div>
       </div>
@@ -462,7 +482,7 @@ export default function StrategyAssistant() {
           </button>
 
           <button onClick={generateStrategy} disabled={loading} style={{ ...primaryButton, opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}>
-            {loading ? 'Generating...' : 'Generate Complete Strategy'}
+            {loading ? 'Generating...' : summary ? 'Regenerate Complete Strategy' : 'Generate Complete Strategy'}
           </button>
         </div>
       </div>

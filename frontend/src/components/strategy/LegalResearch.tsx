@@ -69,6 +69,15 @@ function getVerificationStatus(judgment: any): {
   return   { isVerified: false, source: 'Source not verified', color: '#d97706', bg: '#fef3c7', icon: '⚠️' }
 }
 
+// Fix run-together text from streaming (e.g. "TheCourtHeld" -> "The Court Held")
+function fixSpacing(text: string): string {
+  if (!text) return text
+  // If text has very few spaces relative to length, it's run-together
+  const spaceRatio = (text.match(/ /g) || []).length / text.length
+  if (spaceRatio > 0.05) return text // already has spaces, don't touch
+  return text.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+}
+
 export default function LegalResearch() {
   const { selectedCaseId } = useCaseStore()
   const [research,   setResearch]   = useState<any[]>([])
@@ -291,7 +300,7 @@ export default function LegalResearch() {
 
             {/* Ratio — UNCHANGED */}
             <div style={{ marginTop: 14, fontSize: 14, color: '#334155', lineHeight: 1.7 }}>
-              {item.ratioDecidendi}
+              {fixSpacing(item.ratioDecidendi)}
             </div>
 
             {/* How to use — UNCHANGED */}

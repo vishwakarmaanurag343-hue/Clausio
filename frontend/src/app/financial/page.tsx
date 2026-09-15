@@ -69,7 +69,11 @@ export default function FinancialPage() {
 
   // Load case type when case changes
   useEffect(() => {
-    if (!selectedCaseId) { setCaseType(''); setCaseName(''); setTabs(['AI Analysis']); setActiveTab('AI Analysis'); return }
+    if (!selectedCaseId) { setCaseType(''); setCaseName(''); setTabs(['AI Analysis']); setActiveTab('AI Analysis'); setAnalysis(null); setRawText(''); return }
+    try {
+      const cached = localStorage.getItem(`clausio_financial_${selectedCaseId}`)
+      if (cached) { const { analysis: a, rawText: r } = JSON.parse(cached); setAnalysis(a); setRawText(r ?? '') }
+    } catch {}
     casesApi.getById(selectedCaseId)
       .then((c: any) => {
         const ct = c.caseType ?? c.type ?? ''
@@ -94,6 +98,7 @@ export default function FinancialPage() {
       const raw    = res.analysis ?? res.result ?? ''
       const parsed = parseAiJson<any>(raw)
       setAnalysis(parsed)
+      try { localStorage.setItem(`clausio_financial_${selectedCaseId}`, JSON.stringify({ analysis: parsed, rawText: '' })) } catch {}
       setProfile(parsed?.financialProfile ?? null)
       setRawText(parsed ? '' : raw)
     } catch (err: any) {

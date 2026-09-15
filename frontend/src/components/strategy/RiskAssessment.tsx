@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useCaseStore } from '@/lib/store'
 import { aiApi, parseAiJson } from '@/lib/api'
 
@@ -78,7 +78,7 @@ export default function RiskAssessment() {
         let t = ""
         for await (const c of aiStreams.risks(selectedCaseId)) { t += c }
         const parsed = extractRisks(t)
-        if (parsed && parsed.length > 0) { setRisks(parsed); setLoaded(true) }
+        if (parsed && parsed.length > 0) { setRisks(parsed); setLoaded(true); try { localStorage.setItem(`clausio_risks_${selectedCaseId}`, JSON.stringify(parsed)) } catch {} }
         else setError('The AI response could not be read as risk cards. Please retry.')
       } catch (err: any) {
         setError(err.message || 'Failed to assess case risks')
@@ -87,6 +87,16 @@ export default function RiskAssessment() {
       }
     })()
   }
+
+  // Restore cached output when case changes
+  useEffect(() => {
+    if (!selectedCaseId) return
+    try {
+      const cached = localStorage.getItem(`clausio_risks_${selectedCaseId}`)
+      if (cached) { const parsed = JSON.parse(cached); setRisks(parsed); setLoaded(true) }
+      else { setRisks(null); setLoaded(false) }
+    } catch {}
+  }, [selectedCaseId])
 
   const counts = risks?.reduce<Record<string, number>>((acc, r) => {
     const s = severityOf(r); acc[s] = (acc[s] ?? 0) + 1; return acc
@@ -106,7 +116,7 @@ export default function RiskAssessment() {
         </div>
         <button onClick={loadRisks} disabled={loading || !selectedCaseId}
           style={{ padding: '6px 12px', fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0', background: loading ? '#f1f5f9' : '#fff', cursor: loading || !selectedCaseId ? 'not-allowed' : 'pointer', color: '#64748b', fontFamily: 'inherit', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-          <i className="ti ti-refresh" style={{ fontSize: 13 }} />{loading ? 'Analysing...' : loaded ? 'Refresh' : 'Analyse'}
+          <i className="ti ti-refresh" style={{ fontSize: 13 }} />{loading ? 'Analysing...' : loaded ? 'Regenerate' : 'Analyse'}
         </button>
       </div>
 
