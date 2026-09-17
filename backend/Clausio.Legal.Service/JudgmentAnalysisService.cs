@@ -56,6 +56,20 @@ public class JudgmentAnalysisService(
         var matches = await judgmentSearch.SearchStructuredAsync(searchQuery, topK, category, ct);
         if (matches.Count == 0) return Array.Empty<SimilarJudgmentDto>();
 
+        // Domain filter — reject judgments from completely different legal domains
+        // to prevent IBC/Tax/Customs cases appearing in civil construction disputes
+        if (!string.IsNullOrWhiteSpace(category))
+        {
+            var domainFiltered = matches.Where(m =>
+                string.IsNullOrWhiteSpace(m.CaseType) ||
+                m.CaseType.Equals(category, StringComparison.OrdinalIgnoreCase) ||
+                m.CaseType.Contains("Civil", StringComparison.OrdinalIgnoreCase) && category.Contains("Civil", StringComparison.OrdinalIgnoreCase) ||
+                m.CaseType.Contains("Family", StringComparison.OrdinalIgnoreCase) && category.Contains("Family", StringComparison.OrdinalIgnoreCase) ||
+                m.CaseType.Contains("Criminal", StringComparison.OrdinalIgnoreCase) && category.Contains("Criminal", StringComparison.OrdinalIgnoreCase)
+            ).ToList();
+            if (domainFiltered.Count > 0) matches = domainFiltered;
+        }
+
         var maxScore = Math.Max(1, matches.Max(m => m.Score));
         var caseLabel = $"{kase.Name} — {kase.CaseType}"
                         + (string.IsNullOrWhiteSpace(kase.SubType) ? "" : $" ({kase.SubType})");

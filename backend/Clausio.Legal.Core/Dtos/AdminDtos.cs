@@ -71,5 +71,7 @@ public record AdminAiLogDto(
     int      HallucinationRiskScore,
     bool     IsSuccess,
     string?  ErrorMessage,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    string?  UserEmail,
+    string?  UserName
 );

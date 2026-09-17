@@ -5,7 +5,7 @@ import { useCaseStore } from '@/lib/store'
 import { aiApi, parseAiJson } from '@/lib/api'
 import AIResponseFormatter from '@/components/common/AIResponseFormatter'
 
-const WITNESS_TYPES = ['Respondent', 'Petitioner', 'Independent Witness', 'Expert Witness', 'Character Witness']
+const WITNESS_TYPES = ['Respondent', 'Opposing Witness', 'Petitioner', 'Our Witness', 'Independent Witness', 'Expert Witness', 'Character Witness']
 
 const OBJECTIVE_MAP: Record<string, string[]> = {
   'Respondent':          ['Challenge income declaration', 'Expose lifestyle contradiction', 'Attack credibility', 'Contradict affidavit', 'Establish cruelty'],
@@ -55,12 +55,17 @@ export default function CrossExamination() {
     if (!witnessName.trim()) { setError('Please enter the witness name.'); return }
     setLoading(true); setError(''); setResult(null); setRawText('')
     try {
+      // Map witnessType to side — Respondent/Expert/Independent = Opposing, Petitioner = Ours
+      const side = (witnessType === 'Petitioner' || witnessType === 'Our Witness') ? 'Ours' : 'Opposing'
       const res = await aiApi.getWitness(selectedCaseId, {
         witnessName,
         witnessType,
         witnessRole,
         statement,
         objectives,
+        side,
+        name: witnessName,
+        type: witnessType,
       })
       const raw    = res.intelligence ?? res.result ?? ''
       const parsed = parseAiJson<any>(raw)

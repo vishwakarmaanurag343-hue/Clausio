@@ -104,10 +104,12 @@ export default function AdminPage() {
         finally { setLoading(false) }
     }, [])
 
+    const [aiUserFilter, setAiUserFilter] = useState('')
+
     const loadAiLogs = useCallback(async () => {
         setLoading(true); setError('')
         try {
-            const data = await adminFetch('/ai-logs?pageSize=50')
+            const data = await adminFetch('/ai-logs?pageSize=100')
             setAiLogs(data.data ?? [])
         } catch (e: any) { setError(e.message); setAiLogs([]) }
         finally { setLoading(false) }
@@ -346,21 +348,30 @@ export default function AdminPage() {
             {/* ── AI LOGS TAB ── */}
             {tab === 'ai' && (
                 <div>
+                    {/* User filter */}
+                    <div style={{ marginBottom: 12, display: 'flex', gap: 10, alignItems: 'center' }}>
+                        <input placeholder="Filter by user email..." value={aiUserFilter} onChange={e => setAiUserFilter(e.target.value)} style={{ height: 36, padding: '0 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, outline: 'none', width: 240, fontFamily: 'inherit' }} />
+                        <span style={{ fontSize: 12, color: '#64748b' }}>{aiUserFilter ? `${aiLogs.filter(l => (l.userEmail||'').toLowerCase().includes(aiUserFilter.toLowerCase())).length} of ${aiLogs.length}` : `${aiLogs.length} total`} logs</span>
+                    </div>
                     <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                             <thead>
                                 <tr style={{ background: '#f8fafc' }}>
-                                    {['Time', 'Intent', 'Model', 'Latency', 'Tokens', 'Citation Score', 'Status'].map(h => (
+                                    {['Time', 'User', 'Intent', 'Model', 'Latency', 'Tokens', 'Status'].map(h => (
                                         <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid #e2e8f0' }}>{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
                                 {loading && <tr><td colSpan={7} style={{ padding: 30, textAlign: 'center', color: '#64748b' }}>Loading...</td></tr>}
-                                {aiLogs.map((log, i) => (
+                                {aiLogs.filter(l => !aiUserFilter || (l.userEmail || '').toLowerCase().includes(aiUserFilter.toLowerCase())).map((log, i) => (
                                     <tr key={log.id} style={{ borderBottom: i < aiLogs.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
                                         <td style={{ padding: '10px 14px', color: '#64748b', whiteSpace: 'nowrap' }}>
                                             {new Date(log.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                                        </td>
+                                        <td style={{ padding: '10px 14px', color: '#0f172a', fontSize: 12 }}>
+                                            <div style={{ fontWeight: 600 }}>{log.userName || '—'}</div>
+                                            <div style={{ color: '#64748b', fontSize: 11 }}>{log.userEmail || ''}</div>
                                         </td>
                                         <td style={{ padding: '10px 14px', color: '#0f172a', fontWeight: 500 }}>{log.intent}</td>
                                         <td style={{ padding: '10px 14px', color: '#64748b', fontFamily: 'monospace', fontSize: 11 }}>{log.model}</td>

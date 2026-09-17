@@ -350,13 +350,15 @@ export default function JudgmentAnalysis({ caseId }: Props) {
           {reporting && <LoadingBlock label="Working up the judgment for court use…" />}
 
           {report && !reporting && (
-            <div style={{ ...cardSt, padding: 16, overflowX: 'hidden', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+            <div style={{ ...cardSt, padding: 16, overflowX: 'auto', wordBreak: 'break-word', overflowWrap: 'break-word', maxWidth: '100%' }}>
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
                 <button onClick={copyReport} style={ghostBtn}>
                   <i className={`ti ${copied ? 'ti-check' : 'ti-copy'}`} /> {copied ? 'Copied!' : 'Copy Report'}
                 </button>
               </div>
-              <AIResponseFormatter content={report} />
+              <div style={{ maxWidth: '100%', overflowX: 'auto' }}>
+                <AIResponseFormatter content={report} />
+              </div>
             </div>
           )}
         </div>

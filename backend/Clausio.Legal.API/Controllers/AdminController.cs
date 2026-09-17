@@ -284,20 +284,24 @@ public class AdminController(ClausioDbContext db) : ControllerBase
             .OrderByDescending(l => l.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(l => new AdminAiLogDto(
-                l.Id,
-                l.CaseId,
-                l.Intent,
-                l.Provider,
-                l.Model,
-                l.LatencyMs,
-                l.TokensIn,
-                l.TokensOut,
-                l.CitationConfidenceScore,
-                l.HallucinationRiskScore,
-                l.IsSuccess,
-                l.ErrorMessage,
-                l.CreatedAt))
+            .Join(db.Cases, l => l.CaseId, c => c.Id, (l, c) => new { l, c })
+            .Join(db.Users, x => x.c.CreatedByUserId, u => u.Id, (x, u) => new { x.l, x.c, u })
+            .Select(x => new AdminAiLogDto(
+                x.l.Id,
+                x.l.CaseId,
+                x.l.Intent,
+                x.l.Provider,
+                x.l.Model,
+                x.l.LatencyMs,
+                x.l.TokensIn,
+                x.l.TokensOut,
+                x.l.CitationConfidenceScore,
+                x.l.HallucinationRiskScore,
+                x.l.IsSuccess,
+                x.l.ErrorMessage,
+                x.l.CreatedAt,
+                x.u.Email,
+                x.u.FirstName + " " + x.u.LastName))
             .ToListAsync(ct);
 
         return Ok(new { data = logs, total, page, pageSize });
