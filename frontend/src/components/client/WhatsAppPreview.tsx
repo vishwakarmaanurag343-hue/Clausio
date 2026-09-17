@@ -39,10 +39,13 @@ function extractUpdate(raw: string): ParsedUpdate {
         rawBody = String(nested.body ?? nested.Body ?? '')
       }
     }
+    // Handle actionRequired — "null" string should become null
+    const ar = parsed.actionRequired
+    const actionRequired = (!ar || ar === 'null' || ar === 'none' || ar === 'None') ? null : String(ar)
     return {
       subject: String(parsed.subject ?? parsed.Subject ?? ''),
       body: rawBody,
-      actionRequired: parsed.actionRequired ? String(parsed.actionRequired) : null,
+      actionRequired,
     }
   }
 
