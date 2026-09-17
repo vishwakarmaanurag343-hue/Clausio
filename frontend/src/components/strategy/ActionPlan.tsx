@@ -29,10 +29,32 @@ function priorityOf(p?: string) { return PRIORITY_STYLE[p ?? ''] ? p! : 'Medium'
 
 /** Extract the tasks array + next hearing date. Returns null on ANY failure — callers must never render raw text. */
 function extractPlan(raw: unknown): { nextHearingDate: string | null; tasks: PlanTask[] } | null {
+  // Clean sys tags
+  if (typeof raw === 'string') {
+    raw = (raw as string).replace(/\[sys\][^\[]*/g, '').trim()
+  }
+
+  // Try JSON extraction first — handles text before/after JSON
+  if (typeof raw === 'string') {
+    const jsonMatch = (raw as string).match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      try {
+        const extracted = JSON.parse(jsonMatch[0])
+        const tasks = Array.isArray(extracted) ? extracted : Array.isArray(extracted.tasks) ? extracted.tasks : null
+        if (tasks) {
+          return {
+            nextHearingDate: extracted.nextHearingDate ?? null,
+            tasks: tasks.filter((t: any) => t && typeof t === 'object'),
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
   let parsed: any = raw
   if (typeof raw === 'string') {
-    if (!raw.trim()) return null
-    parsed = parseAiJson<any>(raw.trim())
+    if (!(raw as string).trim()) return null
+    parsed = parseAiJson<any>((raw as string).trim())
   }
   const tasks = Array.isArray(parsed) ? parsed : parsed && Array.isArray(parsed.tasks) ? parsed.tasks : null
   if (!tasks) return null
@@ -178,6 +200,11 @@ export default function ActionPlan({ fullView = false }: Props) {
               <i className="ti ti-copy" style={{ fontSize: 13 }} />Copy All
             </button>
           )}
+          {plan && (
+            <button onClick={generate} disabled={generating} style={{ height: 34, padding: '0 12px', border: '1px solid #e2e8f0', borderRadius: 8, background: '#f8fafc', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#475569', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <i className="ti ti-refresh" style={{ fontSize: 13 }} />{generating ? 'Generating...' : 'Regenerate'}
+            </button>
+          )}
           <button onClick={() => setShowAdd(s => !s)} style={{ height: 34, padding: '0 12px', border: 'none', borderRadius: 8, background: '#2563eb', color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
             <i className="ti ti-plus" style={{ fontSize: 13 }} />Add Task
           </button>
@@ -254,6 +281,22 @@ export default function ActionPlan({ fullView = false }: Props) {
                   <div style={{ fontSize: 9, fontWeight: 700, color: '#475569', letterSpacing: 1, marginBottom: 4 }}>WHY THIS MATTERS NOW</div>
                   <p style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: '#334155', whiteSpace: 'pre-line' }}>{t.reason || '—'}</p>
                 </div>
+
+                {/* Consequence if not done */}
+                {(t as any).consequence && (
+                  <div style={{ marginTop: 8, padding: '6px 10px', background: '#fff7ed', borderRadius: 6, border: '1px solid #fed7aa' }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: '#9a3412', letterSpacing: 1, marginBottom: 2 }}>⚠ IF NOT DONE</div>
+                    <p style={{ margin: 0, fontSize: 12, color: '#7c2d12' }}>{(t as any).consequence}</p>
+                  </div>
+                )}
+
+                {/* Depends on */}
+                {(t as any).dependsOn && (t as any).dependsOn !== 'None' && (
+                  <div style={{ marginTop: 8, padding: '6px 10px', background: '#faf5ff', borderRadius: 6, border: '1px solid #e9d5ff' }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: '#6b21a8', letterSpacing: 1, marginBottom: 2 }}>👤 DEPENDS ON</div>
+                    <p style={{ margin: 0, fontSize: 12, color: '#581c87' }}>{(t as any).dependsOn}</p>
+                  </div>
+                )}
               </div>
             )
           })}

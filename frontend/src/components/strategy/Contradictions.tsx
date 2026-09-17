@@ -12,6 +12,9 @@ interface Contradiction {
   statementB?:                 Statement
   natureOfContradiction?:      string
   suggestedCrossExamQuestion?: string
+  trapQuestion?: string
+  documentPageRef?: string
+  sequenceAdvice?: string
   severity?:                   'High' | 'Medium' | 'Low'
 }
 
@@ -245,6 +248,30 @@ export default function Contradictions() {
                       </button>
                     </div>
                     <p style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: '#14532d', whiteSpace: 'pre-line' }}>{c.suggestedCrossExamQuestion}</p>
+                  </div>
+                )}
+
+                {/* Trap question */}
+                {(c as any).trapQuestion && (
+                  <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 8, padding: '10px 12px', marginTop: 8 }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: '#9a3412', letterSpacing: 1, marginBottom: 4 }}>🪤 TRAP FOLLOW-UP</div>
+                    <p style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: '#7c2d12', whiteSpace: 'pre-line' }}>{(c as any).trapQuestion}</p>
+                  </div>
+                )}
+
+                {/* Document page ref + sequence advice */}
+                {((c as any).documentPageRef || (c as any).sequenceAdvice) && (
+                  <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {(c as any).documentPageRef && (c as any).documentPageRef !== 'Not available in the case record.' && (
+                      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: '#f1f5f9', border: '1px solid #e2e8f0', color: '#475569' }}>
+                        📄 {(c as any).documentPageRef}
+                      </span>
+                    )}
+                    {(c as any).sequenceAdvice && (
+                      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1d4ed8' }}>
+                        🎯 Use: {(c as any).sequenceAdvice}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>

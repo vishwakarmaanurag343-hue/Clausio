@@ -6,34 +6,62 @@ import { aiApi, parseAiJson } from '@/lib/api'
 
 interface CaseRecommendation {
   recommendation?: string
+  action?:         string
   addressesRisk?:  string | null
+  urgency?:        string
+  owner?:          string
+  confidence?:     string
   reasoning?:      string
+  ifNotDone?:      string
+  dependsOn?:      string
 }
 
 /** Extract the recommendations array from the model response. Returns null on ANY failure — callers must never render raw text. */
 function extractRecommendations(raw: unknown): CaseRecommendation[] | null {
+  // Clean sys tags
   if (typeof raw === 'string') {
-    const cleaned = raw.replace(/\[sys\][^\[]*/g, '').trim()
-    if (cleaned && !cleaned.includes('{')) {
-      const lines = cleaned.split('\n').filter((l: string) => l.trim())
-      const recs = lines
-        .filter((l: string) => /^\d+[.)\s]/.test(l.trim()))
-        .map((l: string) => ({
-          recommendation: l.replace(/^\d+[.)\s]+/, ''),
-          reasoning: l.replace(/^\d+[.)\s]+/, ''),
-          priority: 'High',
-          addressesRisk: ''
-        }))
-      if (recs.length > 0) return recs
+    raw = raw.replace(/\[sys\][^\[]*/g, '').trim()
+  }
+
+  // Try to extract JSON object even if there is text before or after it
+  if (typeof raw === 'string') {
+    const jsonMatch = (raw as string).match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      try {
+        const extracted = JSON.parse(jsonMatch[0])
+        if (extracted && Array.isArray(extracted.recommendations)) {
+          return extracted.recommendations.filter((r: any) => r && typeof r === 'object')
+        }
+      } catch (_) {}
     }
   }
+
   let parsed: any = raw
   if (typeof raw === 'string') {
     if (!raw.trim()) return null
     parsed = parseAiJson<any>(raw.trim())
   }
-  if (Array.isArray(parsed))                          return parsed.filter((r: any) => r && typeof r === 'object')
+  if (Array.isArray(parsed)) return parsed.filter((r: any) => r && typeof r === 'object')
   if (parsed && Array.isArray(parsed.recommendations)) return parsed.recommendations.filter((r: any) => r && typeof r === 'object')
+
+  // Last resort fallback — plain text numbered list
+  if (typeof raw === 'string' && !(raw as string).includes('{')) {
+    const textLines = (raw as string).split('\n').filter((l: string) => l.trim())
+    const recs = textLines
+      .filter((l: string) => /^\d+[.)\s]/.test(l.trim()))
+      .map((l: string) => {
+        const text = l.replace(/^\d+[.)\s]+/, '').replace(/\*\*/g, '').trim()
+        const words = text.replace(/^(The |A |An )/i, '').split(' ')
+        const shortTitle = words.slice(0, 6).join(' ').replace(/[,;:]$/, '')
+        return {
+          recommendation: shortTitle,
+          reasoning: text,
+          addressesRisk: ''
+        }
+      })
+    if (recs.length > 0) return recs
+  }
+
   return null
 }
 
@@ -155,6 +183,39 @@ export default function RecommendationPanel() {
               </div>
               <p style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: '#1e3a8a', whiteSpace: 'pre-line' }}>{r.reasoning || '—'}</p>
             </div>
+
+            {/* Action */}
+            {r.action && (
+              <div style={{ marginTop: 8, padding: '6px 10px', background: '#f0fdf4', borderRadius: 6, border: '1px solid #bbf7d0' }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: '#15803d', letterSpacing: 1, marginBottom: 2 }}>▶ FIRST STEP</div>
+                <p style={{ margin: 0, fontSize: 12, color: '#14532d' }}>{r.action}</p>
+              </div>
+            )}
+
+            {/* If not done */}
+            {r.ifNotDone && (
+              <div style={{ marginTop: 8, padding: '6px 10px', background: '#fff7ed', borderRadius: 6, border: '1px solid #fed7aa' }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: '#9a3412', letterSpacing: 1, marginBottom: 2 }}>⚠ IF NOT DONE</div>
+                <p style={{ margin: 0, fontSize: 12, color: '#7c2d12' }}>{r.ifNotDone}</p>
+              </div>
+            )}
+
+            {/* Depends on */}
+            {r.dependsOn && (
+              <div style={{ marginTop: 8, padding: '6px 10px', background: '#faf5ff', borderRadius: 6, border: '1px solid #e9d5ff' }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: '#6b21a8', letterSpacing: 1, marginBottom: 2 }}>👤 DEPENDS ON</div>
+                <p style={{ margin: 0, fontSize: 12, color: '#581c87' }}>{r.dependsOn}</p>
+              </div>
+            )}
+
+            {/* Owner + Urgency + Confidence */}
+            {(r.owner || r.urgency || r.confidence) && (
+              <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {r.urgency && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: r.urgency === 'Immediate' ? '#fee2e2' : r.urgency === 'Before Next Hearing' ? '#fef3c7' : '#f0fdf4', color: r.urgency === 'Immediate' ? '#991b1b' : r.urgency === 'Before Next Hearing' ? '#92400e' : '#15803d' }}>{r.urgency}</span>}
+                {r.owner && <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: '#f1f5f9', color: '#475569' }}>👤 {r.owner}</span>}
+                {r.confidence && <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: '#f8fafc', color: '#64748b' }}>Confidence: {r.confidence}</span>}
+              </div>
+            )}
           </div>
         )
       })}

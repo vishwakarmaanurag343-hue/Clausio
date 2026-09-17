@@ -10,6 +10,9 @@ interface CaseRisk {
   severity?:   string
   cause?:      string
   mitigation?: string
+  severityJustification?: string
+  deadline?: string
+  opposingArgument?: string
 }
 
 const SEVERITY_ORDER: Record<string, number> = { High: 0, Medium: 1, Low: 2 }
@@ -32,33 +35,63 @@ function categoryStyle(c?: string) { return CATEGORY_STYLE[c ?? ''] ?? { bg: '#f
 
 /** Extract the risks array from the model response. Returns null on ANY failure — callers must never render raw text. */
 function extractRisks(raw: unknown): CaseRisk[] | null {
-  if (typeof raw === 'string') {
-    const cleaned = raw.replace(/\[sys\][^\[]*/g, '').trim()
-    if (cleaned && !cleaned.includes('{')) {
-      const lines = cleaned.split('\n').filter((l: string) => l.trim())
-      const risks = lines
-        .filter((l: string) => /^\d+[.)\s]/.test(l.trim()))
-        .map((l: string) => ({
-          risk: l.replace(/^\d+[.)\s]+/, ''),
-          category: 'Evidentiary',
-          severity: 'Medium',
-          cause: l.replace(/^\d+[.)\s]+/, ''),
-          mitigation: 'Review and address this risk before the next hearing.'
-        }))
-      if (risks.length > 0) return risks
-    }
-  }
   // Clean sys tags first
   if (typeof raw === 'string') {
     raw = raw.replace(/\[sys\][^\[]*/g, '').trim()
   }
+
+  // Try to extract JSON object even if there is text before or after it
+  if (typeof raw === 'string') {
+    const jsonMatch = raw.match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      try {
+        const extracted = JSON.parse(jsonMatch[0])
+        if (extracted && Array.isArray(extracted.risks)) {
+          return extracted.risks
+            .filter((r: any) => r && typeof r === 'object')
+            .map((r: any) => {
+              // If mitigation ends with the same text as opposingArgument, strip it
+              if (r.mitigation && r.opposingArgument && r.mitigation.includes(r.opposingArgument)) {
+                r.mitigation = r.mitigation.replace(r.opposingArgument, '').trim()
+              }
+              return r
+            })
+        }
+      } catch (_) {}
+    }
+  }
+
   let parsed: any = raw
   if (typeof raw === 'string') {
     if (!raw.trim()) return null
     parsed = parseAiJson<any>(raw.trim())
   }
-  if (Array.isArray(parsed))                return parsed.filter((r: any) => r && typeof r === 'object')
+  if (Array.isArray(parsed)) return parsed.filter((r: any) => r && typeof r === 'object')
   if (parsed && Array.isArray(parsed.risks)) return parsed.risks.filter((r: any) => r && typeof r === 'object')
+
+  // Last resort fallback — plain text numbered list
+  if (typeof raw === 'string' && !raw.includes('{')) {
+    const lines = raw.split('\n').filter((l: string) => l.trim())
+    const risks = lines
+      .filter((l: string) => /^\d+[.)\s]/.test(l.trim()))
+      .map((l: string) => {
+        const text = l.replace(/^\d+[.)\s]+/, '')
+        const words = text.replace(/^(The |A |An |There is a |There are )/i, '').split(' ')
+        const shortTitle = words.slice(0, 6).join(' ').replace(/[,;:]$/, '')
+        return {
+          risk: shortTitle,
+          category: 'Evidentiary' as const,
+          severity: 'Medium' as const,
+          cause: text,
+          mitigation: text,
+          severityJustification: '',
+          deadline: '',
+          opposingArgument: ''
+        }
+      })
+    if (risks.length > 0) return risks
+  }
+
   return null
 }
 
@@ -201,6 +234,27 @@ export default function RiskAssessment() {
                     <div style={{ fontSize: 9, fontWeight: 700, color: '#15803d', letterSpacing: 1, marginBottom: 4 }}>WHAT TO DO ABOUT IT</div>
                     <p style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: '#14532d', whiteSpace: 'pre-line' }}>{r.mitigation || '—'}</p>
                   </div>
+
+                  {/* Deadline */}
+                  {r.deadline && (
+                    <div style={{ marginTop: 8, padding: '6px 10px', background: '#fef3c7', borderRadius: 6, border: '1px solid #f59e0b' }}>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: '#92400e', letterSpacing: 1, marginBottom: 2 }}>⏰ ACT BY</div>
+                      <p style={{ margin: 0, fontSize: 12, color: '#78350f' }}>{r.deadline}</p>
+                    </div>
+                  )}
+
+                  {/* Opposing Argument */}
+                  {r.opposingArgument && (
+                    <div style={{ marginTop: 8, padding: '6px 10px', background: '#fdf2f8', borderRadius: 6, border: '1px solid #db2777' }}>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: '#831843', letterSpacing: 1, marginBottom: 2 }}>⚔️ OPPONENT WILL ARGUE</div>
+                      <p style={{ margin: 0, fontSize: 12, color: '#9d174d' }}>{r.opposingArgument}</p>
+                    </div>
+                  )}
+
+                  {/* Severity justification */}
+                  {r.severityJustification && (
+                    <p style={{ margin: '6px 0 0', fontSize: 11, color: '#6b7280', fontStyle: 'italic' }}>{r.severityJustification}</p>
+                  )}
                 </div>
               )
             })}

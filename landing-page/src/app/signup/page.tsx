@@ -17,6 +17,7 @@ export default function SignupPage() {
   const [error, setError] = useState('')
   const [credits, setCredits] = useState(15)
   const [token, setToken] = useState('')
+  const [role, setRole] = useState('Senior Advocate')
 
   // OTP verification state
   const [otp, setOtp] = useState('')
@@ -806,6 +807,39 @@ export default function SignupPage() {
                   boxSizing: 'border-box',
                 }}
               />
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{
+                display: 'block',
+                fontSize: 12,
+                fontWeight: 600,
+                color: '#374151',
+                marginBottom: 6,
+              }}>
+                Your Role *
+              </label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  border: '1px solid #e2e8f0',
+                  fontSize: 14,
+                  fontFamily: 'inherit',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  background: '#fff',
+                  color: '#0f172a',
+                  cursor: 'pointer',
+                }}
+              >
+                <option value="Senior Advocate">Senior Advocate</option>
+                <option value="Junior Advocate">Junior Advocate</option>
+                <option value="Law Intern">Law Intern</option>
+              </select>
             </div>
 
             {error && (

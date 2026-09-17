@@ -175,7 +175,7 @@ function HowItWorksSection() {
           className="text-center mb-16"
         >
           <div className="text-[11px] uppercase tracking-[0.25em] font-mono font-bold text-[#2563eb] mb-3">
-            02.5 / WORKFLOW
+            WORKFLOW
           </div>
           <h2 className="text-4xl md:text-5xl font-serif font-bold tracking-tight text-[#0f172a] leading-[1.1]">
             Three steps to a
@@ -292,7 +292,7 @@ function PricingSection() {
   return (
     <section
       id="pricing"
-      className="relative z-30 min-h-screen py-24 px-8 md:px-16 xl:pl-56 xl:pr-24 border-t border-[#3A2E26]/10 flex flex-col justify-center"
+      className="relative z-30 py-14 px-8 md:px-16 xl:pl-56 xl:pr-24 border-t border-[#3A2E26]/10 flex flex-col justify-center"
     >
       <div className="max-w-6xl mx-auto w-full space-y-12">
         <motion.div
@@ -320,7 +320,6 @@ function PricingSection() {
             🚀 Free access available during launch — paid plans coming soon
           </div>
           <div className="text-[11px] uppercase tracking-[0.25em] font-mono font-bold text-[#6B5A4B] flex items-center justify-center space-x-2">
-            <span className="px-2 py-0.5 rounded skeuo-inset text-[10px]">05</span>
             <span>PRICING</span>
           </div>
           <h2 className="text-4xl md:text-6xl font-serif tracking-tight text-[#1E1712] skeuo-text-embossed">
@@ -2156,33 +2155,31 @@ export default function LandingPageUI() {
       </div>
 
       {/* LEFT SIDEBAR NAVIGATION ("ON THIS PAGE") */}
-      <aside className="landing-sidebar fixed left-8 top-1/2 -translate-y-1/2 z-40 hidden xl:flex flex-col space-y-7 max-h-[80vh] overflow-y-auto">
-        <div className="text-[10px] uppercase tracking-[0.25em] font-mono font-bold text-[#5C4D3F] skeuo-text-engraved mb-2">
-          ON THIS PAGE
-        </div>
-        <ul className="flex flex-col space-y-3 text-[12px] font-mono leading-[1.4]">
+      <aside className="landing-sidebar fixed left-3 top-1/2 -translate-y-1/2 z-40 hidden xl:flex flex-col space-y-5 max-h-[80vh] overflow-y-auto">
+
+        <ul className="flex flex-col space-y-2 font-mono leading-[1.4]">
           {sidebarNavItems.map((item) => {
             const isActive = activeSection === item.id;
             return (
               <li
                 key={item.id}
-                className={`flex items-center space-x-3 group cursor-pointer border-l-2 pl-3 py-0.5 transition-all duration-300 ${
+                className={`flex items-center space-x-2 group cursor-pointer border-l-2 pl-2 py-0.5 transition-all duration-300 ${
                   isActive ? "border-[#2B2017]" : "border-transparent"
                 }`}
                 onClick={() => scrollTo(item.id)}
               >
                 <span
-                  className={`h-[2px] rounded-full transition-all duration-300 ${
+                  className={`h-[2px] rounded-full transition-all duration-300 flex-shrink-0 ${
                     isActive
-                      ? "w-6 bg-[#2B2017] shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
-                      : "w-2 bg-[#8C7B6B]/40 group-hover:w-4 group-hover:bg-[#5C4D3F]"
+                      ? "w-4 bg-[#2B2017]"
+                      : "w-1.5 bg-[#8C7B6B]/40 group-hover:w-3 group-hover:bg-[#5C4D3F]"
                   }`}
                 />
                 <span
-                  className={`transition-all duration-300 ${
+                  className={`transition-all duration-300 whitespace-nowrap ${
                     isActive
-                      ? "text-[#1E1712] font-bold skeuo-text-embossed translate-x-1"
-                      : "text-[#6B5A4B] font-medium group-hover:text-[#2B2017]"
+                      ? "text-[#1E1712] font-bold text-[11px]"
+                      : "text-[#6B5A4B] font-medium text-[9px] group-hover:text-[#2B2017] group-hover:text-[10px]"
                   }`}
                 >
                   {item.label}
@@ -2393,7 +2390,7 @@ export default function LandingPageUI() {
           {/* Right-Aligned High-Fashion / Skeuomorphic Editorial Headline */}
           <motion.div
             style={{ opacity: textOpacity, y: textY }}
-            className="absolute right-6 md:right-12 lg:right-16 xl:right-24 top-[56%] -translate-y-1/2 z-40 flex flex-col items-end text-right max-w-md lg:max-w-xl xl:max-w-2xl"
+            className="absolute right-6 md:right-12 lg:right-16 xl:right-24 top-[62%] -translate-y-1/2 z-40 flex flex-col items-end text-right max-w-md lg:max-w-lg xl:max-w-xl"
           >
             {/* Skeuomorphic Embossed Tag */}
             <div className="flex items-center space-x-3 px-3 py-1 rounded-full skeuo-inset text-[10px] md:text-[11px] font-mono uppercase tracking-[0.32em] font-semibold text-[#5A4839] mb-3">
@@ -2401,13 +2398,14 @@ export default function LandingPageUI() {
               <span>·</span>
               <span>EST. 2026</span>
             </div>
+            <div className="mb-2" />
 
             {/* Giant Title "INDIAN" with rich text depth */}
             <motion.h1
               initial={{ opacity: 0, x: 25 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.9, ease: "easeOut" }}
-              className="text-7xl sm:text-8xl md:text-9xl lg:text-[120px] xl:text-[142px] font-serif font-normal tracking-tight text-[#1E1712] skeuo-text-embossed leading-[0.84] select-none"
+              className="text-6xl sm:text-7xl md:text-8xl lg:text-[100px] xl:text-[118px] font-serif font-normal tracking-tight text-[#1E1712] skeuo-text-embossed leading-[0.84] select-none"
             >
               Indian
             </motion.h1>
@@ -2417,7 +2415,7 @@ export default function LandingPageUI() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.9, delay: 0.15, ease: "easeOut" }}
-              className="text-2xl sm:text-3xl md:text-5xl lg:text-5xl xl:text-6xl font-sans font-light tracking-[0.42em] uppercase text-[#3C2F25] pl-[0.42em] leading-tight mt-1"
+              className="text-2xl sm:text-3xl md:text-5xl lg:text-5xl xl:text-6xl font-sans font-light tracking-[0.12em] uppercase text-[#3C2F25] pl-[3em] leading-tight mt-3"
             >
               Litigation
             </motion.div>
@@ -2798,7 +2796,7 @@ export default function LandingPageUI() {
       {/* ========================================================= */}
       <section
         id="features"
-        className="relative z-30 min-h-screen py-24 px-8 md:px-16 xl:pl-56 xl:pr-24 border-t border-[#3A2E26]/10 flex flex-col justify-center overflow-hidden"
+        className="relative z-30 py-14 px-8 md:px-16 xl:pl-56 xl:pr-24 border-t border-[#3A2E26]/10 flex flex-col justify-center overflow-hidden"
       >
         {/* Scrolling legal-document background texture */}
         <div
@@ -2824,7 +2822,6 @@ export default function LandingPageUI() {
         >
           <div className="flex flex-col items-center text-center">
             <div className="text-[11px] uppercase tracking-[0.25em] font-mono font-bold text-[#6B5A4B] flex items-center justify-center space-x-2 mb-3">
-              <span className="px-2 py-0.5 rounded skeuo-inset text-[10px]">02</span>
               <span>CORE CAPABILITIES</span>
             </div>
             <h2 className="text-4xl md:text-6xl font-serif tracking-tight text-[#1E1712] skeuo-text-embossed">
@@ -3049,7 +3046,7 @@ export default function LandingPageUI() {
       {/* ========================================================= */}
       <section
         id="demo"
-        className="relative z-30 py-24 px-8 md:px-16 xl:pl-56 xl:pr-24 border-t border-[#3A2E26]/10"
+        className="relative z-30 py-14 px-8 md:px-16 xl:pl-56 xl:pr-24 border-t border-[#3A2E26]/10"
       >
         <div className="max-w-6xl mx-auto w-full">
           <motion.div
@@ -3060,7 +3057,6 @@ export default function LandingPageUI() {
             className="text-center mb-12"
           >
             <div className="text-[11px] uppercase tracking-[0.25em] font-mono font-bold text-[#6B5A4B] flex items-center justify-center space-x-2 mb-3">
-              <span className="px-2 py-0.5 rounded skeuo-inset text-[10px]">02.5</span>
               <span>PRODUCT TOUR</span>
             </div>
             <h2 className="text-4xl md:text-5xl font-serif tracking-tight text-[#1E1712] skeuo-text-embossed mb-4">
@@ -3098,7 +3094,7 @@ export default function LandingPageUI() {
       {/* ========================================================= */}
       <section
         id="intelligence"
-        className="relative z-30 min-h-screen py-24 px-8 md:px-16 xl:pl-56 xl:pr-24 border-t border-[#3A2E26]/10 flex flex-col justify-center"
+        className="relative z-30 py-14 px-8 md:px-16 xl:pl-56 xl:pr-24 border-t border-[#3A2E26]/10 flex flex-col justify-center"
       >
         <div className="max-w-6xl mx-auto w-full space-y-12">
           <motion.div
@@ -3110,7 +3106,6 @@ export default function LandingPageUI() {
           >
             <div className="text-[11px] uppercase tracking-[0.25em] font-mono font-bold text-[#6B5A4B] flex items-center justify-center space-x-2">
               <Sparkles className="w-3.5 h-3.5 text-[#0EA5E9]" />
-              <span className="px-2 py-0.5 rounded skeuo-inset text-[10px]">03</span>
               <span>AI &amp; INTELLIGENCE</span>
             </div>
             <h2 className="text-4xl md:text-6xl font-serif tracking-tight text-[#1E1712] skeuo-text-embossed">
@@ -3306,7 +3301,7 @@ export default function LandingPageUI() {
       {/* ========================================================= */}
       <section
         id="why-clausio"
-        className="relative z-30 min-h-screen py-24 px-8 md:px-16 xl:pl-56 xl:pr-24 border-t border-[#3A2E26]/10 flex flex-col justify-center"
+        className="relative z-30 py-14 px-8 md:px-16 xl:pl-56 xl:pr-24 border-t border-[#3A2E26]/10 flex flex-col justify-center"
       >
         <div className="max-w-5xl mx-auto w-full space-y-12">
           <motion.div
@@ -3317,7 +3312,6 @@ export default function LandingPageUI() {
             className="flex flex-col items-center text-center"
           >
             <div className="text-[11px] uppercase tracking-[0.25em] font-mono font-bold text-[#6B5A4B] flex items-center justify-center space-x-2 mb-3">
-              <span className="px-2 py-0.5 rounded skeuo-inset text-[10px]">04</span>
               <span>ADVANTAGES</span>
             </div>
             <h2 className="text-4xl md:text-6xl font-serif tracking-tight text-[#1E1712] skeuo-text-embossed">
@@ -3371,16 +3365,27 @@ export default function LandingPageUI() {
       </section>
 
       {/* ========================================================= */}
-      {/* SECTION 5.5: PRICING (added after why-clausio, before about) */}
+      {/* SECTION 5.5: PRICING — coming soon */}
       {/* ========================================================= */}
-      <PricingSection />
+      <section id="pricing" style={{ padding: '48px 24px', textAlign: 'center' }}>
+        <div style={{ maxWidth: 480, margin: '0 auto', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 20, padding: '48px 32px' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#2563eb', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 16 }}>Pricing</div>
+          <h2 style={{ fontSize: 28, fontWeight: 800, color: '#0f172a', marginBottom: 12 }}>Pricing coming soon</h2>
+          <p style={{ fontSize: 15, color: '#64748b', lineHeight: 1.7, marginBottom: 24 }}>
+            We are finalising our pricing plans. For early access and pricing enquiries, reach out directly.
+          </p>
+          <a href="mailto:parthbindra@clausiotech.com" style={{ display: 'inline-block', padding: '12px 28px', background: '#2563eb', color: '#fff', borderRadius: 10, fontWeight: 700, fontSize: 14, textDecoration: 'none' }}>
+            Contact us — parthbindra@clausiotech.com
+          </a>
+        </div>
+      </section>
 
       {/* ========================================================= */}
       {/* SECTION 6: THE TEAM */}
       {/* ========================================================= */}
       <section
         id="team"
-        className="relative z-30 py-24 px-8 md:px-16 xl:pl-56 xl:pr-24 border-t border-[#3A2E26]/10"
+        className="relative z-30 py-14 px-8 md:px-16 xl:pl-56 xl:pr-24 border-t border-[#3A2E26]/10"
       >
         <div className="max-w-6xl mx-auto w-full">
           {/* Section header */}
@@ -3392,7 +3397,6 @@ export default function LandingPageUI() {
             className="text-center mb-16"
           >
             <div className="text-[11px] uppercase tracking-[0.25em] font-mono font-bold text-[#6B5A4B] flex items-center justify-center space-x-2 mb-3">
-              <span className="px-2 py-0.5 rounded skeuo-inset text-[10px]">06</span>
               <span>THE TEAM</span>
             </div>
             <h2 className="text-4xl md:text-5xl font-serif tracking-tight text-[#1E1712] skeuo-text-embossed">
@@ -3512,7 +3516,7 @@ export default function LandingPageUI() {
       {/* ========================================================= */}
       <section
         id="about"
-        className="relative z-30 min-h-screen py-24 px-8 md:px-16 xl:pl-56 xl:pr-32 border-t border-[#3A2E26]/10 flex flex-col justify-center overflow-hidden"
+        className="relative z-30 py-14 px-8 md:px-16 xl:pl-56 xl:pr-32 border-t border-[#3A2E26]/10 flex flex-col justify-center overflow-hidden"
       >
         {/* Decorative floating scale-of-justice watermark */}
         <div
@@ -3542,7 +3546,6 @@ export default function LandingPageUI() {
             className="flex flex-col items-center text-center space-y-5 max-w-2xl mx-auto"
           >
             <div className="text-[11px] uppercase tracking-[0.25em] font-mono font-bold text-[#6B5A4B] flex items-center justify-center space-x-2">
-              <span className="px-2 py-0.5 rounded skeuo-inset text-[10px]">07</span>
               <span>OUR MISSION</span>
             </div>
 
@@ -3647,7 +3650,7 @@ export default function LandingPageUI() {
       {/* ========================================================= */}
       <section
         id="cta"
-        className="relative z-30 min-h-screen py-24 px-8 md:px-16 xl:pl-56 xl:pr-24 border-t border-[#3A2E26]/10 flex flex-col justify-center items-center text-center overflow-hidden"
+        className="relative z-30 py-14 px-8 md:px-16 xl:pl-56 xl:pr-24 border-t border-[#3A2E26]/10 flex flex-col justify-center items-center text-center overflow-hidden"
       >
         {/* Animated gradient mesh orbs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
@@ -3704,7 +3707,6 @@ export default function LandingPageUI() {
           className="relative z-10 max-w-2xl space-y-8 skeuo-card p-12 md:p-16 rounded-3xl shadow-[0_30px_70px_rgba(40,25,15,0.2)]"
         >
           <div className="text-[11px] uppercase tracking-[0.25em] font-mono font-bold text-[#6B5A4B] flex items-center justify-center space-x-2">
-            <span className="px-2 py-0.5 rounded skeuo-inset text-[10px]">08</span>
             <span>GET STARTED</span>
           </div>
 
@@ -3765,7 +3767,7 @@ export default function LandingPageUI() {
               Built exclusively for advocates enrolled with Bar Councils across India.
             </p>
             <a
-              href="https://linkedin.com/company/clausio"
+              href="https://www.linkedin.com/company/clausio-technologies-private-limited/"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Clausio on LinkedIn"
@@ -3848,7 +3850,10 @@ export default function LandingPageUI() {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto mt-12 pt-6 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center text-[11px] font-mono text-white/50">
+        <div className="max-w-7xl mx-auto mt-12 pt-6 border-t border-white/10 text-center text-[11px] font-mono text-white/40 mb-4 px-4 leading-relaxed">
+          Clausio uses AI to assist advocates. AI outputs may contain errors — always verify citations, section numbers and dates before use in court.
+        </div>
+        <div className="max-w-7xl mx-auto pt-4 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center text-[11px] font-mono text-white/50">
           <div>© 2026 Clausio Technologies Private Limited</div>
           <div className="mt-2 sm:mt-0">Made with ♥ for Indian Advocates</div>
         </div>
@@ -3942,7 +3947,6 @@ function TokenVaultSecuritySection() {
         >
           <div className="text-[11px] uppercase tracking-[0.25em] font-mono font-bold text-sky-700 flex items-center space-x-2">
             <Lock className="w-3.5 h-3.5 text-sky-600" />
-            <span className="px-2 py-0.5 rounded skeuo-inset text-[10px]">04.5</span>
             <span>MILITARY-GRADE PRIVACY</span>
           </div>
           <h2 className="text-4xl md:text-5xl font-serif tracking-tight text-[#0F172A] skeuo-text-embossed">

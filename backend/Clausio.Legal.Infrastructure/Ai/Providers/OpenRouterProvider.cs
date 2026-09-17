@@ -88,10 +88,15 @@ public class OpenRouterProvider : ILLMProvider
     {
         _logger.LogInformation("OpenRouter StreamCompleteAsync called for model {Model}, ProviderPreference: {Provider}", model, preferredProvider ?? "default");
 
+        // Detect if this prompt requires strict JSON output
+        var requiresJson = systemPrompt.Contains("Return ONE valid JSON object") ||
+                           systemPrompt.Contains("Return strictly valid JSON only") ||
+                           userPrompt.Contains("Return strictly valid JSON only");
+
         var requestBody = new Dictionary<string, object>
         {
             ["model"] = model,
-            ["max_tokens"] = 3000,
+            ["max_tokens"] = 6000,
             ["temperature"] = 0.1,
             ["stream"] = true,
             ["messages"] = new[]
@@ -100,6 +105,12 @@ public class OpenRouterProvider : ILLMProvider
                 new { role = "user", content = userPrompt }
             }
         };
+
+        // Force JSON mode for structured output tasks
+        if (requiresJson)
+        {
+            requestBody["response_format"] = new Dictionary<string, string> { ["type"] = "json_object" };
+        }
 
         if (!string.IsNullOrWhiteSpace(preferredProvider))
         {
@@ -164,6 +175,11 @@ public class OpenRouterProvider : ILLMProvider
         bool isClientUpdate = systemPrompt.Contains("CLIENT-UPDATE TASK", StringComparison.OrdinalIgnoreCase);
         int maxTokens = customMaxTokens ?? (isClientUpdate ? 2048 : _completionMaxTokens);
 
+        // Detect if this prompt requires strict JSON output
+        var requiresJson = systemPrompt.Contains("Return ONE valid JSON object") ||
+                           systemPrompt.Contains("Return strictly valid JSON only") ||
+                           userPrompt.Contains("Return strictly valid JSON only");
+
         var requestBody = new Dictionary<string, object>
         {
             ["model"] = model,
@@ -176,6 +192,12 @@ public class OpenRouterProvider : ILLMProvider
                 new { role = "user", content = userPrompt }
             }
         };
+
+        // Force JSON mode for structured output tasks
+        if (requiresJson && !stream)
+        {
+            requestBody["response_format"] = new Dictionary<string, string> { ["type"] = "json_object" };
+        }
 
         if (!string.IsNullOrWhiteSpace(preferredProvider))
         {

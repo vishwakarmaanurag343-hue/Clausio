@@ -108,6 +108,20 @@ public class CaseService(
         if (dto.Description    is not null) entity.Description    = dto.Description;
         await db.SaveChangesAsync(cancellationToken);
 
+        // Re-register PII tokens on update so existing cases get their token vault populated
+        var clientId = await db.Cases
+            .Where(c => c.Id == id)
+            .Select(c => c.ClientId)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (clientId != Guid.Empty)
+        {
+            var client = await db.Clients.FirstOrDefaultAsync(c => c.Id == clientId, cancellationToken);
+            if (client != null)
+            {
+                await piiTokenService.RegisterCaseTokensAsync(entity.Id, client, cancellationToken);
+            }
+        }
+
         // Re-sync the case's next-hearing date to the calendar (adds, updates or removes the event)
         calendarSync.QueueCaseNextHearingSync(entity.Id);
         return entity;

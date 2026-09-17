@@ -41,7 +41,17 @@ function extractSimilarCases(raw: unknown): SimilarCase[] | null {
     }
   }
   if (Array.isArray(parsed)) return parsed.filter((c: any) => c && typeof c === 'object')
-  if (parsed && Array.isArray(parsed.similarCases)) return parsed.similarCases.filter((c: any) => c && typeof c === 'object')
+  if (parsed && Array.isArray(parsed.similarCases)) {
+    const seen = new Set<string>()
+    return parsed.similarCases
+      .filter((c: any) => c && typeof c === 'object')
+      .filter((c: any) => {
+        const key = (c.citation || c.caseName || '').trim().toLowerCase()
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+  }
   if (parsed && Array.isArray(parsed.judgments)) return parsed.judgments.filter((c: any) => c && typeof c === 'object')
   return null
 }
@@ -95,7 +105,18 @@ export default function LegalResearch() {
     setLoading(true)
     setError('')
     researchApi.getByCaseId(selectedCaseId)
-      .then(data => setResearch(Array.isArray(data) ? data : []))
+      .then(data => {
+        const items = Array.isArray(data) ? data : []
+        // Dedup by citation when loading from DB
+        const seen = new Set<string>()
+        const unique = items.filter((item: any) => {
+          const key = (item.citation || item.caseName || '').trim().toLowerCase()
+          if (seen.has(key)) return false
+          seen.add(key)
+          return true
+        })
+        setResearch(unique)
+      })
       .catch(err => setError(err.message || 'Failed to load research'))
       .finally(() => setLoading(false))
   }, [selectedCaseId])
@@ -115,7 +136,15 @@ export default function LegalResearch() {
       setMatches(cases)
 
       // Persist in the same pass as before so the saved list stays current.
-      await Promise.all(cases.map(c => researchApi.create(selectedCaseId, {
+      // Dedup by citation before saving to avoid duplicate DB entries
+      const seenCitations = new Set<string>()
+      const uniqueCases = cases.filter(c => {
+        const key = (c.citation || c.caseName || '').trim().toLowerCase()
+        if (seenCitations.has(key)) return false
+        seenCitations.add(key)
+        return true
+      })
+      await Promise.all(uniqueCases.map(c => researchApi.create(selectedCaseId, {
         citation:       c.citation ?? '',
         court:          c.courtAndYear ?? '',
         year:           Number(c.courtAndYear?.match(/\d{4}/)?.[0]) || undefined,
@@ -226,12 +255,36 @@ export default function LegalResearch() {
               </div>
 
               {/* Why it helps this case */}
-              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 12px', marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
                   <span style={{ fontSize: 9, fontWeight: 700, color: '#15803d', letterSpacing: 1 }}>WHY IT HELPS THIS CASE</span>
                 </div>
                 <p style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: '#14532d', whiteSpace: 'pre-line' }}>{c.whyRelevantToThisCase || '—'}</p>
               </div>
+
+              {/* Exact proposition */}
+              {(c as any).exactProposition && (
+                <div style={{ marginBottom: 8, padding: '6px 10px', background: '#fffbeb', borderRadius: 6, border: '1px solid #fde68a' }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: '#92400e', letterSpacing: 1, marginBottom: 2 }}>📌 EXACT PROPOSITION</div>
+                  <p style={{ margin: 0, fontSize: 12, color: '#78350f', fontStyle: 'italic' }}>{(c as any).exactProposition}</p>
+                </div>
+              )}
+
+              {/* How to use in argument */}
+              {(c as any).howToUseInArgument && (
+                <div style={{ marginBottom: 8, padding: '6px 10px', background: '#eff6ff', borderRadius: 6, border: '1px solid #bfdbfe' }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: '#1d4ed8', letterSpacing: 1, marginBottom: 2 }}>🗣 SAY IN COURT</div>
+                  <p style={{ margin: 0, fontSize: 12, color: '#1e3a8a' }}>"{(c as any).howToUseInArgument}"</p>
+                </div>
+              )}
+
+              {/* Strongest distinction */}
+              {(c as any).strongestDistinction && (
+                <div style={{ padding: '6px 10px', background: '#fdf2f8', borderRadius: 6, border: '1px solid #fbcfe8' }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: '#831843', letterSpacing: 1, marginBottom: 2 }}>⚔️ OPPONENT MAY ARGUE</div>
+                  <p style={{ margin: 0, fontSize: 12, color: '#9d174d' }}>{(c as any).strongestDistinction}</p>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -290,7 +343,7 @@ export default function LegalResearch() {
 
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
                 <span style={{ background: '#dcfce7', color: '#15803d', padding: '6px 12px', borderRadius: 20, fontWeight: 700, fontSize: 12 }}>
-                  {item.strength === 'High' ? '96%' : item.strength === 'Medium' ? '78%' : '60%'} Match
+                  {item.strength === 'High' ? '✓ Strong Match' : item.strength === 'Medium' ? '✓ Relevant' : '✓ Authority'}
                 </span>
                 <span style={{ background: verification.bg, color: verification.color, padding: '4px 10px', borderRadius: 20, fontWeight: 600, fontSize: 11, border: `1px solid ${verification.color}30` }}>
                   {verification.icon} {verification.source}
@@ -324,7 +377,7 @@ export default function LegalResearch() {
             {/* Footer — View Judgment button */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
               <span style={{ background: '#eff6ff', color: '#2563eb', padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600 }}>
-                {item.relevance?.substring(0, 40) ?? 'Relevant'}
+                ✓ Relevant Authority
               </span>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
