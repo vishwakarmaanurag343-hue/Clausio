@@ -386,6 +386,31 @@ function PricingSection() {
   );
 }
 
+const ScrollWordReveal = ({ text, className }: { text: string, className?: string }) => {
+  const container = useRef<HTMLParagraphElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: container,
+    offset: ["start 90%", "start 60%"]
+  });
+
+  const words = text.split(" ");
+
+  return (
+    <p ref={container} className={`flex flex-wrap ${className || ""}`}>
+      {words.map((word, i) => {
+        const start = i / words.length;
+        const end = start + (1 / words.length);
+        const opacity = useTransform(scrollYProgress, [start, end], [0.15, 1]);
+        return (
+          <motion.span key={i} style={{ opacity }} className="mr-[0.25em]">
+            {word}
+          </motion.span>
+        );
+      })}
+    </p>
+  );
+};
+
 /* ============================================================= */
 /* LEGAL DOCUMENT TICKER (hero) + COURTS MARQUEE (post how-it-works) */
 /* ============================================================= */
@@ -804,149 +829,162 @@ const FAQS: Faq[] = [
 type ChatMsg = { role: "bot" | "user"; text: string };
 
 function FaqChat() {
- const [open, setOpen] = useState(false);
- const [messages, setMessages] = useState<ChatMsg[]>([
- {
- role: "bot",
- text: "Hi — I'm the Clausio assistant. Ask me a common question, or pick one below.",
- },
- ]);
- const [input, setInput] = useState("");
- const scrollRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState<ChatMsg[]>([
+    {
+      role: "bot",
+      text: "Hi — I'm the Clausio assistant. Ask me a common question, or pick one below.",
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
 
- useEffect(() => {
- scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
- }, [messages, open]);
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, open]);
 
- const answerFor = (text: string) => {
- const t = text.toLowerCase();
- const exact = FAQS.find((f) => f.q.toLowerCase() === t);
- if (exact) return exact.a;
- const hit = FAQS.find((f) => f.keywords.some((k) => t.includes(k)));
- return (
- hit?.a ??
- `I can help with what Clausio is, pricing, data security, supported courts, document drafting, research and getting started. For anything else, email ${CONTACT_EMAIL}.`
- );
- };
+  const answerFor = (text: string) => {
+    const t = text.toLowerCase();
+    const exact = FAQS.find((f) => f.q.toLowerCase() === t);
+    if (exact) return exact.a;
+    const hit = FAQS.find((f) => f.keywords.some((k) => t.includes(k)));
+    return (
+      hit?.a ??
+      `I can help with what Clausio is, pricing, data security, supported courts, document drafting, research and getting started. For anything else, email ${CONTACT_EMAIL}.`
+    );
+  };
 
- const ask = (question: string) => {
- const q = question.trim();
- if (!q) return;
- setMessages((m) => [...m, { role: "user", text: q }, { role: "bot", text: answerFor(q) }]);
- setInput("");
- };
+  const ask = (question: string) => {
+    const q = question.trim();
+    if (!q) return;
+    setMessages((m) => [...m, { role: "user", text: q }, { role: "bot", text: answerFor(q) }]);
+    setInput("");
+  };
 
- return (
- <>
- {/* Launcher */}
- <button
- onClick={() => setOpen((o) => !o)}
- aria-label={open ? "Close help chat" : "Open help chat"}
- className="fixed bottom-6 right-6 z-[55] w-14 h-14 rounded-xl minimal-btn-primary flex items-center justify-center hidden md:flex"
- >
- {open ? <X className="w-5 h-5" /> : <MessageCircle className="w-5 h-5" />}
- </button>
+  return (
+    <>
+      {/* Launcher */}
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-label={open ? "Close help chat" : "Open help chat"}
+        className="fixed bottom-6 right-6 z-[55] w-14 h-14 rounded-2xl bg-white/75 backdrop-blur-md border border-white shadow-xl flex items-center justify-center text-[#111111] hover:bg-white active:scale-95 transition-all duration-200 hidden md:flex"
+      >
+        {open ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
+      </button>
 
- <AnimatePresence>
- {open && (
- <motion.div
- initial={{ opacity: 0, y: 24, scale: 0.96 }}
- animate={{ opacity: 1, y: 0, scale: 1 }}
- exit={{ opacity: 0, y: 24, scale: 0.96 }}
- transition={{ type: "spring", stiffness: 320, damping: 28 }}
- className="fixed bottom-24 right-6 z-[55] w-[min(92vw,380px)] max-h-[72vh] rounded-2xl minimal-bento-card flex flex-col overflow-hidden hidden md:flex"
- >
- {/* Header */}
- <div className="flex items-center justify-between px-4 py-3 border-b border-[#3A2E26]/10 bg-[#F5FAFF]">
- <div className="flex items-center gap-2">
- <span className="w-7 h-7 rounded-xl minimal-inset flex items-center justify-center text-[#0369A1]">
- <Sparkles className="w-3.5 h-3.5" />
- </span>
- <div className="leading-tight">
- <div className="text-xs font-mono font-bold uppercase tracking-[0.18em] text-[#111111]">
- Clausio · Help
- </div>
- <div className="text-[10px] font-mono text-[#7A6959]">Answers to common questions</div>
- </div>
- </div>
- <button onClick={() => setOpen(false)} aria-label="Close" className="text-[#7A6959] hover:text-[#111111]">
- <X className="w-4 h-4" />
- </button>
- </div>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 24, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 24, scale: 0.96 }}
+            transition={{ type: "spring", stiffness: 320, damping: 28 }}
+            className="fixed bottom-24 right-6 z-[55] w-[min(92vw,380px)] max-h-[72vh] rounded-3xl bg-white/85 backdrop-blur-xl border border-white/60 shadow-[0_8px_40px_rgba(0,0,0,0.08)] flex flex-col overflow-hidden hidden md:flex"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#3A2E26]/10">
+              <div className="flex items-center gap-3">
+                <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#0369A1] to-[#0284C7] shadow-sm flex items-center justify-center text-white">
+                  <Sparkles className="w-4 h-4" />
+                </span>
+                <div className="leading-tight">
+                  <div className="text-xs font-mono font-bold uppercase tracking-[0.18em] text-[#111111]">
+                    Clausio · Help
+                  </div>
+                  <div className="text-[10px] font-mono text-[#7A6959] mt-0.5">Answers to common questions</div>
+                </div>
+              </div>
+              <button 
+                onClick={() => setOpen(false)} 
+                aria-label="Close" 
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 active:scale-90 transition-all text-[#7A6959] hover:text-[#111111]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
- {/* Messages */}
- <div
- ref={scrollRef}
- data-lenis-prevent
- className="flex-1 min-h-0 h-[46vh] overflow-y-auto overscroll-contain px-4 py-4 space-y-2.5 bg-white"
- >
- {messages.map((m, i) => (
- <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
- <div
- className={`max-w-[86%] px-3.5 py-2.5 rounded-2xl text-[13px] leading-relaxed font-sans ${
- m.role === "user"
- ? "bg-[#2563eb] text-white rounded-br-sm"
- : "bg-[#f1f5f9] text-[#0f172a] border border-[#e2e8f0] rounded-bl-sm"
- }`}
- >
- {m.text}
- </div>
- </div>
- ))}
- </div>
+            {/* Messages */}
+            <div
+              ref={scrollRef}
+              data-lenis-prevent
+              className="flex-1 min-h-0 h-[46vh] overflow-y-auto overscroll-contain px-5 py-5 space-y-3"
+            >
+              <AnimatePresence initial={false}>
+                {messages.map((m, i) => (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    key={i} 
+                    className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`max-w-[85%] px-4 py-3 text-[13px] leading-relaxed font-sans shadow-sm ${
+                        m.role === "user"
+                          ? "bg-[#33251D] text-white rounded-[20px] rounded-br-sm"
+                          : "bg-white text-[#111111] border border-black/5 rounded-[20px] rounded-bl-sm"
+                      }`}
+                    >
+                      {m.text}
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
 
- {/* Common questions */}
- <div className="border-t border-[#e2e8f0] bg-[#F5FAFF] px-4 pt-2.5 pb-2">
- <div className="text-[9px] font-mono uppercase tracking-[0.2em] font-bold text-[#7A6959] mb-1.5">
- Common questions
- </div>
- <div
- data-lenis-prevent
- className="flex flex-wrap gap-1.5 max-h-[92px] overflow-y-auto overscroll-contain"
- >
- {FAQS.map((f) => (
- <button
- key={f.q}
- onClick={() => ask(f.q)}
- className="px-2.5 py-1 rounded-xl bg-white border border-[#e2e8f0] text-[10px] font-medium text-[#334155] hover:border-[#2563eb]/40 hover:text-[#2563eb] transition-colors text-left"
- >
- {f.q}
- </button>
- ))}
- </div>
- </div>
+            {/* Common questions */}
+            <div className="border-t border-[#3A2E26]/10 bg-white/40 backdrop-blur-md px-5 pt-3 pb-2.5">
+              <div className="text-[9px] font-mono uppercase tracking-[0.2em] font-bold text-[#7A6959] mb-2">
+                Common questions
+              </div>
+              <div
+                data-lenis-prevent
+                className="flex flex-wrap gap-2 max-h-[92px] overflow-y-auto overscroll-contain pb-1"
+              >
+                {FAQS.map((f) => (
+                  <button
+                    key={f.q}
+                    onClick={() => ask(f.q)}
+                    className="px-3 py-1.5 rounded-full bg-white/80 border border-black/5 shadow-sm text-[11px] font-medium text-[#3A2E26] hover:border-[#0369A1]/30 hover:text-[#0369A1] active:scale-95 transition-all text-left"
+                  >
+                    {f.q}
+                  </button>
+                ))}
+              </div>
+            </div>
 
- {/* Input */}
- <form
- onSubmit={(e) => {
- e.preventDefault();
- ask(input);
- }}
- className="flex items-center gap-2 px-4 py-3"
- >
- <input
- value={input}
- onChange={(e) => setInput(e.target.value)}
- placeholder="Type a question…"
- className="flex-1 px-3 py-2 rounded-xl minimal-inset text-xs font-sans text-[#111111] placeholder:text-[#9A8B7B] outline-none"
- />
- <button
- type="submit"
- aria-label="Send"
- className="w-9 h-9 rounded-xl minimal-btn-primary flex items-center justify-center shrink-0"
- >
- <Send className="w-4 h-4" />
- </button>
- </form>
+            {/* Input */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                ask(input);
+              }}
+              className="flex items-center gap-2 px-4 py-3 bg-white"
+            >
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Type a question…"
+                className="flex-1 px-4 py-2.5 rounded-full bg-[#F3F0EB] text-[13px] font-sans text-[#111111] placeholder:text-[#9A8B7B] outline-none border border-transparent focus:border-black/10 focus:bg-white transition-all shadow-inner"
+              />
+              <button
+                type="submit"
+                aria-label="Send"
+                disabled={!input.trim()}
+                className="w-10 h-10 rounded-full bg-[#111111] text-white flex items-center justify-center shrink-0 hover:bg-[#33251D] active:scale-90 transition-all disabled:opacity-50 disabled:active:scale-100"
+              >
+                <Send className="w-4 h-4 ml-0.5" />
+              </button>
+            </form>
 
- <div className="px-4 pb-3 text-[9px] font-mono text-[#9A8B7B] leading-relaxed">
- Clausio is a software tool, not a law firm. Responses here are general information, not legal advice.
- </div>
- </motion.div>
- )}
- </AnimatePresence>
- </>
- );
+            <div className="px-5 pb-4 pt-1 bg-white text-[9px] font-mono text-[#9A8B7B] leading-relaxed text-center">
+              Clausio is a software tool, not a law firm.
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
 }
 
 /* ============================================================= */
@@ -1821,14 +1859,12 @@ export default function LandingPageUI() {
  const [activeSection, setActiveSection] = useState("hero");
  const [isScrolled, setIsScrolled] = useState(false);
  const [ripple, setRipple] = useState(false);
- const [soundOn, setSoundOn] = useState(false);
  const [torchPos, setTorchPos] = useState({ x: 0, y: 0, opacity: 0 });
  // Hero — rotating typed phrases beneath the caption
  const [heroPhraseIndex, setHeroPhraseIndex] = useState(0);
  const [heroTyped, setHeroTyped] = useState("");
  const [heroTyping, setHeroTyping] = useState(true);
  const rippleFiredRef = useRef(false);
- const audioRef = useRef<HTMLAudioElement | null>(null);
  // Window scroll tracking for smooth statue slide from center to right
  const { scrollY, scrollYProgress } = useScroll();
  // Left-rail vertical beam fill + top scroll-progress bar
@@ -1918,27 +1954,6 @@ export default function LandingPageUI() {
  }, [heroTyped, heroTyping, heroPhraseIndex]);
 
  useEffect(() => {
- audioRef.current = new Audio("/ambient.mp3");
- audioRef.current.preload = "none";
- audioRef.current.loop = true;
- audioRef.current.volume = 0.15;
- const el = audioRef.current;
- return () => {
- el?.pause();
- };
- }, []);
-
- const toggleSound = () => {
- if (!audioRef.current) return;
- if (soundOn) {
- audioRef.current.pause();
- } else {
- audioRef.current.play().catch(() => {});
- }
- setSoundOn(!soundOn);
- };
-
- useEffect(() => {
  // Initialize Lenis smooth scroll
  const lenis = new Lenis({
  duration: 1.2,
@@ -1997,6 +2012,13 @@ export default function LandingPageUI() {
 
  return (
  <div className="relative min-h-screen w-full bg-[#F7F6F3] text-[#111111] font-sans selection:bg-[#0284C7] selection:text-[#FFFFFF]">
+      
+      {/* AMBIENT BACKGROUND GLASS ORBS */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-[-20%] left-[-10%] w-[60vw] h-[60vh] rounded-full bg-gradient-to-br from-[#0284C7]/15 to-transparent blur-[120px] animate-pulse" style={{ animationDuration: '10s' }} />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[50vw] h-[70vh] rounded-full bg-gradient-to-tl from-[#3A2E26]/10 to-[#EAEAEA]/20 blur-[140px] animate-pulse" style={{ animationDuration: '14s' }} />
+      </div>
+
  {/* SCROLL PROGRESS INDICATOR (top of page) */}
  <motion.div
  className="fixed top-0 left-0 right-0 z-[60] h-[3px] origin-left"
@@ -2066,7 +2088,7 @@ export default function LandingPageUI() {
  onClick={() => {
  window.open(SIGNIN_URL, "_blank");
  }}
- className="hidden sm:block text-[11px] uppercase tracking-[0.2em] font-mono font-medium text-[#4A3D33] hover:text-[#18120E] transition-colors "
+ className="hidden sm:block text-[11px] uppercase tracking-[0.2em] font-mono font-medium text-[#4A3D33] hover:text-[#18120E] active:scale-95 transition-all "
  >
  Sign In
  </button>
@@ -2074,7 +2096,7 @@ export default function LandingPageUI() {
  onClick={() => {
  window.open(SIGNUP_URL, "_blank");
  }}
- className="px-5 py-2.5 rounded-xl text-[11px] uppercase tracking-[0.2em] font-mono font-medium minimal-btn-primary"
+ className="px-5 py-2.5 rounded-xl text-[11px] uppercase tracking-[0.2em] font-mono font-medium minimal-btn-primary active:scale-95 transition-all"
  >
  GET STARTED
  </button>
@@ -2332,7 +2354,7 @@ export default function LandingPageUI() {
  onClick={() => {
  window.open(SIGNUP_URL, "_blank");
  }}
- className="hero-cta-glow px-7 py-3 rounded-xl text-[11px] md:text-xs font-mono uppercase tracking-[0.2em] font-semibold minimal-btn-primary"
+ className="hero-cta-glow px-7 py-3 rounded-xl text-[11px] md:text-xs font-mono uppercase tracking-[0.2em] font-semibold minimal-btn-primary active:scale-95 transition-all"
  >
  Get Started Free
  </button>
@@ -2945,10 +2967,10 @@ export default function LandingPageUI() {
  <h2 className="text-4xl md:text-5xl font-serif tracking-tight text-[#111111] mb-4">
  See Clausio in action
  </h2>
- <p className="text-sm font-sans text-[#4A3D33] max-w-xl mx-auto leading-relaxed">
- 8 core features. Every one of them built for the way Indian advocates
- actually work. Click any feature to explore it.
- </p>
+ <ScrollWordReveal 
+   text="8 core features. Every one of them built for the way Indian advocates actually work. Click any feature to explore it."
+   className="text-sm font-sans text-[#4A3D33] max-w-xl mx-auto leading-relaxed justify-center"
+ />
  </motion.div>
 
  <motion.div
@@ -3069,9 +3091,10 @@ export default function LandingPageUI() {
  </div>
  <div className="space-y-3">
  <h3 className="text-2xl font-serif font-bold text-[#111111] ">Evidence &amp; Exhibit Intelligence</h3>
- <p className="text-sm text-[#524337] font-sans leading-relaxed max-w-xl">
- Quickly synthesize multi-thousand page case bundles, spot evidentiary contradictions across depositions, and cross-reference marked exhibits in courtroom briefs with sub-second accuracy.
- </p>
+ <ScrollWordReveal
+   text="Quickly synthesize multi-thousand page case bundles, spot evidentiary contradictions across depositions, and cross-reference marked exhibits in courtroom briefs with sub-second accuracy."
+   className="text-sm text-[#524337] font-sans leading-relaxed max-w-xl"
+ />
  </div>
  <div className="grid grid-cols-2 gap-4 pt-2 font-mono text-xs">
  <div className="p-3 rounded-xl minimal-inset text-[#3C2F25]">
@@ -3148,9 +3171,10 @@ export default function LandingPageUI() {
  </div>
  <div className="space-y-3">
  <h3 className="text-2xl font-serif font-bold text-[#111111] ">Intelligent Draft Builder</h3>
- <p className="text-sm text-[#524337] font-sans leading-relaxed max-w-xl">
- Generate court-ready legal petitions, bail applications, affidavits, written statements, and notices formatted to Indian High Court and District Court filing standards.
- </p>
+ <ScrollWordReveal
+   text="Generate court-ready legal petitions, bail applications, affidavits, written statements, and notices formatted to Indian High Court and District Court filing standards."
+   className="text-sm text-[#524337] font-sans leading-relaxed max-w-xl"
+ />
  </div>
  <div className="flex flex-wrap gap-3 font-mono text-xs">
  <span className="px-3 py-1.5 rounded-lg minimal-inset text-[#3C2F25] font-medium">Bail Petitions</span>
@@ -3313,7 +3337,7 @@ export default function LandingPageUI() {
  "Engineers the core backend infrastructure powering Clausio's litigation intelligence.",
  initials: "OM",
  color: "#059669",
- photo: "/team/omkar-morvekar.jpg",
+ photo: "/team/image.png",
  delay: 0.2,
  },
  {
@@ -3605,14 +3629,14 @@ export default function LandingPageUI() {
  onClick={() => {
  window.open(SIGNUP_URL, "_blank");
  }}
- className="relative px-8 py-4 rounded-xl text-xs font-mono uppercase tracking-[0.2em] font-semibold minimal-btn-primary"
+ className="relative px-8 py-4 rounded-xl text-xs font-mono uppercase tracking-[0.2em] font-semibold minimal-btn-primary active:scale-95 transition-all"
  >
  Get Started
  </button>
  </div>
  <button
  onClick={() => window.open(BOOK_DEMO_EMAIL, "_blank")}
- className="px-8 py-4 rounded-xl text-xs font-mono uppercase tracking-[0.2em] font-semibold minimal-btn-secondary"
+ className="px-8 py-4 rounded-xl text-xs font-mono uppercase tracking-[0.2em] font-semibold minimal-btn-secondary active:scale-95 transition-all"
  >
  Book a Demo
  </button>
@@ -3732,21 +3756,6 @@ export default function LandingPageUI() {
  <div className="mt-2 sm:mt-0">Made with ♥ for Indian Advocates</div>
  </div>
  </footer>
-
-
- {/* FIXED BOTTOM LEFT — AMBIENT SOUND TOGGLE */}
- <div className="fixed bottom-6 left-8 z-40 hidden md:flex flex-col items-start gap-3">
- <button
- onClick={toggleSound}
- className="flex items-center gap-2 text-[10px] font-mono text-[#5C4D3F] hover:text-[#111111] transition-colors group"
- title={soundOn ? "Mute ambient sound" : "Play ambient sound"}
- >
- <span className="w-5 h-5 flex items-center justify-center rounded-xl minimal-inset text-[12px]">
- {soundOn ? "🔊" : "🔇"}
- </span>
- <span className="font-semibold">{soundOn ? "SOUND ON" : "AMBIENT"}</span>
- </button>
- </div>
 
  {/* FIXED BOTTOM RIGHT LANGUAGE (nudged left to clear the help launcher) */}
  <div className="fixed bottom-6 right-24 z-40 text-[10px] font-mono text-[#5C4D3F] space-x-2 hidden md:block">
