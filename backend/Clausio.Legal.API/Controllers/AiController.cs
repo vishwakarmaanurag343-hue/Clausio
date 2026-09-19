@@ -417,6 +417,14 @@ public class AiController(IAiService aiService, IJudgmentAnalysisService judgmen
     public async Task StreamReadiness(Guid caseId, CancellationToken ct)
         => await StreamResponse(aiService.StreamReadinessAsync(caseId, ct), ct);
 
+    // Clarifying questions — call before strategy tabs to detect context gaps
+    [HttpPost("clarify/{caseId:guid}")]
+    public async Task<IActionResult> Clarify(Guid caseId, CancellationToken ct)
+    {
+        var result = await aiService.GetClarifyingQuestionsAsync(caseId, ct);
+        return Ok(new { result });
+    }
+
     [HttpPost("risks/stream/{caseId:guid}")]
     public async Task StreamRisks(Guid caseId, CancellationToken ct)
         => await StreamResponse(aiService.StreamRisksAsync(caseId, ct), ct);

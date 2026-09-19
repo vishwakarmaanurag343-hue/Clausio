@@ -1,4 +1,5 @@
 'use client'
+import AIDisclaimer from '@/components/common/AIDisclaimer'
 
 import { useState } from 'react'
 import AnalyticsTabs   from '@/components/analytics/AnalyticsTabs'
@@ -28,6 +29,7 @@ export default function AnalyticsPage() {
     <div className="glass-panel" style={{ flex: 1, overflowY: 'auto', margin: '16px', padding: 20, borderRadius: 24 }}>
 
       <CaseHeader />
+      <AIDisclaimer style={{ marginBottom: 16 }} />
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>

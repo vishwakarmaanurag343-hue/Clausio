@@ -45,11 +45,10 @@ export default function HearingPrep({ caseType = '' }: Props) {
     if (!selectedCaseId) { setError('Select a case first.'); return }
     setLoading(true); setError(''); setBrief('')
     try {
-      let accumulated = ''
-      for await (const chunk of aiApi.getPrepStream(selectedCaseId)) {
-        accumulated += chunk
-        setBrief(accumulated)
-      }
+      // Use non-streaming for HearingPrep — needs 8192 tokens which streaming cannot provide
+      const res = await aiApi.getPrep(selectedCaseId)
+      const accumulated = res.brief ?? res.result ?? res.prep ?? JSON.stringify(res) ?? ''
+      setBrief(accumulated)
       try { localStorage.setItem(`clausio_hearing_${selectedCaseId}`, accumulated) } catch {}
     } catch (err: any) { setError(err.message) }
     finally { setLoading(false) }

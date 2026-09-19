@@ -12,6 +12,7 @@ import DocumentGaps          from '@/components/strategy/DocumentGaps'
 import Contradictions        from '@/components/strategy/Contradictions'
 import GenerateStrategyModal from '@/components/strategy/GenerateStrategyModal'
 import CaseHeader            from '@/components/layout/CaseHeader'
+import AIDisclaimer          from '@/components/common/AIDisclaimer'
 
 const TABS = [
   { name: 'Risk Assessment',  icon: 'ti-shield-check'  },
@@ -43,6 +44,7 @@ export default function StrategyPage() {
         {/* ── DESKTOP STRATEGY VIEW ── */}
         <div className="desktop-strategy-view" style={{ display: 'flex', flexDirection: 'column' }}>
           <CaseHeader />
+          <AIDisclaimer style={{ marginBottom: 16 }} />
           {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <div>

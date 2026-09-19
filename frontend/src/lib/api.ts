@@ -556,6 +556,7 @@ export const aiApi = {
     }
   },
   getWitness: (caseId: string, data: any, refId?: string) => send('POST', `/ai/witness/${caseId}${refQ(refId)}`, data, 'Failed to generate witness intelligence'),
+  clarify: (caseId: string) => send('POST', `/ai/clarify/${caseId}`, undefined, 'Failed to get clarifying questions'),
   translate: (data: any) => send('POST', '/ai/translate', data, 'Failed to translate'),
   getDraft: (caseId: string, data: any, refId?: string) => send('POST', `/ai/draft/${caseId}${refQ(refId)}`, data, 'Failed to generate draft'),
   getDraftStream: async function* (caseId: string, data: any, refId?: string): AsyncGenerator<string, void, unknown> {

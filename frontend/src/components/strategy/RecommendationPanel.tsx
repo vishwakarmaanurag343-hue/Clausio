@@ -110,7 +110,10 @@ export default function RecommendationPanel() {
   }
 
   return (
+    <>
+
     <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 22, boxShadow: '0 2px 8px rgba(15,23,42,.04)', overflowY: 'auto' }}>
+      
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>
@@ -159,6 +162,8 @@ export default function RecommendationPanel() {
       {!loading && !error && recs && recs.map((r, i) => {
         const counters = !!r.addressesRisk
         return (
+   
+    
           <div key={i} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 14, marginBottom: 10 }}>
 
             {/* Card header: number badge + icon + title + counters pill */}
@@ -220,5 +225,6 @@ export default function RecommendationPanel() {
         )
       })}
     </div>
+    </>
   )
 }

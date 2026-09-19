@@ -138,7 +138,10 @@ export default function Contradictions() {
   }
 
   return (
+    <>
+
     <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 22, boxShadow: '0 2px 8px rgba(15,23,42,.04)', overflowX: 'hidden', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+      
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>
@@ -312,6 +315,8 @@ export default function Contradictions() {
           const sc = strengthColor(item.strength)
           const isOpen = expanded === item.id
           return (
+   
+    
             <div key={item.id} style={{ border: `1px solid ${isOpen ? '#bfdbfe' : '#e2e8f0'}`, borderRadius: 12, overflow: 'hidden', background: isOpen ? '#fafcff' : '#fff', transition: 'all 0.2s' }}>
 
               {/* Header row */}
@@ -369,5 +374,6 @@ export default function Contradictions() {
         })}
       </div>
     </div>
+    </>
   )
 }

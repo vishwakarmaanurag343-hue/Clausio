@@ -136,6 +136,8 @@ export default function RiskAssessment() {
   }, {}) ?? {}
 
   return (
+    <>
+
     <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(15,23,42,.04)', height: '100%', overflowY: 'auto' }}>
 
       {/* Header */}
@@ -261,5 +263,6 @@ export default function RiskAssessment() {
         </>
       )}
     </div>
+    </>
   )
 }

@@ -96,7 +96,7 @@ public class OpenRouterProvider : ILLMProvider
         var requestBody = new Dictionary<string, object>
         {
             ["model"] = model,
-            ["max_tokens"] = 6000,
+            ["max_tokens"] = 8000,
             ["temperature"] = 0.1,
             ["stream"] = true,
             ["messages"] = new[]

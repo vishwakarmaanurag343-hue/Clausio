@@ -39,6 +39,7 @@ public interface IAiService
     IAsyncEnumerable<string> StreamActionPlanAsync(Guid caseId, CancellationToken cancellationToken = default);
     IAsyncEnumerable<string> StreamFinancialAsync(Guid caseId, CancellationToken cancellationToken = default);
     IAsyncEnumerable<string> StreamReadinessAsync(Guid caseId, CancellationToken cancellationToken = default);
+    Task<string> GetClarifyingQuestionsAsync(Guid caseId, CancellationToken cancellationToken = default);
     IAsyncEnumerable<string> StreamRisksAsync(Guid caseId, CancellationToken cancellationToken = default);
     IAsyncEnumerable<string> StreamRecommendationsAsync(Guid caseId, CancellationToken cancellationToken = default);
     IAsyncEnumerable<string> StreamWitnessAsync(Guid caseId, CancellationToken cancellationToken = default);
@@ -326,7 +327,7 @@ public class AiService : IAiService
         => _pipeline.StreamExecuteAsync(caseId, "Conduct legal research for this case. Detect the case type and apply domain filter - only include cases from the same legal domain. For each case provide ratioDecidendi, exactProposition, howToUseInArgument, strongestDistinction and verifiedSource fields. Exclude duplicate citations. Return strictly valid JSON only.", "LegalResearch", null, cancellationToken);
 
     public IAsyncEnumerable<string> StreamActionPlanAsync(Guid caseId, CancellationToken cancellationToken = default)
-        => _pipeline.StreamExecuteAsync(caseId, "Build the working action plan for this case. Pull the real next hearing date from context. Check what court orders are pending - if Written Statement was directed to be filed, include monitoring that as highest priority task. Distribute tasks across Advocate, Client and Clerk. Include consequence and dependsOn fields for every task. Do NOT include tasks for things already done like calculating damages if amounts are in the plaint. Return strictly valid JSON only.", "ActionPlan", null, cancellationToken);
+        => _pipeline.StreamExecuteAsync(caseId, "Build the working action plan for this case. CURRENT YEAR IS 2026. Pull the real next hearing date from context. Detect case type first. For CRIMINAL cases: highest priority tasks are cross examination preparation, filing list of defence witnesses if directed by court, bail compliance, discharge application. NEVER include Written Statement as a task in criminal cases. For CIVIL cases: monitor Written Statement deadline, exhibit filing, affidavit of evidence. Distribute tasks across Advocate, Client and Clerk. Include consequence and dependsOn for every task. Return strictly valid JSON only.", "ActionPlan", null, cancellationToken);
 
     public IAsyncEnumerable<string> StreamFinancialAsync(Guid caseId, CancellationToken cancellationToken = default)
         => _pipeline.StreamExecuteAsync(caseId, "Analyze financial aspects and implications of this case.", "FinancialProfile", null, cancellationToken);
@@ -334,11 +335,16 @@ public class AiService : IAiService
     public IAsyncEnumerable<string> StreamReadinessAsync(Guid caseId, CancellationToken cancellationToken = default)
         => _pipeline.StreamExecuteAsync(caseId, "Assess trial readiness comprehensively.", "Readiness", null, cancellationToken);
 
+    public Task<string> GetClarifyingQuestionsAsync(Guid caseId, CancellationToken cancellationToken = default)
+        => _pipeline.ExecuteAsync(caseId,
+            "Analyze the case context and identify any critical gaps that would prevent accurate AI analysis. Detect the case type and ask only case-type specific questions. Return strictly valid JSON only.",
+            "ClarifyingQuestions", null, cancellationToken);
+
     public IAsyncEnumerable<string> StreamRisksAsync(Guid caseId, CancellationToken cancellationToken = default)
-        => _pipeline.StreamExecuteAsync(caseId, "Identify and analyze all risks in this case from the PLAINTIFF's perspective only. Use correct terminology: civil suit = Plaintiff and Defendant, writ = Petitioner and Respondent, criminal = Accused and State. NEVER use client or contractor. Minimum 5 risks. Each mitigation must be specific with deadlines. Return strictly valid JSON only.", "RiskAssessment", null, cancellationToken);
+        => _pipeline.StreamExecuteAsync(caseId, "Identify and analyze all risks in this case. Current year is 2026. Use correct terminology based on case type: civil suit = Plaintiff and Defendant, criminal = Accused and State/Prosecution, writ = Petitioner and Respondent. NEVER use client or contractor. Assess risks from the instructing advocate's client perspective only. Minimum 5 risks. All deadlines must use year 2026. Each mitigation must be specific with deadlines. Return strictly valid JSON only.", "RiskAssessment", null, cancellationToken);
 
     public IAsyncEnumerable<string> StreamRecommendationsAsync(Guid caseId, CancellationToken cancellationToken = default)
-        => _pipeline.StreamExecuteAsync(caseId, "Generate strategic recommendations for this case. Detect case type first. Civil suit = Plaintiff and Defendant ONLY - never use Petitioner or Respondent. Check what is already done in the case record and do NOT recommend completed actions like notices already sent. Order by urgency. Return strictly valid JSON only.", "Recommendation", null, cancellationToken);
+        => _pipeline.StreamExecuteAsync(caseId, "Generate strategic recommendations for this case. CURRENT YEAR IS 2026. Detect case type first. Civil suit = Plaintiff and Defendant. Criminal case = Accused and State - NEVER recommend filing Written Statement in criminal cases, instead recommend: discharge application, cross examination preparation, defence witness list, bail compliance. Check what court has already directed and prioritise those tasks. Order by urgency. Return strictly valid JSON only.", "Recommendation", null, cancellationToken);
 
     public IAsyncEnumerable<string> StreamWitnessAsync(Guid caseId, CancellationToken cancellationToken = default)
         => _pipeline.StreamExecuteAsync(caseId, "Prepare witness cross-examination and preparation strategy. Identify likely lies the witness will tell that are contradicted by documents. Generate the single most devastating closing question. Return strictly valid JSON only.", "WitnessPrep", null, cancellationToken);

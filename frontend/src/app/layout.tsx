@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import '../styles/globals.css'
 import FloatingNotes from '@/components/common/FloatingNotes'
+import AIAcknowledgmentModal from '@/components/common/AIAcknowledgmentModal'
 
 export const metadata: Metadata = {
   title: 'Clausio — Every clause. Intelligently handled.',
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {children}
         <FloatingNotes />
+        <AIAcknowledgmentModal />
       </body>
     </html>
   )

@@ -687,6 +687,11 @@ public class AIPipeline : IAIPipeline
             var docType = parameters != null && parameters.ContainsKey("DocumentType") ? parameters["DocumentType"]?.ToString() : "Document";
             return await _contextEngine.BuildDraftingContextAsync(caseId, docType ?? "Document", userInput, cancellationToken);
         }
+        else if (taskType == "ClarifyingQuestions")
+        {
+            // Fast path — use analysis context but skip heavy retrieval
+            return await _contextEngine.BuildAnalysisContextAsync(caseId, "ClarifyingQuestions", cancellationToken);
+        }
         else if (taskType == "FinancialProfile")
         {
             return await _contextEngine.BuildFinancialContextAsync(caseId, cancellationToken);
@@ -855,6 +860,11 @@ public class AIPipeline : IAIPipeline
         if (taskType == "LegalResearch")
         {
             return "LegalResearch"; // Dedicated Strategy-tab precedent-retrieval template
+        }
+
+        if (taskType == "ClarifyingQuestions")
+        {
+            return "ClarifyingQuestions"; // Fast gap-detection — no RAG needed
         }
 
         if (taskType == "Contradiction")

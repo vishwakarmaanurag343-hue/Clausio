@@ -24,7 +24,7 @@ public class ContextEngine : IContextEngine
     // snippets — a case brief / chronology / evidence review of a 200-page pleading is
     // worthless if the model only receives the first three pages.
     private static readonly System.Collections.Generic.HashSet<string> WholeRecordTasks =
-        new(StringComparer.OrdinalIgnoreCase) { "Summarization", "Chronology", "Timeline", "Evidence" };
+        new(StringComparer.OrdinalIgnoreCase) { "Summarization", "Chronology", "Timeline", "Evidence", "ClarifyingQuestions" };
 
     public ContextEngine(
         IMemoryStore memoryStore,
@@ -334,7 +334,7 @@ public class ContextEngine : IContextEngine
                 .OrderByDescending(d => d.CreatedAt)
                 .ToList()
                 .DistinctBy(d => d.ExtractedText.Trim())
-                .Take(isWholeRecord ? 25 : 10)
+                .Take(analysisType == "ClarifyingQuestions" ? 0 : isWholeRecord ? 25 : 10)
                 .ToList();
 
             if (docs.Any())
@@ -352,8 +352,13 @@ public class ContextEngine : IContextEngine
 
         // Whole-record tasks get a far larger context budget (config AI:AnalysisContextTokens,
         // default 16000 ≈ 64k chars ≈ 24 pages); every other analysis type stays lean at 2000.
+        // ClarifyingQuestions only needs basic case info — keep it tiny for speed.
         var budget = 2000;
-        if (isWholeRecord)
+        if (analysisType == "ClarifyingQuestions")
+        {
+            budget = 500;
+        }
+        else if (isWholeRecord)
         {
             budget = int.TryParse(_config["AI:AnalysisContextTokens"], out var configured) && configured > 0
                 ? configured

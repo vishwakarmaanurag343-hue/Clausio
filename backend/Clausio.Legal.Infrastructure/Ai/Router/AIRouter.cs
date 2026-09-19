@@ -54,14 +54,15 @@ public class AIRouter : IAIRouter
         var estimatedPromptTokens = (systemPrompt.Length + userPrompt.Length) / 4;
         
         bool isDrafting = IsDraftingTask(promptType);
-        string model = isDrafting ? _draftingModel : _researchModel;
-        string provider = isDrafting ? _draftingProvider : _researchProvider;
+        bool isClarify = promptType.Equals("ClarifyingQuestions", StringComparison.OrdinalIgnoreCase);
+        string model = isClarify ? "meta-llama/llama-3.3-70b-instruct" : isDrafting ? _draftingModel : _researchModel;
+        string provider = isClarify ? "open-inference" : isDrafting ? _draftingProvider : _researchProvider;
         string taskCategory = isDrafting ? "DRAFTING" : "RESEARCH_ANALYSIS";
 
         _logger.LogInformation("[Router:Complete] Category={Category}, PromptType={PromptType}, Model={Model}, ProviderPref={Provider}, EstPromptTokens~{Tokens}", 
             taskCategory, promptType, model, provider, estimatedPromptTokens);
 
-        int? customMaxTokens = isDrafting ? 16384 : null;
+        int? customMaxTokens = isDrafting ? 16384 : isClarify ? 500 : null;
 
         try
         {
