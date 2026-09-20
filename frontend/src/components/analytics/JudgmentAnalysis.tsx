@@ -350,13 +350,13 @@ export default function JudgmentAnalysis({ caseId }: Props) {
           {reporting && <LoadingBlock label="Working up the judgment for court use…" />}
 
           {report && !reporting && (
-            <div style={{ ...cardSt, padding: 16, overflowX: 'auto', wordBreak: 'break-word', overflowWrap: 'break-word', maxWidth: '100%' }}>
+            <div style={{ ...cardSt, padding: 16, overflowX: 'hidden', wordBreak: 'break-word', overflowWrap: 'anywhere', maxWidth: '100%', width: '100%', boxSizing: 'border-box' }}>
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
                 <button onClick={copyReport} style={ghostBtn}>
                   <i className={`ti ${copied ? 'ti-check' : 'ti-copy'}`} /> {copied ? 'Copied!' : 'Copy Report'}
                 </button>
               </div>
-              <div style={{ maxWidth: '100%', overflowX: 'auto' }}>
+              <div style={{ maxWidth: '100%', overflowX: 'hidden', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                 <AIResponseFormatter content={report} />
               </div>
             </div>
@@ -425,6 +425,8 @@ function LoadingBlock({ label }: { label: string }) {
 
 const cardSt: React.CSSProperties = {
   background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '20px 24px',
+  maxWidth: '100%', width: '100%', boxSizing: 'border-box', overflowX: 'hidden',
+  wordBreak: 'break-word', overflowWrap: 'anywhere',
 }
 const labelSt: React.CSSProperties = {
   display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 600, color: '#374151',

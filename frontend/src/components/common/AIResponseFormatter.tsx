@@ -37,9 +37,13 @@ function FlashCard({
       border: `1.5px solid ${borderColor ?? '#e2e8f0'}`,
       borderRadius: 14,
       padding: '18px 20px',
-      marginBottom: 14,
+      marginBottom: 8,
       fontFamily: 'Inter,-apple-system,sans-serif',
-      boxShadow: '0 1px 6px rgba(0,0,0,.04)'
+      boxShadow: '0 1px 6px rgba(0,0,0,.04)',
+      wordBreak: 'break-word',
+      overflowWrap: 'break-word',
+      overflowX: 'hidden',
+      maxWidth: '100%',
     }}>
       {(title || badge) && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>
@@ -241,7 +245,7 @@ function parseMarkdownToFlashCards(text: string): React.ReactNode {
     // H1 — page title
     if (line.startsWith('# ')) {
       output.push(
-        <div key={cardKey++} style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', marginBottom: 18, paddingBottom: 12, borderBottom: '1px solid #e2e8f0' }}>
+        <div key={cardKey++} style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid #e2e8f0' }}>
           {line.slice(2)}
         </div>
       )
@@ -288,6 +292,7 @@ function parseMarkdownToFlashCards(text: string): React.ReactNode {
     }
     if (paraLines.length > 0) {
       const txt = paraLines.join(' ').trim()
+      if (!txt) continue // skip empty paragraphs that create white space
       output.push(
         <div key={cardKey++} style={{ padding: '12px 16px', background: '#f8fafc', borderRadius: 10, marginBottom: 10, fontSize: 13, color: '#334155', lineHeight: 1.75, border: '1px solid #e2e8f0' }}
           dangerouslySetInnerHTML={{ __html: boldify(txt) }}
@@ -368,7 +373,7 @@ function renderBodyContent(body: string, sectionTitle: string): React.ReactNode 
 
   // Plain text
   return (
-    <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.75 }}
+    <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.75, wordBreak: 'break-word', overflowWrap: 'anywhere' }}
       dangerouslySetInnerHTML={{ __html: boldify(body) }}
     />
   )

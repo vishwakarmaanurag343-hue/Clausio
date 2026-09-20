@@ -26,7 +26,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="glass-panel" style={{ flex: 1, overflowY: 'auto', margin: '16px', padding: 20, borderRadius: 24 }}>
+    <div className="glass-panel" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', margin: '16px', padding: 20, borderRadius: 24 }}>
 
       <CaseHeader />
       <AIDisclaimer style={{ marginBottom: 16 }} />

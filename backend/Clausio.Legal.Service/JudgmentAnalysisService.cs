@@ -47,8 +47,10 @@ public class JudgmentAnalysisService(
             .Take(4)
             .ToListAsync(ct);
 
-        var queryParts = new[] { kase.CaseType, kase.SubType, kase.Name }
-            .Concat(docHeads.Select(t => t.Length > 800 ? t[..800] : t))
+        // Build domain-specific search query — use case type keywords, not document content
+        // Document content pollutes the query with irrelevant terms (income tax, registration etc)
+        var domainKeywords = MapToDomainKeywords($"{kase.CaseType} {kase.SubType}");
+        var queryParts = new[] { kase.CaseType, kase.SubType, domainKeywords, kase.Description?.Length > 300 ? kase.Description[..300] : kase.Description }
             .Where(s => !string.IsNullOrWhiteSpace(s));
         var searchQuery = string.Join(" ", queryParts);
 
@@ -240,6 +242,26 @@ public class JudgmentAnalysisService(
     /// Map a free-form case type onto the JudgmentChunks.CaseType labels used by the corpus
     /// (mirrors the mapping inside AIPipeline so category backfill lands on real chunks).
     /// </summary>
+    private static string MapToDomainKeywords(string typeLine)
+    {
+        var t = (typeLine ?? "").ToLowerInvariant();
+        if (t.Contains("family") || t.Contains("matrimonial") || t.Contains("divorce"))
+            return "divorce cruelty maintenance alimony custody children Hindu Marriage Act stridhan Section 13 Section 24 Section 25";
+        if (t.Contains("criminal") || t.Contains("bail"))
+            return "cheating criminal breach of trust bail discharge Section 420 Section 406 IPC accused chargesheet";
+        if (t.Contains("civil") || t.Contains("contract"))
+            return "breach of contract specific performance damages recovery civil suit plaintiff defendant";
+        if (t.Contains("property"))
+            return "title possession sale deed property dispute injunction";
+        if (t.Contains("consumer"))
+            return "deficiency of service consumer complaint refund compensation";
+        if (t.Contains("labour"))
+            return "termination reinstatement workman Industrial Disputes Act";
+        if (t.Contains("tax") || t.Contains("gst"))
+            return "income tax demand assessment appeal penalty";
+        return typeLine;
+    }
+
     private static string? MapToCorpusCategory(string typeLine)
     {
         var t = (typeLine ?? "").ToLowerInvariant();
