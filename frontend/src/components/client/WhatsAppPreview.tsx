@@ -28,6 +28,8 @@ function extractUpdate(raw: string): ParsedUpdate {
 
   let text = raw.trim()
   text = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '')
+  // Fix actual newlines inside JSON string values which break JSON.parse
+  text = text.replace(/[\r\n]+/g, '\\n')
 
   const parsed = parseAiJson<any>(text)
   if (parsed && typeof parsed === 'object' && (parsed.body ?? parsed.Body)) {

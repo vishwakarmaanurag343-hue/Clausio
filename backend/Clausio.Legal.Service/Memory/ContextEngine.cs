@@ -358,6 +358,10 @@ public class ContextEngine : IContextEngine
         {
             budget = 500;
         }
+        else if (analysisType == "HearingPrep" || analysisType == "WitnessPrep")
+        {
+            budget = 4000; // Hearing prep needs full context — latest hearing order is critical
+        }
         else if (isWholeRecord)
         {
             budget = int.TryParse(_config["AI:AnalysisContextTokens"], out var configured) && configured > 0

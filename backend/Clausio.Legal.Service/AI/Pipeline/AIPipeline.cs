@@ -696,7 +696,7 @@ public class AIPipeline : IAIPipeline
         {
             return await _contextEngine.BuildFinancialContextAsync(caseId, cancellationToken);
         }
-        else if (taskType == "Analysis" || taskType == "Summarization" || taskType == "ActionPlan" || taskType == "RiskAssessment" || taskType == "Recommendation" || taskType == "LegalResearch" || taskType == "Contradiction" || taskType == "Chronology" || taskType == "Timeline" || taskType == "Evidence" || taskType == "Readiness" || taskType == "Emergency" || taskType == "SimilarCaseFinder" || taskType == "JudgmentComparison" || taskType == "JudgmentApplicability")
+        else if (taskType == "Analysis" || taskType == "Summarization" || taskType == "ActionPlan" || taskType == "RiskAssessment" || taskType == "Recommendation" || taskType == "LegalResearch" || taskType == "Contradiction" || taskType == "Chronology" || taskType == "Timeline" || taskType == "Evidence" || taskType == "Readiness" || taskType == "Emergency" || taskType == "SimilarCaseFinder" || taskType == "JudgmentComparison" || taskType == "JudgmentApplicability" || taskType == "HearingPrep" || taskType == "WitnessPrep")
         {
             return await _contextEngine.BuildAnalysisContextAsync(caseId, taskType, cancellationToken);
         }
