@@ -306,7 +306,7 @@ export default function ReadinessPage() {
       {showModal && (
         <GenerateReadinessModal
           onClose={() => setShowModal(false)}
-          onGenerated={() => { setShowModal(false); load() }}
+          onGenerated={() => { setShowModal(false); setLoading(true); load() }}
         />
       )}
     </>

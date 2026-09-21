@@ -36,6 +36,7 @@ export default function AddHearingModal({ onClose, onSaved }: Props) {
   const [judgeObservation, setJudgeObservation] = useState('')
   const [nextHearingDate,  setNextHearingDate]  = useState('')
   const [clientReminderEmail, setClientReminderEmail] = useState('')
+  const [nextObjective,       setNextObjective]       = useState('')
   const [notes,            setNotes]            = useState('')
   const [orders,           setOrders]           = useState<OrderRow[]>([{ ...emptyOrderRow }])
   const [saving,           setSaving]           = useState(false)
@@ -96,7 +97,7 @@ export default function AddHearingModal({ onClose, onSaved }: Props) {
         stage,
         whatHappened,
         judgeObservation,
-        nextObjective: nextHearingDate ? `Next hearing: ${nextHearingDate}` : '',
+        nextObjective: nextObjective.trim() || (nextHearingDate ? `Next hearing on ${nextHearingDate}` : ''),
         clientReminderEmail: clientReminderEmail.trim() || undefined,
         notes:         notes.trim() || undefined,
         orders:        cleanOrders,
@@ -261,6 +262,16 @@ export default function AddHearingModal({ onClose, onSaved }: Props) {
               />
             </div>
           )}
+
+          <Field label="Next Hearing Objective">
+            <textarea
+              rows={3}
+              value={nextObjective}
+              onChange={(e) => setNextObjective(e.target.value)}
+              placeholder="What needs to be done at the next hearing? e.g. File affidavit of evidence, argue on maintainability, produce IT returns..."
+              style={{ ...inputStyle, resize: 'vertical', minHeight: 90 }}
+            />
+          </Field>
 
           <Field label="Judge's Observation">
             <textarea

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useUIStore, useCaseStore } from '@/lib/store'
@@ -50,6 +50,14 @@ const NAV = [
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const activeItemRef = useRef<HTMLAnchorElement>(null)
+
+  // Scroll active nav item into view when route changes
+  useEffect(() => {
+    if (activeItemRef.current) {
+      activeItemRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    }
+  }, [pathname])
   const router = useRouter()
   const { sidebarExpanded, toggleSidebar } = useUIStore()
   const { selectedCaseId, selectedCaseName } = useCaseStore()
@@ -282,6 +290,7 @@ export default function Sidebar() {
 
             {section.items.map((item) => {
               const active = pathname === item.href
+              const itemRef = active ? activeItemRef : undefined
               const isDisabled = (item as any).disabled && role !== 'SuperAdmin'
               if (isDisabled && !expanded) return null
               if (isDisabled) return (
@@ -306,6 +315,7 @@ export default function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  ref={itemRef}
                   className={(item as any).mobileOnly ? 'mobile-only-nav-item' : ''}
                   title={!expanded ? item.label : undefined}
                   style={{

@@ -50,6 +50,31 @@ const initialForm: CaseForm = {
 
 const STEPS = ['Practice Area','Case Details','Parties','Court','Documents','Review']
 
+
+// ── Dynamic options based on practice area ──────────────────
+function getCaseTypeOptions(practiceArea: string): string[] {
+  const pa = practiceArea.toLowerCase()
+  if (pa.includes('criminal')) return ['FIR/Complaint','Bail Application','Chargesheet','Sessions Trial','Summary Trial','Appeal','Revision','Quashing Petition']
+  if (pa.includes('family')) return ['Divorce Petition','Maintenance Application','Custody Petition','DV Complaint','Mutual Consent Divorce','Restitution of Conjugal Rights','Guardianship Petition']
+  if (pa.includes('ni act') || pa.includes('ni_act')) return ['Cheque Bounce Complaint','Reply to Complaint','Appeal','Revision']
+  if (pa.includes('gst')) return ['SCN Reply','Appeal','Writ Petition','Refund Application','Stay Application']
+  if (pa.includes('income tax')) return ['Assessment Reply','Appeal CIT(A)','ITAT Appeal','High Court Appeal','Stay Application']
+  if (pa.includes('arbitration')) return ['Section 9 Application','Section 34 Petition','Section 11 Application','Enforcement Petition']
+  if (pa.includes('corporate')) return ['NCLT Petition','Oppression & Mismanagement','Winding Up','IBC Section 9','IBC Section 7']
+  return ['Petition','Appeal','Suit','Application','Execution','Review','Original Suit','Writ Petition','Special Leave Petition']
+}
+
+function getStageOptions(practiceArea: string): string[] {
+  const pa = practiceArea.toLowerCase()
+  if (pa.includes('criminal')) return ['Pre Filing','FIR Filed','Bail','Chargesheet Filed','First Appearance','Discharge Application','Framing of Charges','Evidence','Cross Examination','Arguments','Judgment','Sentence','Appeal']
+  if (pa.includes('family')) return ['Pre Filing','Filed','Notice','Written Statement','Evidence','Cross Examination','Arguments','Judgment','Execution']
+  if (pa.includes('ni act') || pa.includes('ni_act')) return ['Pre Filing','Legal Notice Sent','Complaint Filed','Summons Issued','First Appearance','Evidence','Cross Examination','Arguments','Judgment','Execution']
+  if (pa.includes('gst')) return ['SCN Received','Reply Filed','Personal Hearing','Order Passed','Appeal Filed','Stay Application','Tribunal','High Court']
+  if (pa.includes('income tax')) return ['Notice Received','Reply Filed','Assessment Order','CIT(A) Appeal','ITAT Appeal','High Court','Supreme Court']
+  if (pa.includes('arbitration')) return ['Pre Arbitration','Notice Issued','Arbitrator Appointed','Pleadings','Evidence','Arguments','Award','Section 34 Challenge','Enforcement']
+  return ['Pre Filing','Filed','Notice','Written Statement','Issues Framed','Evidence','Cross Examination','Arguments','Judgment','Execution','Appeal']
+}
+
 export default function AddCaseModal({ open, onClose, onSaved }: AddCaseModalProps) {
   const [step,    setStep]    = useState(1)
   const [form,    setForm]    = useState<CaseForm>(initialForm)
@@ -299,7 +324,7 @@ async function translateDescription() {
               <p style={sectionDescription}>Select the practice area. The remaining form adapts automatically.</p>
               <div style={grid}>
                 <SelectField label="Practice Area" name="practiceArea" value={form.practiceArea} onChange={updateField} options={['Family Law','Civil','Criminal','Corporate','GST','Income Tax','NI Act','Arbitration']} />
-                <SelectField label="Case Type"     name="caseType"     value={form.caseType}     onChange={updateField} options={['Petition','Appeal','Suit','Application','Execution','Review']} />
+                <SelectField label="Case Type"     name="caseType"     value={form.caseType}     onChange={updateField} options={getCaseTypeOptions(form.practiceArea)} />
               </div>
               <div style={{ marginTop: 30, padding: 22, background: '#eff6ff', borderRadius: 14, border: '1px solid #bfdbfe' }}>
                 <h4 style={{ marginTop: 0, marginBottom: 10 }}>🤖 Clausio AI</h4>
@@ -421,7 +446,7 @@ async function translateDescription() {
                   name="caseType"
                   value={form.caseType}
                   onChange={updateField}
-                  options={['Petition','Appeal','Suit','Application','Execution','Review','Original Suit','Writ Petition','Special Leave Petition']}
+                  options={getCaseTypeOptions(form.practiceArea)}
                   required
                   hasError={step4Submitted && !form.caseType.trim()}
                   errorMessage="Court / case type is required"
@@ -437,7 +462,7 @@ async function translateDescription() {
                   errorMessage="City / District is required"
                 />
                 <InputField  label="Judge Name"     name="judgeName"     value={form.judgeName}     onChange={updateField} placeholder="Hon. Justice..." />
-                <SelectField label="Current Stage"  name="stage"         value={form.stage}         onChange={updateField} options={['Pre Filing','Filed','Notice','Written Statement','Evidence','Cross Examination','Arguments','Judgment','Execution']} />
+                <SelectField label="Current Stage"  name="stage"         value={form.stage}         onChange={updateField} options={getStageOptions(form.practiceArea)} />
               </div>
               <div style={{ marginTop: 28, padding: 22, background: '#f8fafc', borderRadius: 14, border: '1px solid #e2e8f0' }}>
                 <h4 style={{ marginTop: 0, marginBottom: 12 }}>Upcoming Hearing</h4>
