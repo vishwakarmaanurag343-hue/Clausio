@@ -107,6 +107,13 @@ function formatLegalDraftText(raw: any): string {
   text = text.replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\')
 
   // 4. Strip any UI watermark artifact lines
+  // Strip tracking table and verification checklist if leaked
+  const trackingIdx = text.indexOf('=== TRACKING TABLE ===')
+  if (trackingIdx !== -1) text = text.substring(0, trackingIdx).trim()
+  const checklistIdx = text.indexOf('LAWYER VERIFICATION CHECKLIST')
+  if (checklistIdx !== -1) text = text.substring(0, checklistIdx).trim()
+
+  // Also strip COVERED/NOT COVERED/VERIFY lines
   text = text
     .split('\n')
     .filter(line => {
@@ -114,6 +121,9 @@ function formatLegalDraftText(raw: any): string {
       if (/^CLAUSIO LEGAL AI/i.test(t)) return false
       if (/^CONFIDENTIAL LEGAL DOCUMENT/i.test(t)) return false
       if (/^Page \d+ of \d+$/i.test(t)) return false
+      if (/^COVERED:/i.test(t)) return false
+      if (/^NOT COVERED/i.test(t)) return false
+      if (/^VERIFY BEFORE SENDING/i.test(t)) return false
       return true
     })
     .join('\n')

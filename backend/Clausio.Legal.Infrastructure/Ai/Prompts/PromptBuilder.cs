@@ -217,10 +217,20 @@ public class PromptBuilder : IPromptBuilder
 
         if (!File.Exists(filePath))
         {
+            // Check Drafts subfolder
+            filePath = Path.Combine(_templatesPath, "Drafts", $"{templateName}_v1.json");
+        }
+
+        if (!File.Exists(filePath))
+        {
             // Development fallback — search relative to working directory
             filePath = Path.Combine(Directory.GetCurrentDirectory(), "..", "Clausio.Legal.Infrastructure", "Ai", "Prompts", "Templates", $"{templateName}_v1.json");
             if (!File.Exists(filePath))
-                throw new FileNotFoundException($"Prompt template '{templateName}_v1.json' not found. Searched: {filePath}");
+            {
+                filePath = Path.Combine(Directory.GetCurrentDirectory(), "..", "Clausio.Legal.Infrastructure", "Ai", "Prompts", "Templates", "Drafts", $"{templateName}_v1.json");
+                if (!File.Exists(filePath))
+                    throw new FileNotFoundException($"Prompt template '{templateName}_v1.json' not found. Searched: {filePath}");
+            }
         }
 
         var json = File.ReadAllText(filePath);
