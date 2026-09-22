@@ -13,18 +13,18 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:5123
-      ConnectionStrings__Default: Host=database-1.cd2o4g4yqiiy.ap-south-1.rds.amazonaws.com;Port=5432;Database=clausio_db;Username=postgres;Password=${RDS_PASSWORD}
+      ConnectionStrings__Default: Host=database-1.cfi8gsc8agvy.ap-south-1.rds.amazonaws.com;Port=5432;Database=clausio_db;Username=postgres;Password=${RDS_PASSWORD}
       AWS__Region: ap-south-1
-      AWS__S3BucketName: clausio-files-prod
+      AWS__S3BucketName: clausio-files-prod-new-611065450209-ap-south-1-an
       AWS__SQSQueueUrl: ${AWS_SQS_QUEUE_URL}
       Jwt__Secret: ${JWT_SECRET}
       Jwt__Issuer: Clausio
       Jwt__Audience: ClausioClients
       AI__OpenRouter__ApiKey: ${OPENROUTER_API_KEY}
       AI__OpenRouter__BaseUrl: https://openrouter.ai/api/v1
-      AI__Drafting__ModelId: meta-llama/llama-3.3-70b-instruct
+      AI__Drafting__ModelId: mistralai/mistral-small-3.2-24b-instruct
       AI__Drafting__Provider: 
-      AI__Research__ModelId: meta-llama/llama-3.3-70b-instruct
+      AI__Research__ModelId: mistralai/mistral-small-3.2-24b-instruct
       AI__Research__Provider:
       AI__AnalysisMaxTokens: "4096"
       AI__EmbeddingProvider__ApiKey: ${OPENROUTER_API_KEY}

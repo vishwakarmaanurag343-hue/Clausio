@@ -69,7 +69,7 @@ public class OcrJobWorker : BackgroundService
                 continue;
             }
 
-            foreach (var message in response.Messages)
+            foreach (var message in response.Messages ?? new List<Message>())
             {
                 try
                 {
@@ -124,7 +124,7 @@ public class OcrJobWorker : BackgroundService
             using var content = new MultipartFormDataContent();
             using var streamContent = new StreamContent(memStream);
             streamContent.Headers.ContentType = new MediaTypeHeaderValue(contentType ?? "application/octet-stream");
-            content.Add(streamContent, "file", storagePath.Split('/').Last());
+            content.Add(streamContent, "file", "document.pdf");
 
             var ocrResponse = await voiceClient.PostAsync("/api/ocr", content, ct);
             ocrResponse.EnsureSuccessStatusCode();

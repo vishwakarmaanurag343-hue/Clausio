@@ -55,7 +55,7 @@ public class AIRouter : IAIRouter
         
         bool isDrafting = IsDraftingTask(promptType);
         bool isClarify = promptType.Equals("ClarifyingQuestions", StringComparison.OrdinalIgnoreCase);
-        string model = isClarify ? "meta-llama/llama-3.3-70b-instruct" : isDrafting ? _draftingModel : _researchModel;
+        string model = isDrafting ? _draftingModel : _researchModel;
         string provider = isClarify ? "open-inference" : isDrafting ? _draftingProvider : _researchProvider;
         string taskCategory = isDrafting ? "DRAFTING" : "RESEARCH_ANALYSIS";
 

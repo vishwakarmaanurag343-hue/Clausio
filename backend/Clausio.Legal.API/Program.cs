@@ -96,13 +96,20 @@ builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<ICacheService, MemoryCacheService>();
 
 // Storage & AWS Queue setup
-var useS3 = !string.IsNullOrEmpty(builder.Configuration["AWS:S3BucketName"]) 
-            && !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID"));
+var useS3 = !string.IsNullOrEmpty(builder.Configuration["AWS:S3BucketName"]);
 
 if (useS3)
 {
-    builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
-    builder.Services.AddAWSService<IAmazonS3>();
+    var awsRegion = builder.Configuration["AWS:Region"] ?? "ap-south-1";
+
+    // S3 uses the EC2 IAM role/default AWS credential chain.
+    builder.Services.AddSingleton<IAmazonS3>(_ =>
+        new Amazon.S3.AmazonS3Client(
+            new Amazon.S3.AmazonS3Config
+            {
+                RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(awsRegion)
+            }));
+
     builder.Services.AddSingleton<IDocumentStorage>(sp =>
     {
         var s3 = sp.GetRequiredService<IAmazonS3>();
@@ -110,7 +117,14 @@ if (useS3)
         return new S3DocumentStorage(s3, bucketName);
     });
 
-    builder.Services.AddAWSService<IAmazonSQS>();
+    // SQS uses the EC2 IAM role/default AWS credential chain.
+    builder.Services.AddSingleton<IAmazonSQS>(_ =>
+        new Amazon.SQS.AmazonSQSClient(
+            new Amazon.SQS.AmazonSQSConfig
+            {
+                RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(awsRegion)
+            }));
+
     builder.Services.AddSingleton<IAiJobQueueService, SqsAiJobQueueService>();
     builder.Services.AddHostedService<OcrJobWorker>();
 }
