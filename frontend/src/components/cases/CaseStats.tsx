@@ -54,7 +54,7 @@ function StatCard({ title, value, change, icon, color, background }: { title: st
         {title}
       </p>
       <div style={{ marginTop: 12, height: 4, borderRadius: 999, background: 'rgba(0,0,0,0.05)', overflow: 'hidden' }}>
-        <div style={{ width: title === 'Total Cases' ? '80%' : title === 'Active Cases' ? '65%' : title === "Today's Hearings" ? '45%' : '30%', height: '100%', background: color, borderRadius: 999 }} />
+        <div style={{ width: Number(value) > 0 ? '100%' : '0%', height: '100%', background: color, borderRadius: 999 }} />
       </div>
     </div>
   )

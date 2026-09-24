@@ -320,9 +320,7 @@ export default function DashboardPage() {
           <button onClick={() => router.push('/drafting')} style={{ padding: '4px 10px', fontSize: 11, background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', fontWeight: 500, fontFamily: 'inherit' }}>
             📝 Draft
           </button>
-          <button onClick={toggleAIPanel} className="desktop-header-item" style={{ padding: '4px 10px', fontSize: 11, background: aiPanelVisible ? '#eff6ff' : '#f1f5f9', color: aiPanelVisible ? '#1d4ed8' : '#475569', border: `1px solid ${aiPanelVisible ? '#bfdbfe' : '#cbd5e1'}`, borderRadius: 6, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}>
-            <i className="ti ti-sparkles" /> AI
-          </button>
+
         </div>
       </div>
 
@@ -380,13 +378,17 @@ export default function DashboardPage() {
               background: '#ffffff',
               borderRadius: 24,
               padding: '10px 16px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+              border: '1.5px solid #0f172a',
+              maxWidth: 480,
+              margin: '0 auto',
+              width: '100%',
             }}
           >
             <i className="ti ti-search" style={{ fontSize: 16, color: '#475569', marginRight: 10, flexShrink: 0 }} />
             <input
               type="text"
-              placeholder="Search Case, Client"
+              placeholder="Search cases, clients..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               style={{
@@ -622,8 +624,8 @@ export default function DashboardPage() {
                 <p style={{ margin: 0, fontSize: 13, color: '#64748b', textAlign: 'center', maxWidth: 300 }}>
                   Select a case from the left panel or create a new case to get started
                 </p>
-                <button onClick={() => router.push('/cases')} style={{ padding: '10px 20px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                  Go to Cases →
+                <button onClick={() => router.push('/cases?newCase=true')} style={{ padding: '10px 20px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  + Add New Case
                 </button>
               </div>
             )}
@@ -654,55 +656,7 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Main grid */}
-                <div className="dashboard-overview-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-
-                  {/* Hearing Diary */}
-                  <div style={{ background: '#fff', borderRadius: 12, padding: 20, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <i className="ti ti-notebook" style={{ fontSize: 16, color: '#3b82f6' }} />
-                        <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Court Orders & Diary</span>
-                      </div>
-                      <button onClick={() => router.push('/hearings')} style={{ fontSize: 11, color: '#3b82f6', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>
-                        Add Hearing →
-                      </button>
-                    </div>
-
-                    {allOrders.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '20px 0', color: '#94a3b8' }}>
-                        <i className="ti ti-clipboard" style={{ fontSize: 28, display: 'block', marginBottom: 8 }} />
-                        <div style={{ fontSize: 12 }}>No court orders recorded yet</div>
-                        <button onClick={() => router.push('/hearings')} style={{ marginTop: 8, fontSize: 11, padding: '4px 12px', background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>
-                          Record Hearing
-                        </button>
-                      </div>
-                    ) : (
-                      allOrders.slice(0, 5).map((order, i) => {
-                        const overdue = !order.done && order.deadline && new Date(order.deadline) < new Date()
-                        return (
-                          <div key={order.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', borderBottom: i < Math.min(allOrders.length, 5) - 1 ? '1px solid #f1f5f9' : 'none' }}>
-                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: order.done ? '#10b981' : overdue ? '#dc2626' : '#3b82f6', flexShrink: 0, marginTop: 5 }} />
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: 12, color: order.done ? '#94a3b8' : '#0f172a', lineHeight: 1.4, fontWeight: 500, textDecoration: order.done ? 'line-through' : 'none' }}>
-                                {order.text}
-                                {overdue && <span style={{ marginLeft: 6, fontSize: 9, padding: '2px 6px', borderRadius: 10, background: '#fef2f2', color: '#dc2626', fontWeight: 700 }}>OVERDUE</span>}
-                              </div>
-                              {order.deadline && (
-                                <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
-                                  Due {new Date(order.deadline).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} · {order.responsible}
-                                </div>
-                              )}
-                            </div>
-                            {!order.done && (
-                              <button onClick={() => markOrderDone(order.hearingId, order.id)} disabled={markingId === order.id} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#334155', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, flexShrink: 0 }}>
-                                {markingId === order.id ? '...' : '✓ Done'}
-                              </button>
-                            )}
-                          </div>
-                        )
-                      })
-                    )}
-                  </div>
+                <div className="dashboard-overview-grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
 
                   {/* Action Plan */}
                   <div style={{ background: '#fff', borderRadius: 12, padding: 20, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
@@ -880,29 +834,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* Quick actions */}
-                <div style={{ background: '#fff', borderRadius: 12, padding: 16, border: '1px solid #e2e8f0' }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Quick Actions</div>
-                  <div className="dashboard-quick-actions-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : isTablet ? 'repeat(4, 1fr)' : 'repeat(7, 1fr)', gap: 10 }}>
-                    {[
-                      { icon: 'ti-calendar-plus', label: 'Client Meeting', action: () => setShowMeetingModal(true), color: '#0d9488', bg: '#f0fdfa' },
-                      { icon: 'ti-alert-triangle', label: 'Emergency', route: '/readiness', color: '#dc2626', bg: '#fef2f2' },
-                      { icon: 'ti-clipboard-list', label: 'Hearing Brief', route: '/hearings', color: '#1e40af', bg: '#eff6ff' },
-                      { icon: 'ti-message', label: 'Client Update', route: '/client', color: '#15803d', bg: '#f0fdf4' },
-                      { icon: 'ti-sparkles', label: 'AI Strategy', route: '/strategy', color: '#7c3aed', bg: '#f5f3ff' },
-                      { icon: 'ti-file-text', label: 'Draft Document', route: '/drafting', color: '#0369a1', bg: '#f0f9ff' },
-                      { icon: 'ti-chart-bar', label: 'Financial', route: '/financial', color: '#c2410c', bg: '#fff7ed' },
-                    ].map((a, i) => (
-                      <button key={i} onClick={() => a.action ? a.action() : router.push(a.route!)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 8px', background: a.bg, border: `1px solid ${a.color}22`, borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)' }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
-                      >
-                        <i className={`ti ${a.icon}`} style={{ fontSize: 20, color: a.color }} />
-                        <span style={{ fontSize: 10, fontWeight: 600, color: a.color, textAlign: 'center', lineHeight: 1.2 }}>{a.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+
               </div>
             )}
 

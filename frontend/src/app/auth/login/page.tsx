@@ -365,7 +365,7 @@ export default function LoginPage() {
                 handled.
               </h1>
               <p style={{ fontSize: 15, color: '#475569', lineHeight: 1.7, maxWidth: 360, marginBottom: 40 }}>
-                India's most advanced AI litigation platform — built for practising advocates in all courts.
+                Built for Indian advocates who demand more from their practice. Every clause, every case, every court.
               </p>
             </div>
 
@@ -397,9 +397,9 @@ export default function LoginPage() {
             {/* Stats */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, animation: mounted ? 'fadeIn 0.6s ease 0.3s both' : 'none' }}>
               {[
-                { value: '11', label: 'Practice Areas' },
-                { value: '100+', label: 'Document Types' },
-                { value: '99.9%', label: 'Uptime' },
+                { value: '8', label: 'Practice Areas' },
+                { value: '45+', label: 'Document Types' },
+                { value: '65K+', label: 'SC Judgments' },
               ].map((s, i) => (
                 <div key={i} className="glass-card" style={{ padding: '14px 16px', textAlign: 'center', borderRadius: 14 }}>
                   <div style={{ fontSize: 22, fontWeight: 800, color: '#1e3a8a', letterSpacing: '-0.5px' }}>{s.value}</div>
@@ -437,28 +437,18 @@ export default function LoginPage() {
             {/* Form card */}
             <div className="glass-panel auth-form-card" style={{ padding: 36, borderRadius: 28 }}>
 
-              {/* Tab switcher */}
-              <div style={{ display: 'flex', background: 'rgba(241,245,249,0.8)', borderRadius: 14, padding: 4, marginBottom: 28 }}>
-                <button className="tab-btn"
-                  onClick={() => { setMode('login'); setError(''); setSuccess(''); setRegStep(1) }}
-                  style={{ background: mode === 'login' ? 'rgba(255,255,255,0.95)' : 'transparent', color: mode === 'login' ? '#0f172a' : '#64748b', boxShadow: mode === 'login' ? '0 2px 8px rgba(0,0,0,0.08)' : 'none', border: mode === 'login' ? '1px solid rgba(255,255,255,0.8)' : '1px solid transparent' }}>
-                  Sign In
-                </button>
-                {/* REGISTRATION — Use landing page instead */}
-                {/* <button className="tab-btn"
-                  onClick={() => { setMode('register'); setError(''); setSuccess(''); setRegStep(1) }}
-                  style={{ background: mode === 'register' ? 'rgba(255,255,255,0.95)' : 'transparent', color: mode === 'register' ? '#0f172a' : '#64748b', boxShadow: mode === 'register' ? '0 2px 8px rgba(0,0,0,0.08)' : 'none', border: mode === 'register' ? '1px solid rgba(255,255,255,0.8)' : '1px solid transparent' }}>
-                  Create Account
-                </button> */}
+              {/* Sign In label as heading — not a button */}
+              <div style={{ marginBottom: 20 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: 'monospace' }}>Sign In</span>
               </div>
 
               {/* Heading */}
               <div style={{ marginBottom: 24 }}>
                 <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 4, letterSpacing: '-0.3px' }}>
-                  {viewMode === 'mfa' ? 'Enter MFA Code 🔐' : viewMode === 'forgot' ? 'Forgot Password 🔑' : viewMode === 'reset' ? 'Set New Password 🔒' : mode === 'login' ? 'Welcome back' : regStep === 1 ? 'Create your account' : 'Professional details'}
+                  {viewMode === 'forgot' ? 'Forgot Password' : viewMode === 'reset' ? 'Set New Password' : 'Welcome back'}
                 </h2>
                 <p style={{ fontSize: 13, color: '#64748b' }}>
-                  {viewMode === 'mfa' ? 'Enter the 6-digit security code sent to your email.' : viewMode === 'forgot' ? 'Enter your email to receive a password reset code.' : viewMode === 'reset' ? 'Enter the code from email and your new password.' : mode === 'login' ? 'Sign in to access your case dashboard.' : regStep === 1 ? 'Step 1 of 2 — Basic information' : 'Step 2 of 2 — Almost done!'}
+                  {viewMode === 'forgot' ? 'Enter your email to receive a password reset code.' : viewMode === 'reset' ? 'Enter the code from email and your new password.' : 'Sign in to access your case dashboard.'}
                 </p>
               </div>
 
@@ -548,7 +538,7 @@ export default function LoginPage() {
                   </div>
 
                   <button type="submit" disabled={loading} className="ai-magic-button" style={{ width: '100%', height: 52, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 4 }}>
-                    {loading ? <><i className="ti ti-loader-2" style={{ animation: 'spin 1s linear infinite' }} /> Signing in...</> : <><i className="ti ti-login" /> Sign In & Send MFA Code</>}
+                    {loading ? <><i className="ti ti-loader-2" style={{ animation: 'spin 1s linear infinite' }} /> Signing in...</> : <><i className="ti ti-login" /> Sign In</>}
                   </button>
                 </form>
               )}

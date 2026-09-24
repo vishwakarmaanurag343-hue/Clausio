@@ -50,6 +50,7 @@ services:
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: /api
+      NEXT_PUBLIC_VOICE_URL: /voice/api/voice
     depends_on:
       - backend
 

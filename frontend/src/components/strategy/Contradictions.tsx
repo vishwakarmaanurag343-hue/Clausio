@@ -288,9 +288,7 @@ export default function Contradictions() {
           <i className="ti ti-alert-triangle" style={{ fontSize: 40, display: 'block', marginBottom: 10, opacity: 0.4 }} />
           <div style={{ fontSize: 14, fontWeight: 600, color: '#64748b', marginBottom: 8 }}>No Contradictions Found Yet</div>
           <div style={{ fontSize: 13, marginBottom: 20 }}>Click Run AI Analysis to find inconsistencies in opposing claims.</div>
-          <button onClick={runAI} style={{ padding: '10px 20px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 600, fontSize: 13, fontFamily: 'inherit' }}>
-            <i className="ti ti-sparkles" style={{ marginRight: 6 }} />Find Contradictions
-          </button>
+
         </div>
       )}
 

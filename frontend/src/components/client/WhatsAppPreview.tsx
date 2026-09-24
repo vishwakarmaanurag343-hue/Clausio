@@ -496,14 +496,7 @@ export default function WhatsAppPreview({
           Regenerate
         </button>
 
-        <button
-          onClick={handleTranslate}
-          disabled={translating || !activeText}
-          style={{ ...secondaryButton, cursor: (translating || !activeText) ? 'not-allowed' : 'pointer' }}
-        >
-          <i className="ti ti-language" />
-          {translating ? 'Translating...' : 'Translate'}
-        </button>
+
 
         <button
           onClick={handleCopy}

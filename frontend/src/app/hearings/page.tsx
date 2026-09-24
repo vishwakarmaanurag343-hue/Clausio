@@ -35,7 +35,7 @@ export default function HearingsPage() {
   const [wListError,    setWListError]    = useState('')
   const [showWForm,     setShowWForm]     = useState(false)
   const [wSaving,       setWSaving]       = useState(false)
-  const [wForm,         setWForm]         = useState({ name: '', type: 'Independent', side: 'Ours', statement: '' })
+  const [wForm,         setWForm]         = useState({ name: '', type: 'Independent', side: 'Ours', role: '', statement: '' })
 
   function loadWitnesses() {
     if (!selectedCaseId) { setWitnesses([]); return }
@@ -69,9 +69,9 @@ export default function HearingsPage() {
     setWSaving(true)
     try {
       await witnessesApi.create(selectedCaseId, {
-        name: wForm.name.trim(), type: wForm.type, side: wForm.side, statement: wForm.statement.trim(),
+        name: wForm.name.trim(), type: wForm.type, side: wForm.side, statement: (wForm.role.trim() ? `Role: ${wForm.role.trim()}\n\n` : '') + wForm.statement.trim(),
       })
-      setWForm({ name: '', type: 'Independent', side: 'Ours', statement: '' })
+      setWForm({ name: '', type: 'Independent', side: 'Ours', role: '', statement: '' })
       setShowWForm(false)
       loadWitnesses()
     } catch (err: any) { alert(err.message || 'Failed to add witness') }
@@ -134,7 +134,6 @@ export default function HearingsPage() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <CaseTypeBadge />
-              <CalendarStatusPill />
               {activeTab === 'Hearing Diary' && (
                 <button className="glass-button" onClick={() => setShowAddModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 16px', height: 38, border: 'none', borderRadius: 10, cursor: 'pointer', background: '#3b82f6', color: '#fff', fontWeight: 600, fontSize: 13, boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}>
                   <i className="ti ti-plus" /> Add Hearing
@@ -197,6 +196,12 @@ export default function HearingsPage() {
                         <option>Opposing</option>
                       </select>
                     </div>
+                    <input
+                      value={wForm.role}
+                      onChange={(e) => setWForm({ ...wForm, role: e.target.value })}
+                      placeholder="Role / designation (e.g. Mother of Petitioner, CFO, Neighbour)"
+                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 12 }}
+                    />
                     <textarea
                       rows={3}
                       value={wForm.statement}

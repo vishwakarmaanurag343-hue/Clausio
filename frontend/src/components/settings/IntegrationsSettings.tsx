@@ -124,6 +124,7 @@ export default function IntegrationsSettings() {
         </div>
 
         {!loading && !connected && (
+          <>
           <button onClick={connect} disabled={busy} style={{
             display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px',
             border: 'none', borderRadius: 10, background: busy ? '#93c5fd' : '#2563eb',
@@ -132,6 +133,10 @@ export default function IntegrationsSettings() {
           }}>
             <i className="ti ti-brand-google" /> Connect Google Calendar
           </button>
+          <div style={{ marginTop: 10, fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>
+            🚧 Google Calendar integration coming soon — domain verification in progress
+          </div>
+          </>
         )}
         {!loading && connected && (
           <div style={{ display: 'flex', gap: 8 }}>

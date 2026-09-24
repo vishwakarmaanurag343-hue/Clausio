@@ -22,6 +22,16 @@ export default function EditCaseModal({ onClose, onSaved, caseId }: Props) {
 
   const [name,          setName]          = useState('')
   const [stage,         setStage]         = useState('')
+
+  function getStageOptions(practiceArea: string): string[] {
+    const pa = (practiceArea || '').toLowerCase()
+    if (pa.includes('criminal')) return ['Pre Filing','FIR Filed','Bail','Chargesheet Filed','First Appearance','Discharge Application','Framing of Charges','Evidence','Cross Examination','Arguments','Judgment','Sentence','Appeal']
+    if (pa.includes('family')) return ['Pre Filing','Filed','Notice','Written Statement','Evidence','Cross Examination','Arguments','Judgment','Execution']
+    if (pa.includes('ni act')) return ['Pre Filing','Legal Notice Sent','Complaint Filed','Summons Issued','First Appearance','Evidence','Cross Examination','Arguments','Judgment','Execution']
+    if (pa.includes('gst')) return ['SCN Received','Reply Filed','Personal Hearing','Order Passed','Appeal Filed','Stay Application','Tribunal','High Court']
+    if (pa.includes('income tax')) return ['Notice Received','Reply Filed','Assessment Order','CIT(A) Appeal','ITAT Appeal','High Court','Supreme Court']
+    return ['Pre Filing','Filed','Notice','Written Statement','Issues Framed','Evidence','Cross Examination','Arguments','Judgment','Execution','Appeal']
+  }
   const [status,        setStatus]        = useState('')
   const [priority,      setPriority]      = useState('High')
   const [opposingAdv,   setOpposingAdv]   = useState('')
@@ -95,8 +105,7 @@ export default function EditCaseModal({ onClose, onSaved, caseId }: Props) {
           <input value={name} onChange={e => setName(e.target.value)} style={inputStyle} />
         </div>
         <F label="Case number" value={caseData?.caseNumber ?? ''} readOnly />
-        <SF label="Sub type"   opts={['Divorce Petition','Mutual Consent Divorce','Maintenance (Sec 125)','Child Custody']} />
-        <SF label="Grounds"    opts={['Cruelty','Desertion','Adultery','Mutual Consent']} />
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 4 }}>
           <label style={{ fontSize: 11, fontWeight: 500, color: '#374151' }}>Status</label>
           <select value={status} onChange={e => setStatus(e.target.value)} style={inputStyle}>
@@ -118,7 +127,7 @@ export default function EditCaseModal({ onClose, onSaved, caseId }: Props) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 4 }}>
           <label style={{ fontSize: 11, fontWeight: 500, color: '#374151' }}>Case stage</label>
           <select value={stage} onChange={e => setStage(e.target.value)} style={inputStyle}>
-            {['Filing','Written Statement','Evidence','Cross Examination','Arguments','Judgment'].map(o => <option key={o} value={o}>{o}</option>)}
+            {getStageOptions(caseData?.practiceArea ?? '').map(o => <option key={o} value={o}>{o}</option>)}
           </select>
         </div>
       </div>
@@ -129,28 +138,25 @@ export default function EditCaseModal({ onClose, onSaved, caseId }: Props) {
         <F label="Client name" required value={caseData?.client ? `${caseData.client.firstName ?? ''} ${caseData.client.lastName ?? ''}`.trim() : ''} readOnly />
         <F label="Mobile"      required value={caseData?.client?.phone ?? ''} readOnly />
         <F label="Email"                value={caseData?.client?.email ?? ''} readOnly />
-        <F label="Aadhar"               value={caseData?.client?.aadhar ?? ''} readOnly />
+
       </div>
 
       {/* Opposite party — UNCHANGED */}
       <SLabel>Opposite party</SLabel>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
-        <F label="Opposite party name" required value="" />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 4 }}>
           <label style={{ fontSize: 11, fontWeight: 500, color: '#374151' }}>Their advocate</label>
           <input value={opposingAdv} onChange={e => setOpposingAdv(e.target.value)} style={inputStyle} />
         </div>
-        <F label="Mobile"                       value="" />
-        <F label="Address"                      value="" />
+
       </div>
 
       {/* Court — UNCHANGED */}
       <SLabel>Court details</SLabel>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
-        <SF label="Court"    opts={['Family Court','District Court','Sessions Court']} selected={caseData?.court} />
+        <F label="Court" value={caseData?.court ?? ''} readOnly />
         <F  label="Location" value={caseData?.courtLocation ?? ''} readOnly />
-        <F  label="Judge"    value="" />
-        <F  label="Court hall" value="" />
+
       </div>
 
       {/* Notes / Description */}

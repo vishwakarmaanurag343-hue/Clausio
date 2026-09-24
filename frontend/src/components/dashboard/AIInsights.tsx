@@ -555,7 +555,7 @@ export default function AIInsights() {
           width: 12,
           cursor: 'col-resize',
           zIndex: 50,
-          display: 'flex',
+          display: 'none',
           alignItems: 'center',
           justifyContent: 'center',
           userSelect: 'none',
@@ -608,8 +608,15 @@ export default function AIInsights() {
 
         {/* No case selected message (desktop only) */}
         {!selectedCaseId && (
-          <div className="desktop-header-item" style={{ textAlign: 'center', padding: 20, color: '#94a3b8', fontSize: 12 }}>
-            Select a case to see AI insights
+          <div className="desktop-header-item" style={{ textAlign: 'center', padding: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+            <i className="ti ti-message-circle" style={{ fontSize: 28, color: '#cbd5e1' }} />
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#475569', margin: 0 }}>No case selected</p>
+            <p style={{ fontSize: 12, color: '#94a3b8', margin: 0, lineHeight: 1.6, maxWidth: 200 }}>
+              Select a case from the left panel to start chatting. AI Insights works only when a case is active.
+            </p>
+            <p style={{ fontSize: 11, color: '#cbd5e1', margin: 0, fontStyle: 'italic' }}>
+              Tip: Create a case first, then upload documents for best results.
+            </p>
           </div>
         )}
 

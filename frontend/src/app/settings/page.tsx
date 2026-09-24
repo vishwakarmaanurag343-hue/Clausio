@@ -8,6 +8,8 @@ import SecuritySettings     from '@/components/settings/SecuritySettings'
 import AISettings           from '@/components/settings/AISettings'
 import LegalSettings        from '@/components/settings/LegalSettings'
 import AboutClausio         from '@/components/settings/AboutClausio'
+import HelpFAQ              from '@/components/settings/HelpFAQ'
+import PrivacyData          from '@/components/settings/PrivacyData'
 import IntegrationsSettings from '@/components/settings/IntegrationsSettings'
 import NotificationSettings from '@/components/settings/NotificationSettings'
 import TeamSettings         from '@/components/settings/TeamSettings'
@@ -25,15 +27,11 @@ const SECTIONS = [
     group: 'Preferences — Live',
     items: [
       { name: 'AI',           icon: 'ti-brain',       live: true  },
-      { name: 'Legal',        icon: 'ti-scale',       live: true  },
-      { name: 'Integrations', icon: 'ti-plug',        live: true  },
     ],
   },
   {
     group: 'Workspace',
     items: [
-      { name: 'Notifications', icon: 'ti-bell',        live: true },
-      { name: 'Team',          icon: 'ti-users',       live: true },
       { name: 'Billing',       icon: 'ti-credit-card', live: true },
     ],
   },
@@ -41,6 +39,8 @@ const SECTIONS = [
     group: 'Support',
     items: [
       { name: 'About',      icon: 'ti-info-circle', live: true  },
+      { name: 'Help & FAQ',  icon: 'ti-help-circle', live: true  },
+      { name: 'Privacy',     icon: 'ti-shield-lock', live: true  },
     ],
   },
 ]
@@ -68,6 +68,8 @@ function SettingsContent() {
       case 'AI':           return <AISettings />
       case 'Legal':        return <LegalSettings />
       case 'About':        return <AboutClausio />
+      case 'Help & FAQ':   return <HelpFAQ />
+      case 'Privacy':      return <PrivacyData />
       case 'Integrations': return <IntegrationsSettings />
       case 'Notifications': return <NotificationSettings />
       case 'Team':         return <TeamSettings />

@@ -287,113 +287,6 @@ export default function DocumentsPage() {
         </div>
       </div>
 
-      <div style={{
-        marginTop: -8,
-        marginBottom: 20,
-        padding: '16px',
-        background: '#f8fafc',
-        borderRadius: 12,
-        border: '1px solid #e2e8f0',
-      }}>
-        <div style={{
-          fontSize: 12,
-          fontWeight: 700,
-          color: '#374151',
-          marginBottom: 8,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-        }}>
-          <span>🔗</span>
-          Import from Google Drive URL
-        </div>
-
-        <div style={{
-          fontSize: 11,
-          color: '#64748b',
-          marginBottom: 10,
-          lineHeight: 1.5,
-        }}>
-          Paste a Google Drive file or folder link. For folders — all files will be imported automatically. Make sure sharing is set to "Anyone with the link can view".
-        </div>
-
-        <div style={{
-          display: 'flex',
-          gap: 8,
-          alignItems: 'center',
-        }}>
-          <input
-            type="url"
-            value={driveUrl}
-            onChange={e => {
-              setDriveUrl(e.target.value)
-              setUrlError('')
-              setUrlSuccess('')
-            }}
-            placeholder="Paste Google Drive file or folder link..."
-            style={{
-              flex: 1,
-              padding: '9px 12px',
-              borderRadius: 8,
-              border: `1px solid ${urlError ? '#fca5a5' : '#e2e8f0'}`,
-              fontSize: 13,
-              fontFamily: 'inherit',
-              outline: 'none',
-              background: '#fff',
-              color: '#0f172a',
-            }}
-          />
-          <button
-            onClick={handleDriveImport}
-            disabled={!driveUrl.trim() || importingUrl || !selectedCaseId}
-            style={{
-              padding: '9px 18px',
-              borderRadius: 8,
-              border: 'none',
-              background: !driveUrl.trim() || importingUrl || !selectedCaseId ? '#93c5fd' : '#2563eb',
-              color: '#fff',
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: !driveUrl.trim() || importingUrl || !selectedCaseId ? 'not-allowed' : 'pointer',
-              fontFamily: 'inherit',
-              whiteSpace: 'nowrap' as const,
-              flexShrink: 0,
-            }}
-          >
-            {importingUrl ? '⏳ Importing...' : '⬆ Import'}
-          </button>
-        </div>
-
-        {urlError && (
-          <div style={{
-            marginTop: 8,
-            padding: '8px 12px',
-            background: '#fef2f2',
-            border: '1px solid #fca5a5',
-            borderRadius: 8,
-            fontSize: 12,
-            color: '#dc2626',
-          }}>
-            {urlError}
-          </div>
-        )}
-
-        {urlSuccess && (
-          <div style={{
-            marginTop: 8,
-            padding: '8px 12px',
-            background: '#f0fdf4',
-            border: '1px solid #86efac',
-            borderRadius: 8,
-            fontSize: 12,
-            color: '#16a34a',
-            fontWeight: 600,
-          }}>
-            ✓ {urlSuccess}
-          </div>
-        )}
-      </div>
-
       {error && (
         <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626', marginBottom: 16 }}>
           {error}
@@ -517,7 +410,7 @@ export default function DocumentsPage() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {filtered.map(doc => {
-              const cat    = doc.category ?? 'Other'
+              const cat    = (doc.categoryConfidence >= 70 && doc.category) ? doc.category : 'Other'
               const colors = CATEGORY_COLORS[cat] ?? CATEGORY_COLORS['Other']
               const sizeKB = doc.sizeBytes ? Math.round(doc.sizeBytes / 1024) : 0
               const isFiled = (doc.filingStatus ?? 'Not Filed') === 'Filed'
@@ -567,12 +460,7 @@ export default function DocumentsPage() {
                         <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: colors.bg, color: colors.color, border: `1px solid ${colors.color}33` }}>
                           {cat}
                         </span>
-                        {/* Confidence */}
-                        {doc.categoryConfidence > 0 && (
-                          <span style={{ fontSize: 11, color: '#94a3b8' }}>
-                            {doc.categoryConfidence}% confidence
-                          </span>
-                        )}
+
                         {/* Size */}
                         {sizeKB > 0 && (
                           <span style={{ fontSize: 11, color: '#94a3b8' }}>{sizeKB} KB</span>

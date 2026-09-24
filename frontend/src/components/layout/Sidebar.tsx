@@ -16,7 +16,6 @@ const NAV = [
       { href: '/dashboard', icon: 'ti-layout-dashboard', label: 'Dashboard', key: 'dashboard' },
       { href: '/cases',     icon: 'ti-folder',           label: 'Cases',     key: 'cases' },
       { href: '/hearings',  icon: 'ti-notebook',         label: 'Hearings',  key: 'hearings' },
-      { href: '/calendar',  icon: 'ti-calendar',         label: 'Calendar',  key: 'calendar' },
       { href: '/strategy',  icon: 'ti-target',           label: 'Strategy',  key: 'strategy' },
       { href: '/documents', icon: 'ti-files',            label: 'Documents', key: 'documents' },
       { href: '/client',    icon: 'ti-message-circle',   label: 'Client',    key: 'clients' },
@@ -32,10 +31,11 @@ const NAV = [
   {
     group: 'Business',
     items: [
-      { href: '/billing',   icon: 'ti-coin',          label: 'Billing',      key: 'billing' },
-      { href: '/analytics', icon: 'ti-chart-bar',     label: 'AI Analytics', key: 'analytics' },
-      { href: '/financial', icon: 'ti-cash',          label: 'Financial',    key: 'financial' },
-      { href: '/readiness', icon: 'ti-shield-check',  label: 'Readiness',    key: 'readiness' },
+      { href: '/billing',   icon: 'ti-coin',         label: 'Billing (Soon)',       key: 'billing',   disabled: true },
+      { href: '/analytics', icon: 'ti-chart-bar',    label: 'AI Analytics (Soon)',  key: 'analytics', disabled: true },
+      { href: '/financial', icon: 'ti-cash',         label: 'Financial (Soon)',     key: 'financial', disabled: true },
+      { href: '/readiness', icon: 'ti-shield-check', label: 'Readiness (Soon)',     key: 'readiness', disabled: true },
+      { href: '/calendar',  icon: 'ti-calendar',     label: 'Calendar (Soon)',      key: 'calendar',  disabled: true },
     ],
   },
   {

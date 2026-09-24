@@ -18,7 +18,6 @@ const TABS = [
   { name: 'Risk Assessment',  icon: 'ti-shield-check'  },
   { name: 'Recommendations',  icon: 'ti-star'          },
   { name: 'Action Plan',      icon: 'ti-list-check'    },
-  { name: 'Legal Research',   icon: 'ti-scale'         },
   { name: 'Contradictions',   icon: 'ti-alert-triangle'},
   { name: 'Document Gaps',    icon: 'ti-file-alert'    },
 ]
@@ -85,7 +84,6 @@ export default function StrategyPage() {
               )}
               {activeTab === 'Recommendations' && <RecommendationPanel key={`recs-${refresh}`} />}
               {activeTab === 'Action Plan'      && <ActionPlan         key={`plan-${refresh}`} fullView />}
-              {activeTab === 'Legal Research'   && <LegalResearch      key={`research-${refresh}`} />}
               {activeTab === 'Contradictions'   && <Contradictions     key={`contra-${refresh}`} />}
               
               {activeTab === 'Document Gaps'    && <DocumentGaps       key={`gaps-${refresh}`} />}
@@ -114,26 +112,28 @@ export default function StrategyPage() {
           >
             {TABS.map((tab) => {
               const isSelected = activeTab === tab.name
+              const isDisabled = (tab as any).disabled
               return (
                 <button
                   key={tab.name}
-                  onClick={() => setActiveTab(tab.name)}
+                  onClick={() => !isDisabled && setActiveTab(tab.name)}
                   style={{
                     padding: '8px 14px',
                     borderRadius: 20,
                     background: isSelected ? '#cbd5e1' : 'transparent',
-                    color: '#0f172a',
+                    color: isDisabled ? '#94a3b8' : '#0f172a',
                     border: 'none',
                     fontSize: 11,
                     fontWeight: isSelected ? 700 : 600,
-                    cursor: 'pointer',
+                    cursor: isDisabled ? 'not-allowed' : 'pointer',
                     whiteSpace: 'nowrap',
                     fontFamily: 'inherit',
                     transition: 'all 0.15s ease',
                     flexShrink: 0,
+                    opacity: isDisabled ? 0.5 : 1,
                   }}
                 >
-                  {tab.name}
+                  {tab.name}{isDisabled ? ' 🚧' : ''}
                 </button>
               )
             })}
@@ -231,7 +231,6 @@ export default function StrategyPage() {
                 {activeTab === 'Risk Assessment' && <RiskAssessment key={`mob-risk-${refresh}`} />}
                 {activeTab === 'Recommendations' && <RecommendationPanel key={`mob-recs-${refresh}`} />}
                 {activeTab === 'Action Plan'      && <ActionPlan key={`mob-plan-${refresh}`} fullView />}
-                {activeTab === 'Legal Research'   && <LegalResearch key={`mob-research-${refresh}`} />}
                 {activeTab === 'Contradictions'   && <Contradictions key={`mob-contra-${refresh}`} />}
                 {activeTab === 'Document Gaps'    && <DocumentGaps key={`mob-gaps-${refresh}`} />}
               </div>

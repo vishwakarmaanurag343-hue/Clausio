@@ -1,15 +1,20 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+'use client'
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { casesApi } from '@/lib/api'
 import CasesHeader    from '@/components/cases/CasesHeader'
+import AddCaseModal   from '@/components/cases/AddCaseModal'
 import CaseStats      from '@/components/cases/CaseStats'
 import PracticeAreas  from '@/components/cases/PracticeAreas'
 import CaseTable      from '@/components/cases/CaseTable'
 import EditCaseModal  from '@/components/cases/EditCaseModal'
 import DeleteCaseModal from '@/components/cases/DeleteCaseModal'
 
-export default function CasesPage() {
+function CasesPageInner() {
+  const searchParams = useSearchParams()
+  const [showAddModal,   setShowAddModal]   = useState(false)
   const [editCaseId,     setEditCaseId]     = useState<string | null>(null)
   const [deleteCaseId,   setDeleteCaseId]   = useState<string | null>(null)
   const [refresh,        setRefresh]        = useState(0)
@@ -24,13 +29,26 @@ export default function CasesPage() {
   const [practiceFilter, setPracticeFilter] = useState('')
   const [showFilters,    setShowFilters]    = useState(false)
 
+  useEffect(() => {
+    if (searchParams.get('newCase') === 'true') setShowAddModal(true)
+  }, [searchParams])
+
   function handleSaved() { setRefresh(r => r + 1) }
 
   const loadCases = useCallback(() => {
-    setLoading(true)
+    const cached = sessionStorage.getItem('clausio_cases_cache')
+    if (cached) {
+      try { setCases(JSON.parse(cached)); setLoading(false) } catch {}
+    } else {
+      setLoading(true)
+    }
     setError('')
     casesApi.getAll()
-      .then(data => setCases(Array.isArray(data) ? data : []))
+      .then(data => {
+        const arr = Array.isArray(data) ? data : []
+        setCases(arr)
+        sessionStorage.setItem('clausio_cases_cache', JSON.stringify(arr))
+      })
       .catch(err => setError(err.message || 'Failed to load cases'))
       .finally(() => setLoading(false))
   }, [])
@@ -481,7 +499,18 @@ export default function CasesPage() {
       {deleteCaseId && (
         <DeleteCaseModal caseId={deleteCaseId} onClose={() => setDeleteCaseId(null)} onDeleted={handleSaved} />
       )}
+      {showAddModal && (
+        <AddCaseModal open={showAddModal} onClose={() => setShowAddModal(false)} onSaved={() => { setShowAddModal(false); handleSaved() }} />
+      )}
     </div>
+  )
+}
+
+export default function CasesPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>Loading...</div>}>
+      <CasesPageInner />
+    </Suspense>
   )
 }
 

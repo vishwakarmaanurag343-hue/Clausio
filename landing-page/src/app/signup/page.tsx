@@ -13,6 +13,7 @@ export default function SignupPage() {
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [credits, setCredits] = useState(15)
@@ -41,12 +42,52 @@ export default function SignupPage() {
     e.preventDefault()
     setError('')
 
+    // First name validation
     if (!firstName.trim()) {
-      setError('Please enter your first name.')
+      setError('First name is required.')
       return
     }
+    if (firstName.trim().length < 2) {
+      setError('First name must be at least 2 characters.')
+      return
+    }
+    if (/[^a-zA-Z\s'\-]/.test(firstName.trim())) {
+      setError('First name can only contain letters, spaces, hyphens and apostrophes.')
+      return
+    }
+    if (/^\s|\s$/.test(firstName) || /\s{2,}/.test(firstName)) {
+      setError('Please enter a valid first name without extra spaces.')
+      return
+    }
+
+    // Last name validation
+    if (lastName.trim() && /[^a-zA-Z\s'\-]/.test(lastName.trim())) {
+      setError('Last name can only contain letters, spaces, hyphens and apostrophes.')
+      return
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!email.trim()) {
+      setError('Email address is required.')
+      return
+    }
+    if (!emailRegex.test(email.trim())) {
+      setError('Please enter a valid email address (e.g. name@example.com).')
+      return
+    }
+
+    // Password validation
     if (password.length < 8) {
       setError('Password must be at least 8 characters.')
+      return
+    }
+    if (!/[A-Z]/.test(password)) {
+      setError('Password must contain at least one uppercase letter.')
+      return
+    }
+    if (!/[0-9]/.test(password)) {
+      setError('Password must contain at least one number.')
       return
     }
 
@@ -67,11 +108,12 @@ export default function SignupPage() {
       const data = await res.json().catch(() => ({}))
 
       if (!res.ok) {
-        setError(
-          data?.message ||
-            data?.error ||
-            'Registration failed. Please try again.'
-        )
+        const msg = data?.message || data?.error || ''
+        if (res.status === 409 || msg.toLowerCase().includes('already') || msg.toLowerCase().includes('exist') || msg.toLowerCase().includes('registered') || msg.toLowerCase().includes('duplicate')) {
+          setError('This email is already registered. Please sign in or use a different email.')
+        } else {
+          setError(msg || 'Registration failed. Please try again.')
+        }
         return
       }
 
@@ -313,14 +355,14 @@ export default function SignupPage() {
                   gap: 4,
                 }}>
                   {[
-                    ['📄 Drafting', '3 cr'],
-                    ['🔍 Summary', '3 cr'],
-                    ['📅 Chronology', '3 cr'],
-                    ['⚖️ Hearing', '2 cr'],
-                    ['📚 Research', '2 cr'],
-                    ['⚡ Contradiction', '2 cr'],
-                    ['💬 Client', '1 cr'],
-                    ['💰 Financial', '1 cr'],
+                    ['📄 Drafting', '2 credits'],
+                    ['🔍 Summary', '3 credits'],
+                    ['📅 Chronology', '2 credits'],
+                    ['⚖️ Hearing', '2 credits'],
+                    ['📚 Research', '1 credit'],
+                    ['⚡ Contradiction', '2 credits'],
+                    ['💬 Client', '1 credit'],
+                    ['💰 Financial', '2 credits'],
                   ].map(([name, cost], i) => (
                     <div
                       key={i}
@@ -377,7 +419,7 @@ export default function SignupPage() {
                 {
                   icon: '🔍',
                   text: 'Analyse evidence and find contradictions',
-                  cost: '3 credits each',
+                  cost: '2 credits each',
                 },
               ].map((item, i) => (
                 <div key={i} style={{
@@ -667,7 +709,7 @@ export default function SignupPage() {
             textAlign: 'center',
             marginBottom: 20,
           }}>
-            Get 15 free AI credits instantly. No credit card required.
+            Get 30 free AI credits instantly. No credit card required.
           </p>
 
           <div style={{
@@ -684,7 +726,7 @@ export default function SignupPage() {
             fontWeight: 600,
           }}>
             <span>⚡</span>
-            <span>15 free AI credits on signup — no credit card needed</span>
+            <span>30 free AI credits on signup — no credit card needed</span>
           </div>
 
           <form onSubmit={handleSignup}>
@@ -707,8 +749,8 @@ export default function SignupPage() {
                 <input
                   type="text"
                   value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="Parth"
+                  onChange={(e) => setFirstName(e.target.value.replace(/\s+/g, ' ').replace(/^\s/, ''))}
+                  placeholder="First name"
                   required
                   style={{
                     width: '100%',
@@ -735,8 +777,8 @@ export default function SignupPage() {
                 <input
                   type="text"
                   value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  placeholder="Bindra"
+                  onChange={(e) => setLastName(e.target.value.replace(/\s+/g, ' ').replace(/^\s/, ''))}
+                  placeholder="Last name"
                   style={{
                     width: '100%',
                     padding: '10px 12px',
@@ -778,7 +820,7 @@ export default function SignupPage() {
                   boxSizing: 'border-box',
                 }}
               />
-            </div>
+              </div>
 
             <div style={{ marginBottom: 20 }}>
               <label style={{
@@ -790,15 +832,16 @@ export default function SignupPage() {
               }}>
                 Password *
               </label>
+              <div style={{ position: 'relative' }}>
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Min 8 characters"
                 required
                 style={{
                   width: '100%',
-                  padding: '10px 12px',
+                  padding: '10px 44px 10px 12px',
                   borderRadius: 8,
                   border: '1px solid #e2e8f0',
                   fontSize: 14,
@@ -807,6 +850,14 @@ export default function SignupPage() {
                   boxSizing: 'border-box',
                 }}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: 18, padding: 0, display: 'flex', alignItems: 'center' }}
+              >
+                <i className={showPassword ? "ti ti-eye-off" : "ti ti-eye"} style={{ fontSize: 16 }} />
+              </button>
+              </div>
             </div>
 
             <div style={{ marginBottom: 14 }}>

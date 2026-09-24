@@ -11,7 +11,7 @@ interface Props {
   disabled?: boolean
 }
 
-const VOICE_URL = process.env.NEXT_PUBLIC_VOICE_URL || 'http://localhost:8000/api/voice'
+const VOICE_URL = process.env.NEXT_PUBLIC_VOICE_URL || '' // Voice disabled temporarily
 
 export default function CaseDescriptionInput({ value, onChange, disabled }: Props) {
   const [mode, setMode] = useState<Mode>('type')
@@ -122,7 +122,7 @@ export default function CaseDescriptionInput({ value, onChange, disabled }: Prop
         {([
           { key: 'type',   label: '✏️ Type / Paste' },
           { key: 'upload', label: '📄 Upload File' },
-          { key: 'voice',  label: '🎙️ Voice Recording' },
+
         ] as { key: Mode; label: string }[]).map(opt => {
           const on = mode === opt.key
           return (

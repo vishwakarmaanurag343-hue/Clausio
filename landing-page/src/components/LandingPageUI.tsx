@@ -101,7 +101,6 @@ const sidebarNavItems = [
  { id: "intro", label: "Overview" },
  { id: "features", label: "Features" },
  { id: "demo", label: "Product Tour" },
- { id: "intelligence", label: "Intelligence" },
  { id: "how-it-works", label: "How It Works" },
  { id: "why-clausio", label: "Why Clausio" },
  { id: "pricing", label: "Pricing" },
@@ -175,7 +174,7 @@ function HowItWorksSection() {
  className="text-center mb-16"
  >
  <div className="text-[11px] uppercase tracking-[0.25em] font-mono font-bold text-[#2563eb] mb-3">
- 02.5 / WORKFLOW
+ WORKFLOW
  </div>
  <h2 className="text-4xl md:text-5xl font-serif font-bold tracking-tight text-[#0f172a] leading-[1.1]">
  Three steps to a
@@ -229,12 +228,12 @@ function HowItWorksSection() {
 const PRICING_PLANS = [
   {
     name: "Beta Package",
-    monthly: "15 Credits",
-    annual: "15 Credits",
+    monthly: "30 Credits",
+    annual: "30 Credits",
     annualBilled: "",
     description: "Early access for solo advocates",
     features: [
-      "Up to 15 AI document drafts",
+      "Up to 30 AI document drafts",
       "Unlimited active cases",
       "Basic legal research",
       "Hearing calendar",
@@ -816,7 +815,7 @@ const FAQS: Faq[] = [
  },
  {
  q: "How do I get started?",
- a: "Click \"Get Started\" anywhere on this page to open the signup form — you get 15 free AI credits instantly, no card needed. Already have an account? Use the \"Sign In\" link in the top bar.",
+ a: "Click \"Get Started\" anywhere on this page to open the signup form — you get 30 free AI credits instantly, no card needed. Already have an account? Use the \"Sign In\" link in the top bar.",
  keywords: ["get started", "start", "login", "log in", "sign up", "signup", "register", "account", "onboard"],
  },
  {
@@ -1081,8 +1080,8 @@ const DEMO_FEATURES = [
  { type: 'stat', label: 'Active Cases', value: '12', color: '#2563eb', trend: '+2 this month' },
  { type: 'stat', label: 'This Week', value: '3', color: '#7c3aed', trend: 'High Court & Sessions' },
  { type: 'stat', label: 'AI Credits', value: '47', color: '#16a34a', trend: 'Refreshes Oct 1' },
- { type: 'hearing', text: 'Sharma vs State — Sessions Court', date: 'Tomorrow 10:30 AM', urgency: 'High' },
- { type: 'hearing', text: 'Gupta Divorce — Family Court', date: 'Sep 18, 2026', urgency: 'Normal' },
+ { type: 'hearing', text: 'Client A vs State — Sessions Court', date: 'Tomorrow 10:30 AM', urgency: 'High' },
+ { type: 'hearing', text: 'Client B Divorce — Family Court', date: 'Sep 18, 2026', urgency: 'Normal' },
  { type: 'hearing', text: 'Tax Appeal — ITAT Mumbai', date: 'Sep 22, 2026', urgency: 'Normal' },
  ]
  },
@@ -1133,7 +1132,7 @@ const DEMO_FEATURES = [
  'AI extracts every dated event from all case documents and arranges them in a clickable timeline.',
  mockup: [
  { type: 'timeline', date: '12.02.2018', event: 'Marriage solemnised at Hotel Grand, Mumbai', tag: 'Key Event' },
- { type: 'timeline', date: '05.09.2019', event: 'Daughter Aanya born from wedlock', tag: 'Key Event' },
+ { type: 'timeline', date: '05.09.2019', event: 'Daughter born from wedlock', tag: 'Key Event' },
  { type: 'timeline', date: '15.06.2023', event: 'Petitioner thrown out of matrimonial home', tag: 'Incident' },
  { type: 'timeline', date: '22.07.2023', event: 'FIR filed at Bandra Police Station u/s 498A', tag: 'Procedural' },
  { type: 'timeline', date: '15.03.2024', event: 'Divorce petition filed before Family Court', tag: 'Procedural' },
@@ -1184,7 +1183,7 @@ const DEMO_FEATURES = [
  mockup: [
  { type: 'channel', label: 'WhatsApp', active: true },
  { type: 'channel', label: 'Email', active: false },
- { type: 'message', text: 'Namaste Priya ji 🙏\n\nAapki Family Court mein sunwai aaj achi rahi. Judge ne respondent ko salary slip submit karne ka order diya hai.\n\nAgla date: 22 September 2026\n\n— Adv. Sharma' },
+ { type: 'message', text: 'Namaste Client ji 🙏\n\nAapki Family Court mein sunwai aaj achi rahi. Judge ne respondent ko salary slip submit karne ka order diya hai.\n\nAgla date: 22 September 2026\n\n— Adv. XYZ' },
  ]
  },
  {
@@ -2061,7 +2060,6 @@ export default function LandingPageUI() {
  {[
  { id: "intro", label: "PLATFORM" },
  { id: "features", label: "FEATURES" },
- { id: "intelligence", label: "INTELLIGENCE" },
  { id: "why-clausio", label: "WHY CLAUSIO" },
  { id: "about", label: "ABOUT" },
  ].map((link) => {
@@ -2105,42 +2103,7 @@ export default function LandingPageUI() {
  </div>
 
  {/* LEFT SIDEBAR NAVIGATION ("ON THIS PAGE") */}
- <aside className="landing-sidebar fixed left-8 top-1/2 -translate-y-1/2 z-40 hidden xl:flex flex-col space-y-7 max-h-[80vh] overflow-y-auto">
- <div className="text-[10px] uppercase tracking-[0.25em] font-mono font-bold text-[#5C4D3F] mb-2">
- ON THIS PAGE
- </div>
- <ul className="flex flex-col space-y-3 text-[12px] font-mono leading-[1.4]">
- {sidebarNavItems.map((item) => {
- const isActive = activeSection === item.id;
- return (
- <li
- key={item.id}
- className={`flex items-center space-x-3 group cursor-pointer border-l-2 pl-3 py-0.5 transition-all duration-300 ${
- isActive ? "border-[#2B2017]" : "border-transparent"
- }`}
- onClick={() => scrollTo(item.id)}
- >
- <span
- className={`h-[2px] rounded-xl transition-all duration-300 ${
- isActive
- ? "w-6 bg-[#2B2017] "
- : "w-2 bg-[#8C7B6B]/40 group-hover:w-4 group-hover:bg-[#5C4D3F]"
- }`}
- />
- <span
- className={`transition-all duration-300 ${
- isActive
- ? "text-[#111111] font-bold translate-x-1"
- : "text-[#6B5A4B] font-medium group-hover:text-[#2B2017]"
- }`}
- >
- {item.label}
- </span>
- </li>
- );
- })}
- </ul>
- </aside>
+ 
 
  {/* ========================================================= */}
  {/* COMBINED HERO + OVERVIEW SECTION WRAPPER */}
@@ -2725,7 +2688,6 @@ export default function LandingPageUI() {
  >
  <div className="flex flex-col items-center text-center">
  <div className="text-[11px] uppercase tracking-[0.25em] font-mono font-bold text-[#6B5A4B] flex items-center justify-center space-x-2 mb-3">
- <span className="px-2 py-0.5 rounded minimal-inset text-[10px]">02</span>
  <span>CORE CAPABILITIES</span>
  </div>
  <h2 className="text-4xl md:text-6xl font-serif tracking-tight text-[#111111] ">
@@ -2777,7 +2739,7 @@ export default function LandingPageUI() {
  <Search className="w-5 h-5" />
  </div>
  <div>
- <h3 className="text-lg font-serif font-bold text-[#111111] mb-1 ">Legal Research</h3>
+ <h3 className="text-lg font-serif font-bold text-[#111111] mb-1 ">Legal Research <span style={{ fontSize: 10, background: "#f59e0b", color: "white", padding: "2px 8px", borderRadius: 20, fontFamily: "monospace", fontWeight: 700, verticalAlign: "middle" }}>COMING SOON</span></h3>
  <p className="text-xs text-[#524337] font-sans leading-relaxed">
  Fast Indian case law precedents and citations.
  </p>
@@ -2876,7 +2838,7 @@ export default function LandingPageUI() {
  </div>
  </div>
  <div>
- <h3 className="text-xl font-serif font-bold text-[#111111] mb-1 ">Practice Insights</h3>
+ <h3 className="text-xl font-serif font-bold text-[#111111] mb-1 ">Practice Insights <span style={{ fontSize: 10, background: "#f59e0b", color: "white", padding: "2px 8px", borderRadius: 20, fontFamily: "monospace", fontWeight: 700, verticalAlign: "middle" }}>COMING SOON</span></h3>
  <p className="text-xs text-[#524337] font-sans leading-relaxed max-w-md">
  Real-time visibility into active cases, hearing success rates, and courtroom workload across high courts and district forums.
  </p>
@@ -2889,7 +2851,7 @@ export default function LandingPageUI() {
  {/* TYPEWRITER DOCUMENT WINDOW — Clausio drafting in real time */}
  <TypewriterWindow />
 
- {/* CREDIT GUIDE — what 15 free signup credits get you */}
+ {/* CREDIT GUIDE — what 30 free signup credits get you */}
  <motion.div
  initial={{ opacity: 0, y: 20 }}
  whileInView={{ opacity: 1, y: 0 }}
@@ -2902,7 +2864,7 @@ export default function LandingPageUI() {
  Free to start
  </div>
  <div className="text-2xl font-serif font-extrabold text-[#111111] mb-2">
- 15 free credits on signup
+ 30 free credits on signup
  </div>
  <div className="text-[13px] text-[#524337] font-sans">
  No credit card · No commitment · Cancel anytime
@@ -2911,20 +2873,20 @@ export default function LandingPageUI() {
 
  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-6">
  {[
- { icon: "📄", name: "AI Drafting", cost: 3, desc: "~5 documents" },
- { icon: "🔍", name: "Case Summary", cost: 3, desc: "~5 summaries" },
- { icon: "📅", name: "Chronology", cost: 3, desc: "~5 timelines" },
- { icon: "⚖️", name: "Hearing Prep", cost: 2, desc: "~7 briefs" },
- { icon: "📚", name: "Legal Research", cost: 2, desc: "~7 searches" },
- { icon: "⚡", name: "Contradiction", cost: 2, desc: "~7 analyses" },
- { icon: "💬", name: "Client Update", cost: 1, desc: "~15 messages" },
- { icon: "💰", name: "Financial", cost: 1, desc: "~15 calcs" },
+ { icon: "📄", name: "AI Drafting", cost: 2, desc: "~15 documents" },
+ { icon: "🔍", name: "Case Summary", cost: 3, desc: "~10 summaries" },
+ { icon: "📅", name: "Chronology", cost: 2, desc: "~15 timelines" },
+ { icon: "⚖️", name: "Hearing Prep", cost: 2, desc: "~15 briefs" },
+ { icon: "📚", name: "Legal Research", cost: 1, desc: "~30 searches" },
+ { icon: "⚡", name: "Contradiction", cost: 2, desc: "~15 analyses" },
+ { icon: "💬", name: "Client Update", cost: 1, desc: "~30 messages" },
+ { icon: "💰", name: "Financial", cost: 2, desc: "~15 calcs" },
  ].map((item) => (
  <div key={item.name} className="flex flex-col gap-1 p-3 rounded-xl minimal-inset">
  <div className="flex items-center justify-between">
  <span className="text-base">{item.icon}</span>
  <span className="text-[11px] font-bold text-[#0369A1] bg-[#EBF5FF] px-2 py-0.5 rounded-xl">
- {item.cost} cr
+ {item.cost} creditedit
  </span>
  </div>
  <div className="text-xs font-bold text-[#111111]">{item.name}</div>
@@ -2938,7 +2900,7 @@ export default function LandingPageUI() {
  href="/signup"
  className="inline-flex items-center gap-2 px-7 py-3 rounded-xl text-[13px] font-mono uppercase tracking-[0.15em] font-semibold minimal-btn-primary"
  >
- Start Free — 15 Credits →
+ Start Free — 30 Credits →
  </a>
  </div>
  </motion.div>
@@ -2961,7 +2923,6 @@ export default function LandingPageUI() {
  className="text-center mb-12"
  >
  <div className="text-[11px] uppercase tracking-[0.25em] font-mono font-bold text-[#6B5A4B] flex items-center justify-center space-x-2 mb-3">
- <span className="px-2 py-0.5 rounded minimal-inset text-[10px]">02.5</span>
  <span>PRODUCT TOUR</span>
  </div>
  <h2 className="text-4xl md:text-5xl font-serif tracking-tight text-[#111111] mb-4">
@@ -2994,199 +2955,6 @@ export default function LandingPageUI() {
  </div>
  </section>
 
- {/* ========================================================= */}
- {/* SECTION 4: INTELLIGENCE (BENTO INTELLIGENCE MATRIX) */}
- {/* ========================================================= */}
- <section
- id="intelligence"
- className="relative z-30 min-h-screen py-24 px-8 md:px-16 xl:pl-56 xl:pr-24 border-t border-[#3A2E26]/10 flex flex-col justify-center"
- >
- <div className="max-w-6xl mx-auto w-full space-y-12">
- <motion.div
- initial={{ opacity: 0, y: 20 }}
- whileInView={{ opacity: 1, y: 0 }}
- transition={{ duration: 0.8 }}
- viewport={{ once: false, amount: 0.3 }}
- className="space-y-4 max-w-2xl mx-auto flex flex-col items-center text-center"
- >
- <div className="text-[11px] uppercase tracking-[0.25em] font-mono font-bold text-[#6B5A4B] flex items-center justify-center space-x-2">
- <Sparkles className="w-3.5 h-3.5 text-[#0EA5E9]" />
- <span className="px-2 py-0.5 rounded minimal-inset text-[10px]">03</span>
- <span>AI &amp; INTELLIGENCE</span>
- </div>
- <h2 className="text-4xl md:text-6xl font-serif tracking-tight text-[#111111] ">
- Intelligence built for legal work
- </h2>
- <p className="text-base font-sans text-[#4A3D33] leading-relaxed">
- Clausio brings intelligent neural indexing into legal workflows so advocates spend less time on repetitive drafting and more time on argument strategy.
- </p>
- </motion.div>
-
- {/* Neural network connector lines */}
- <div className="relative w-full h-24 mb-8 hidden md:block" aria-hidden="true">
- <svg
- className="absolute inset-0 w-full h-full"
- viewBox="0 0 1000 100"
- preserveAspectRatio="none"
- xmlns="http://www.w3.org/2000/svg"
- >
- <defs>
- <linearGradient id="netGrad" x1="0%" y1="0%" x2="100%" y2="0%">
- <stop offset="0%" stopColor="#2563eb" stopOpacity="0" />
- <stop offset="30%" stopColor="#2563eb" stopOpacity="0.4" />
- <stop offset="70%" stopColor="#818cf8" stopOpacity="0.4" />
- <stop offset="100%" stopColor="#818cf8" stopOpacity="0" />
- </linearGradient>
- </defs>
- <path
- id="line1"
- d="M 100 50 Q 300 20 500 50 Q 700 80 900 50"
- fill="none"
- stroke="url(#netGrad)"
- strokeWidth="1.5"
- />
- <path
- id="line2"
- d="M 100 50 Q 300 70 500 50 Q 700 30 900 50"
- fill="none"
- stroke="url(#netGrad)"
- strokeWidth="1"
- />
- {[100, 300, 500, 700, 900].map((x, i) => (
- <circle key={i} cx={x} cy="50" r="4" fill="#2563eb" opacity="0.3" />
- ))}
- {[0, 1, 2].map((i) => (
- <circle
- key={`d${i}`}
- r="4"
- fill="#2563eb"
- style={
- {
- offsetPath: 'path("M 100 50 Q 300 20 500 50 Q 700 80 900 50")',
- offsetDistance: "0%",
- animation: `dot-travel 3s linear ${i * 1}s infinite`,
- } as React.CSSProperties
- }
- />
- ))}
- </svg>
- </div>
-
- {/* SKEUOMORPHIC INTELLIGENCE BENTO GRID */}
- <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
- {/* Bento Intelligence 1 (Large Feature Card) */}
- <motion.div
- initial={{ opacity: 0, y: 20 }}
- whileInView={{ opacity: 1, y: 0 }}
- transition={{ duration: 0.6 }}
- viewport={{ once: false }}
- className="lg:col-span-2 p-8 rounded-xl minimal-bento-card flex flex-col justify-between space-y-6 group transition-all duration-300 hover:-translate-y-1.5 hover: hover:border-[#2563eb]/25"
- >
- <div className="flex justify-between items-center font-mono text-xs">
- <span className="px-3 py-1 rounded-md minimal-inset font-bold text-[#3A2E26]">MODULE 01</span>
- <div className="flex items-center space-x-2">
- <span className="text-[10px] text-[#0284C7] font-mono font-semibold">NEURAL REASONING</span>
- <div className="w-2.5 h-2.5 rounded-xl ] ] border border-[#BAE6FD]/80" />
- </div>
- </div>
- <div className="space-y-3">
- <h3 className="text-2xl font-serif font-bold text-[#111111] ">Evidence &amp; Exhibit Intelligence</h3>
- <ScrollWordReveal
-   text="Quickly synthesize multi-thousand page case bundles, spot evidentiary contradictions across depositions, and cross-reference marked exhibits in courtroom briefs with sub-second accuracy."
-   className="text-sm text-[#524337] font-sans leading-relaxed max-w-xl"
- />
- </div>
- <div className="grid grid-cols-2 gap-4 pt-2 font-mono text-xs">
- <div className="p-3 rounded-xl minimal-inset text-[#3C2F25]">
- <div className="font-bold text-[#111111]">Cross-Exhibit Indexing</div>
- <div className="text-[11px] text-[#7A6959] mt-0.5">Automated pagination &amp; citations</div>
- </div>
- <div className="p-3 rounded-xl minimal-inset text-[#3C2F25]">
- <div className="font-bold text-[#111111]">Inconsistency Spotter</div>
- <div className="text-[11px] text-[#7A6959] mt-0.5">Affidavit disparity checks</div>
- </div>
- </div>
- </motion.div>
-
- {/* Bento Intelligence 2 */}
- <motion.div
- initial={{ opacity: 0, y: 20 }}
- whileInView={{ opacity: 1, y: 0 }}
- transition={{ duration: 0.6, delay: 0.1 }}
- viewport={{ once: false }}
- className="p-8 rounded-xl minimal-bento-card flex flex-col justify-between space-y-6 group transition-all duration-300 hover:-translate-y-1.5 hover: hover:border-[#2563eb]/25"
- >
- <div className="flex justify-between items-center font-mono text-xs">
- <span className="px-3 py-1 rounded-md minimal-inset font-bold text-[#3A2E26]">MODULE 02</span>
- <div className="w-2.5 h-2.5 rounded-xl ] ] border border-[#BAE6FD]/80" />
- </div>
- <div>
- <h3 className="text-xl font-serif font-bold text-[#111111] mb-2 ">Mediation Intelligence</h3>
- <p className="text-xs text-[#524337] font-sans leading-relaxed">
- Formulate strategic settlement terms, analyze dispute contours, and evaluate compromise risks based on judicial precedents.
- </p>
- </div>
- <div className="p-3 rounded-xl minimal-inset font-mono text-[11px] text-[#5C4D3F]">
- Settlement Contour Analysis
- </div>
- </motion.div>
-
- {/* Bento Intelligence 3 */}
- <motion.div
- initial={{ opacity: 0, y: 20 }}
- whileInView={{ opacity: 1, y: 0 }}
- transition={{ duration: 0.6, delay: 0.2 }}
- viewport={{ once: false }}
- className="p-8 rounded-xl minimal-bento-card flex flex-col justify-between space-y-6 group transition-all duration-300 hover:-translate-y-1.5 hover: hover:border-[#2563eb]/25"
- >
- <div className="flex justify-between items-center font-mono text-xs">
- <span className="px-3 py-1 rounded-md minimal-inset font-bold text-[#3A2E26]">MODULE 03</span>
- <div className="w-2.5 h-2.5 rounded-xl ] ] border border-[#BAE6FD]/80" />
- </div>
- <div>
- <h3 className="text-xl font-serif font-bold text-[#111111] mb-2 ">Maintenance Metrics</h3>
- <p className="text-xs text-[#524337] font-sans leading-relaxed">
- Calculate statutory disclosures, evaluate financial statements under Rajnesh v. Neha guidelines, and formulate maintenance arguments.
- </p>
- </div>
- <div className="p-3 rounded-xl minimal-inset font-mono text-[11px] text-[#5C4D3F]">
- Rajnesh v. Neha Metric Engine
- </div>
- </motion.div>
-
- {/* Bento Intelligence 4 (Wide Feature Card) */}
- <motion.div
- initial={{ opacity: 0, y: 20 }}
- whileInView={{ opacity: 1, y: 0 }}
- transition={{ duration: 0.6, delay: 0.3 }}
- viewport={{ once: false }}
- className="lg:col-span-2 p-8 rounded-xl minimal-bento-card flex flex-col justify-between space-y-6 group transition-all duration-300 hover:-translate-y-1.5 hover: hover:border-[#2563eb]/25"
- >
- <div className="flex justify-between items-center font-mono text-xs">
- <span className="px-3 py-1 rounded-md minimal-inset font-bold text-[#3A2E26]">MODULE 04</span>
- <div className="flex items-center space-x-2">
- <span className="text-[10px] text-[#0284C7] font-mono font-semibold">AUTOMATED COMPILATION</span>
- <div className="w-2.5 h-2.5 rounded-xl ] ] border border-[#BAE6FD]/80" />
- </div>
- </div>
- <div className="space-y-3">
- <h3 className="text-2xl font-serif font-bold text-[#111111] ">Intelligent Draft Builder</h3>
- <ScrollWordReveal
-   text="Generate court-ready legal petitions, bail applications, affidavits, written statements, and notices formatted to Indian High Court and District Court filing standards."
-   className="text-sm text-[#524337] font-sans leading-relaxed max-w-xl"
- />
- </div>
- <div className="flex flex-wrap gap-3 font-mono text-xs">
- <span className="px-3 py-1.5 rounded-lg minimal-inset text-[#3C2F25] font-medium">Bail Petitions</span>
- <span className="px-3 py-1.5 rounded-lg minimal-inset text-[#3C2F25] font-medium">Writ Petitions</span>
- <span className="px-3 py-1.5 rounded-lg minimal-inset text-[#3C2F25] font-medium">Commercial Suits</span>
- <span className="px-3 py-1.5 rounded-lg minimal-inset text-[#3C2F25] font-medium">Arbitration Notices</span>
- </div>
- </motion.div>
- </div>
-
- </div>
- </section>
 
 
  {/* ========================================================= */}
@@ -3220,7 +2988,6 @@ export default function LandingPageUI() {
  className="flex flex-col items-center text-center"
  >
  <div className="text-[11px] uppercase tracking-[0.25em] font-mono font-bold text-[#6B5A4B] flex items-center justify-center space-x-2 mb-3">
- <span className="px-2 py-0.5 rounded minimal-inset text-[10px]">04</span>
  <span>ADVANTAGES</span>
  </div>
  <h2 className="text-4xl md:text-6xl font-serif tracking-tight text-[#111111] ">
@@ -3295,7 +3062,6 @@ export default function LandingPageUI() {
  className="text-center mb-16"
  >
  <div className="text-[11px] uppercase tracking-[0.25em] font-mono font-bold text-[#6B5A4B] flex items-center justify-center space-x-2 mb-3">
- <span className="px-2 py-0.5 rounded minimal-inset text-[10px]">06</span>
  <span>THE TEAM</span>
  </div>
  <h2 className="text-4xl md:text-5xl font-serif tracking-tight text-[#111111] ">
@@ -3445,7 +3211,6 @@ export default function LandingPageUI() {
  className="flex flex-col items-center text-center space-y-5 max-w-2xl mx-auto"
  >
  <div className="text-[11px] uppercase tracking-[0.25em] font-mono font-bold text-[#6B5A4B] flex items-center justify-center space-x-2">
- <span className="px-2 py-0.5 rounded minimal-inset text-[10px]">07</span>
  <span>OUR MISSION</span>
  </div>
 
@@ -3607,7 +3372,6 @@ export default function LandingPageUI() {
  className="relative z-10 max-w-2xl space-y-8 minimal-bento-card p-12 md:p-16 rounded-xl "
  >
  <div className="text-[11px] uppercase tracking-[0.25em] font-mono font-bold text-[#6B5A4B] flex items-center justify-center space-x-2">
- <span className="px-2 py-0.5 rounded minimal-inset text-[10px]">08</span>
  <span>GET STARTED</span>
  </div>
 
@@ -3692,11 +3456,6 @@ export default function LandingPageUI() {
  </button>
  </li>
  <li>
- <button onClick={() => scrollTo("intelligence")} className="hover:text-white transition-colors">
- Intelligence
- </button>
- </li>
- <li>
  <button onClick={() => scrollTo("pricing")} className="hover:text-white transition-colors">
  Pricing
  </button>
@@ -3772,9 +3531,9 @@ export default function LandingPageUI() {
 /* TOKEN VAULT SECURITY (Added for Data Privacy Demonstration) */
 /* ============================================================= */
 const DUMMY_CASES = [
- { name: "Ananya Mehta", phone: "9876543210", caseType: "Section 24 HMA", draftType: "maintenance application" },
- { name: "Rahul Sharma", phone: "9988776655", caseType: "Section 138 NI Act", draftType: "legal notice" },
- { name: "Priya Desai", phone: "9123456789", caseType: "Section 438 CrPC", draftType: "anticipatory bail" }
+ { name: "Client A", phone: "XXXXXXXXXX", caseType: "Section 24 HMA", draftType: "maintenance application" },
+ { name: "Client B", phone: "XXXXXXXXXX", caseType: "Section 138 NI Act", draftType: "legal notice" },
+ { name: "Client C", phone: "XXXXXXXXXX", caseType: "Section 438 CrPC", draftType: "anticipatory bail" }
 ];
 
 function TokenVaultSecuritySection() {
@@ -3811,7 +3570,6 @@ function TokenVaultSecuritySection() {
  >
  <div className="text-[11px] uppercase tracking-[0.25em] font-mono font-bold text-[#1F6C9F] flex items-center space-x-2">
  <Lock className="w-3.5 h-3.5 text-sky-600" />
- <span className="px-2 py-0.5 rounded minimal-inset text-[10px]">04.5</span>
  <span>MILITARY-GRADE PRIVACY</span>
  </div>
  <h2 className="text-4xl md:text-5xl font-serif tracking-tight text-[#111111] ">

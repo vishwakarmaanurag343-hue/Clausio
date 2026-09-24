@@ -310,6 +310,38 @@ public class ContextEngine : IContextEngine
             }
         }
 
+        // For all analysis types — inject latest hearings into context
+        if (analysisType == "HearingPrep" || analysisType == "WitnessPrep" || 
+            analysisType == "RiskAssessment" || analysisType == "ActionPlan" || 
+            analysisType == "Recommendation" || analysisType == "Summarization" ||
+            analysisType == "Contradiction" || analysisType == "LegalResearch")
+        {
+            var recentHearings = _db.Hearings
+                .Where(h => h.CaseId == caseId)
+                .OrderByDescending(h => h.HearingDate)
+                .Take(3)
+                .ToList();
+
+            if (recentHearings.Any())
+            {
+                sb.AppendLine("<hearing_history>");
+                foreach (var h in recentHearings)
+                {
+                    sb.AppendLine($"Hearing Date: {h.HearingDate:dd MMMM yyyy}");
+                    sb.AppendLine($"Stage: {h.Stage}");
+                    if (!string.IsNullOrWhiteSpace(h.WhatHappened))
+                        sb.AppendLine($"What Happened: {h.WhatHappened}");
+                    if (!string.IsNullOrWhiteSpace(h.JudgeObservation))
+                        sb.AppendLine($"Judge Observation: {h.JudgeObservation}");
+                    if (!string.IsNullOrWhiteSpace(h.NextObjective))
+                        sb.AppendLine($"Next Objective: {h.NextObjective}");
+
+                    sb.AppendLine();
+                }
+                sb.AppendLine("</hearing_history>");
+            }
+        }
+
         var isWholeRecord = WholeRecordTasks.Contains(analysisType);
 
         // Whole-record tasks (case brief / chronology / evidence review) skip snippet

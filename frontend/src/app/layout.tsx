@@ -4,6 +4,9 @@ import FloatingNotes from '@/components/common/FloatingNotes'
 import AIAcknowledgmentModal from '@/components/common/AIAcknowledgmentModal'
 
 export const metadata: Metadata = {
+  icons: {
+    icon: '/favico.png',
+  },
   title: 'Clausio — Every clause. Intelligently handled.',
 }
 

@@ -41,6 +41,10 @@ export default function RootLayout({
       lang="en"
       className={`${playfair.variable} ${inter.variable} antialiased bg-[#F9F6F0] text-[#1A1A18] selection:bg-[#1A1A18] selection:text-[#F9F6F0]`}
     >
+      <head>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
+        <link rel="icon" href="/favico.png" type="image/png" />
+      </head>
       <body className="min-h-screen bg-[#F9F6F0] text-[#1A1A18] font-sans overflow-x-hidden">
         {children}
       </body>

@@ -528,6 +528,7 @@ export default function AnalysisPage() {
               : undefined
             const disabled = !!blocked
             return (
+<>
               <button
                 className="glass-button"
                 onClick={handleRunAnalysis}
@@ -538,6 +539,13 @@ export default function AnalysisPage() {
                 <i className="ti ti-brain" style={{ fontSize: 14 }} />
                 Run analysis
               </button>
+              {caseDocuments.length === 0 && selectedCaseId && (
+                <div style={{ fontSize: 11, color: '#dc2626', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <i className="ti ti-info-circle" style={{ fontSize: 12 }} />
+                  Upload documents first to enable analysis
+                </div>
+              )}
+              </>
             )
           })()}
         </div>
@@ -1018,7 +1026,7 @@ export default function AnalysisPage() {
         color: '#64748b',
         marginTop: 12,
       }}>
-        This may take 30-60 seconds
+        This may take up to 60 seconds
         for large cases...
       </p>
     )}

@@ -130,7 +130,7 @@ export default function HearingPrep({ caseType = '' }: Props) {
         <div style={{ textAlign: 'center', padding: 60, color: '#7c3aed' }}>
           <i className="ti ti-loader-2" style={{ fontSize: 36, display: 'block', marginBottom: 12, animation: 'spin 1s linear infinite' }} />
           <div style={{ fontSize: 14, fontWeight: 600 }}>AI is preparing your hearing brief...</div>
-          <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>Analysing case facts, judgments and documents. 20-30 seconds.</div>
+          <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>Analysing case facts, documents and judgments. This may take up to 60 seconds.</div>
         </div>
       )}
 
@@ -145,6 +145,13 @@ export default function HearingPrep({ caseType = '' }: Props) {
       )}
 
       {/* Brief output */}
+      {!loading && brief && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <button onClick={generate} style={{ padding: '8px 16px', border: 'none', borderRadius: 8, background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: 12, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <i className="ti ti-refresh" /> Regenerate
+          </button>
+        </div>
+      )}
       {!loading && brief && (() => {
         // Try to parse JSON first
         let parsed: any = null

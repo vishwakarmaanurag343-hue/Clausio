@@ -148,9 +148,7 @@ export default function RecommendationPanel() {
           <i className="ti ti-star" style={{ fontSize: 40, display: 'block', marginBottom: 10, opacity: 0.4 }} />
           <div style={{ fontSize: 14, fontWeight: 600, color: '#64748b', marginBottom: 8 }}>Not Generated Yet</div>
           <div style={{ fontSize: 13, marginBottom: 20 }}>Click Generate to get AI recommendations grounded in this case file.</div>
-          <button onClick={loadRecs} style={{ padding: '10px 20px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 600, fontSize: 13, fontFamily: 'inherit' }}>
-            <i className="ti ti-sparkles" style={{ marginRight: 6 }} />Generate Recommendations
-          </button>
+
         </div>
       )}
 

@@ -343,10 +343,10 @@ async function translateDescription() {
               <h3 style={sectionTitle}>Case Details</h3>
               <p style={sectionDescription}>Enter the basic information about this legal matter.</p>
               <div style={grid}>
-                <InputField label="Case Title"    name="caseTitle"    value={form.caseTitle}    onChange={updateField} placeholder="Priya Sharma vs Rohit Sharma" required />
+                <InputField label="Case Title"    name="caseTitle"    value={form.caseTitle}    onChange={updateField} placeholder="e.g. Party A vs Party B" required />
                 <InputField label="Case Number"   name="caseNumber"   value={form.caseNumber}   onChange={updateField} placeholder="FC/245/2026" />
                 <InputField label="Filing Date"   name="filingDate"   type="date" value={form.filingDate}   onChange={updateField} />
-                <InputField label="Next Hearing"  name="hearingDate"  type="date" value={form.hearingDate}  onChange={updateField} />
+                <InputField label="Next Hearing"  name="hearingDate"  type="date" value={form.hearingDate}  onChange={updateField} min={form.filingDate || undefined} />
                 <SelectField label="Priority"     name="priority"     value={form.priority}     onChange={updateField} options={['Low','Medium','High','Urgent']} />
                 <SelectField label="Status"       name="status"       value={form.status}       onChange={updateField} options={['Draft','Active','Pending','Closed']} />
               </div>
@@ -467,7 +467,7 @@ async function translateDescription() {
               <div style={{ marginTop: 28, padding: 22, background: '#f8fafc', borderRadius: 14, border: '1px solid #e2e8f0' }}>
                 <h4 style={{ marginTop: 0, marginBottom: 12 }}>Upcoming Hearing</h4>
                 <div style={grid}>
-                  <InputField label="Hearing Date" name="hearingDate" type="date" value={form.hearingDate} onChange={updateField} />
+                  <InputField label="Hearing Date" name="hearingDate" type="date" value={form.hearingDate} onChange={updateField} min={form.filingDate || undefined} />
                   <InputField label="Court Hall"   name="courtHall"  value={(form as any).courtHall || ''} onChange={updateField} placeholder="Hall No. 5" />
                 </div>
               </div>
@@ -667,7 +667,7 @@ function ReviewSection({ title, items }: { title: string; items: [string, string
 /* ============================================================
    FIELD COMPONENTS — ENHANCED WITH VALIDATION STATES
 ============================================================ */
-function InputField({ label, name, value, onChange, placeholder, required, type = 'text', hasError, errorMessage }: { label: string; name: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; placeholder?: string; required?: boolean; type?: string; hasError?: boolean; errorMessage?: string }) {
+function InputField({ label, name, value, onChange, placeholder, required, type = 'text', hasError, errorMessage, min }: { label: string; name: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; placeholder?: string; required?: boolean; type?: string; hasError?: boolean; errorMessage?: string; min?: string }) {
   return (
     <div>
       <label style={labelStyle}>{label}{required && <span style={{ color: '#ef4444' }}> *</span>}</label>
@@ -677,6 +677,7 @@ function InputField({ label, name, value, onChange, placeholder, required, type 
         value={value}
         placeholder={placeholder}
         onChange={onChange}
+        min={min}
         style={{
           ...inputStyle,
           border: hasError ? '1.5px solid #ef4444' : inputStyle.border,

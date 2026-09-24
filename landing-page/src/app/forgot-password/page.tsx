@@ -11,6 +11,8 @@ export default function ForgotPasswordPage() {
   const [otp, setOtp] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
@@ -96,8 +98,9 @@ export default function ForgotPasswordPage() {
       )
     } else {
       setError(
-        serverError ||
-          'Failed to send reset code. Please check your email or verify that your account exists.'
+        serverError?.toLowerCase().includes('not found') || serverError?.toLowerCase().includes('no account') || serverError?.toLowerCase().includes('does not exist')
+          ? 'This email is not registered. Please check your email or sign up for a new account.'
+          : serverError || 'This email is not registered with Clausio. Please check your email address.'
       )
     }
     setLoading(false)
@@ -415,15 +418,16 @@ export default function ForgotPasswordPage() {
                   }}>
                     New Password
                   </label>
+                  <div style={{ position: 'relative' }}>
                   <input
-                    type="password"
+                    type={showNewPassword ? 'text' : 'password'}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="At least 8 characters"
                     required
                     style={{
                       width: '100%',
-                      padding: '10px 12px',
+                      padding: '10px 44px 10px 12px',
                       borderRadius: 8,
                       border: '1px solid #cbd5e1',
                       fontSize: 14,
@@ -432,6 +436,10 @@ export default function ForgotPasswordPage() {
                       boxSizing: 'border-box',
                     }}
                   />
+                  <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: 18, padding: 0 }}>
+                    <i className={showNewPassword ? "ti ti-eye-off" : "ti ti-eye"} style={{ fontSize: 16 }} />
+                  </button>
+                  </div>
                 </div>
 
                 <div style={{ marginBottom: 20 }}>
@@ -444,15 +452,16 @@ export default function ForgotPasswordPage() {
                   }}>
                     Confirm New Password
                   </label>
+                  <div style={{ position: 'relative' }}>
                   <input
-                    type="password"
+                    type={showConfirmPassword ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Re-enter new password"
                     required
                     style={{
                       width: '100%',
-                      padding: '10px 12px',
+                      padding: '10px 44px 10px 12px',
                       borderRadius: 8,
                       border: '1px solid #cbd5e1',
                       fontSize: 14,
@@ -461,6 +470,10 @@ export default function ForgotPasswordPage() {
                       boxSizing: 'border-box',
                     }}
                   />
+                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: 18, padding: 0 }}>
+                    <i className={showConfirmPassword ? "ti ti-eye-off" : "ti ti-eye"} style={{ fontSize: 16 }} />
+                  </button>
+                  </div>
                 </div>
 
                 {error && (

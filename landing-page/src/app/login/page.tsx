@@ -10,14 +10,21 @@ const APP =
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   async function handleLogin(e: FormEvent) {
     e.preventDefault()
     setError('')
-    setLoading(true)
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!email.trim()) { setError('Email address is required.'); return }
+    if (!emailRegex.test(email.trim())) { setError('Please enter a valid email address.'); return }
+    if (!password) { setError('Password is required.'); return }
+    if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
+
+    setLoading(true)
     try {
       const res = await fetch(`${BACKEND}/api/auth/login`, {
         method: 'POST',
@@ -181,15 +188,16 @@ export default function LoginPage() {
                   Forgot password?
                 </a>
               </div>
+              <div style={{ position: 'relative' }}>
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Your password"
                 required
                 style={{
                   width: '100%',
-                  padding: '10px 12px',
+                  padding: '10px 44px 10px 12px',
                   borderRadius: 8,
                   border: '1px solid #e2e8f0',
                   fontSize: 14,
@@ -198,6 +206,14 @@ export default function LoginPage() {
                   boxSizing: 'border-box',
                 }}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: 18, padding: 0, display: 'flex', alignItems: 'center' }}
+              >
+                <i className={showPassword ? "ti ti-eye-off" : "ti ti-eye"} style={{ fontSize: 16 }} />
+              </button>
+              </div>
             </div>
 
             {error && (
