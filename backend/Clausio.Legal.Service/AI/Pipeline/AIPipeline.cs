@@ -470,6 +470,24 @@ public class AIPipeline : IAIPipeline
         var sw = Stopwatch.StartNew();
         _logger.LogInformation("[Pipeline:Stream] Starting. Intent={Intent}, CaseId={CaseId}", taskType, caseId);
 
+        // === STREAM CREDIT PRE-CHECK ===
+        var streamPreUserId = _currentUser.UserId;
+        var streamPreRole   = _currentUser.Role ?? "";
+        var streamPreAdmin  = _currentUser.OriginalUserId.HasValue;
+        var streamPreCharge = streamPreUserId != Guid.Empty
+            && streamPreRole != "SuperAdmin"
+            && !streamPreAdmin;
+        if (streamPreCharge)
+        {
+            var streamPreCost = WalletService.Costs.GetValueOrDefault(taskType, WalletService.Costs["default"]);
+            if (!await _walletService.HasCreditsAsync(streamPreUserId, streamPreCost, cancellationToken))
+            {
+                _logger.LogWarning("[Pipeline:Stream] INSUFFICIENT_CREDITS. UserId={UserId}", streamPreUserId);
+                yield return "[ERROR] INSUFFICIENT_CREDITS: You have used all your free credits. Contact support@clausiotech.com to get more.";
+                yield break;
+            }
+        }
+
         // === Progress: Phase 1 ===
         yield return FormatProgressChunk("Understanding request...");
 

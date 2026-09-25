@@ -204,6 +204,16 @@ public class AdminController(ClausioDbContext db) : ControllerBase
         if (user.Id == User.GetUserId())
             return BadRequest(new { message = "You cannot delete your own account." });
 
+        // Cascade delete — remove all related data first
+        var cases = db.Cases.Where(c => c.CreatedByUserId == id);
+        db.Cases.RemoveRange(cases);
+
+        var wallet = db.Wallets.Where(w => w.UserId == id);
+        db.Wallets.RemoveRange(wallet);
+
+        var transactions = db.CreditTransactions.Where(t => t.Wallet.UserId == id);
+        db.CreditTransactions.RemoveRange(transactions);
+
         db.Users.Remove(user);
         await db.SaveChangesAsync(ct);
 

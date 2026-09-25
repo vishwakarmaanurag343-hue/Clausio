@@ -210,6 +210,16 @@ export default function Sidebar() {
 
   return (
     <>
+      {/* Zero Credits Banner */}
+      {credits === 0 && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, background: '#dc2626', color: '#fff', textAlign: 'center', padding: '10px 16px', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          <i className="ti ti-alert-triangle" style={{ fontSize: 16 }} />
+          You have used all your free credits. AI features are disabled.
+          <button onClick={() => setShowNoCredits(true)} style={{ background: '#fff', color: '#dc2626', border: 'none', borderRadius: 6, padding: '4px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            Buy Credits
+          </button>
+        </div>
+      )}
       {/* Mobile Backdrop Overlay (< 768px) */}
       {sidebarExpanded && (
         <div
@@ -291,12 +301,15 @@ export default function Sidebar() {
             {section.items.map((item) => {
               const active = pathname === item.href
               const itemRef = active ? activeItemRef : undefined
-              const isDisabled = (item as any).disabled && role !== 'SuperAdmin'
+              const AI_ROUTES = ['/strategy', '/drafting', '/analysis', '/client', '/hearings']
+              const isOutOfCredits = credits === 0 && AI_ROUTES.includes(item.href) && role !== 'SuperAdmin'
+              const isDisabled = ((item as any).disabled && role !== 'SuperAdmin') || isOutOfCredits
               if (isDisabled && !expanded) return null
               if (isDisabled) return (
                 <div
                   key={item.href}
-                  title="Coming Soon"
+                  onClick={isOutOfCredits ? () => setShowNoCredits(true) : undefined}
+                  title={isOutOfCredits ? "No credits remaining — buy more to continue" : "Coming Soon"}
                   style={{
                     display: 'flex', alignItems: 'center',
                     justifyContent: expanded ? 'flex-start' : 'center',
@@ -466,6 +479,14 @@ export default function Sidebar() {
               <div style={{ fontSize: 10, color: '#dc2626', marginTop: 4, fontWeight: 600 }}>
                 ❌ No credits remaining
               </div>
+            )}
+            {credits === 0 && expanded && (
+              <button
+                onClick={() => setShowNoCredits(true)}
+                style={{ marginTop: 8, width: '100%', padding: '8px 0', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Buy More Credits
+              </button>
             )}
           </div>
         )}

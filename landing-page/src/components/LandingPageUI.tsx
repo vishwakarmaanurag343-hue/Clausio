@@ -233,11 +233,10 @@ const PRICING_PLANS = [
     annualBilled: "",
     description: "Early access for solo advocates",
     features: [
-      "Up to 30 AI document drafts",
+      "30 free AI credits on signup",
       "Unlimited active cases",
-      "Basic legal research",
-      "Hearing calendar",
-      "Client management",
+      "Hearing preparation & management",
+      "Client communication updates",
       "Email support",
     ],
     cta: "Coming Soon",
@@ -2877,10 +2876,8 @@ export default function LandingPageUI() {
  { icon: "🔍", name: "Case Summary", cost: 3, desc: "~10 summaries" },
  { icon: "📅", name: "Chronology", cost: 2, desc: "~15 timelines" },
  { icon: "⚖️", name: "Hearing Prep", cost: 2, desc: "~15 briefs" },
- { icon: "📚", name: "Legal Research", cost: 1, desc: "~30 searches" },
  { icon: "⚡", name: "Contradiction", cost: 2, desc: "~15 analyses" },
  { icon: "💬", name: "Client Update", cost: 1, desc: "~30 messages" },
- { icon: "💰", name: "Financial", cost: 2, desc: "~15 calcs" },
  ].map((item) => (
  <div key={item.name} className="flex flex-col gap-1 p-3 rounded-xl minimal-inset">
  <div className="flex items-center justify-between">

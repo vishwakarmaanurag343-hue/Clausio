@@ -26,6 +26,13 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('clausio_token')?.value
   const isPublicPath = PUBLIC_PATHS.some(path => pathname === path || pathname.startsWith(`${path}/`))
 
+  // Block Coming Soon pages — redirect everyone to dashboard
+  const COMING_SOON_PATHS = ['/billing', '/analytics', '/financial', '/readiness', '/calendar']
+  if (COMING_SOON_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))) {
+    const dashboardUrl = new URL('/dashboard', request.url)
+    return NextResponse.redirect(dashboardUrl)
+  }
+
   // 1. If user is NOT logged in and tries to access protected pages -> redirect to /auth/login immediately on server
   if (!token && !isPublicPath) {
     const loginUrl = new URL('/auth/login', request.url)

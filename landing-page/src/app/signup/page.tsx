@@ -14,6 +14,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [credits, setCredits] = useState(15)
@@ -41,6 +42,12 @@ export default function SignupPage() {
   async function handleSignup(e: FormEvent) {
     e.preventDefault()
     setError('')
+
+    // Terms validation
+    if (!acceptedTerms) {
+      setError('Please accept the Terms & Conditions to continue.')
+      return
+    }
 
     // First name validation
     if (!firstName.trim()) {
@@ -362,7 +369,6 @@ export default function SignupPage() {
                     ['📚 Research', '1 credit'],
                     ['⚡ Contradiction', '2 credits'],
                     ['💬 Client', '1 credit'],
-                    ['💰 Financial', '2 credits'],
                   ].map(([name, cost], i) => (
                     <div
                       key={i}
@@ -406,11 +412,7 @@ export default function SignupPage() {
                   text: 'Draft bail applications, plaints, maintenance orders',
                   cost: '2 credits each',
                 },
-                {
-                  icon: '⚖️',
-                  text: 'Research SC/HC judgments from eCourts database',
-                  cost: '1 credit each',
-                },
+
                 {
                   icon: '🎯',
                   text: "Prepare hearing briefs with judge's likely questions",
@@ -907,9 +909,22 @@ export default function SignupPage() {
               </div>
             )}
 
+            <div style={{ marginBottom: 16, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <input
+                type="checkbox"
+                id="acceptTerms"
+                checked={acceptedTerms}
+                onChange={e => setAcceptedTerms(e.target.checked)}
+                style={{ marginTop: 3, width: 16, height: 16, cursor: 'pointer', flexShrink: 0 }}
+              />
+              <label htmlFor="acceptTerms" style={{ fontSize: 12, color: '#475569', lineHeight: 1.6, cursor: 'pointer' }}>
+                I accept the <strong>Terms & Conditions</strong>. I understand that Clausio is an AI-powered platform and AI can make mistakes. All documents must be reviewed by a qualified advocate before final submission to any court or authority.
+              </label>
+            </div>
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !acceptedTerms}
               style={{
                 width: '100%',
                 padding: '13px 0',
