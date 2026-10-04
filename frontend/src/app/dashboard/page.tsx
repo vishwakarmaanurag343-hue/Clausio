@@ -511,6 +511,12 @@ export default function DashboardPage() {
               ✓ Case selected
             </div>
           )}
+          <button
+            onClick={() => router.push('/cases?newCase=true')}
+            style={{ marginTop: 10, width: '100%', padding: '10px 0', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+          >
+            <i className="ti ti-plus" style={{ fontSize: 14 }} /> Add New Case
+          </button>
         </div>
       )}
 

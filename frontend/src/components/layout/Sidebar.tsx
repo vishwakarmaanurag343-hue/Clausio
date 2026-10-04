@@ -278,7 +278,8 @@ export default function Sidebar() {
           flex: 1,
           overflowY: 'auto',
           overflowX: 'hidden',
-          padding: '12px 12px 0 12px'
+          padding: '12px 12px 0 12px',
+          minHeight: 0,
         }}
       >
         {visibleNav.map((section) => (
@@ -436,6 +437,17 @@ export default function Sidebar() {
             })}
           </div>
         ))}
+        {/* ── MOBILE ONLY: Settings + Logout inside nav scroll ── */}
+        <div className="mobile-sidebar-bottom-nav" style={{ display: 'none', flexDirection: 'column', gap: 4, marginTop: 16, paddingTop: 12, borderTop: '1px solid #e2e8f0' }}>
+          <a href="/settings" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 12, color: '#475569', textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>
+            <i className="ti ti-settings" style={{ fontSize: 20 }} />
+            Settings
+          </a>
+          <button onClick={() => { document.cookie = 'clausio_token=; path=/; max-age=0'; localStorage.removeItem('clausio_token'); localStorage.removeItem('clausio_user'); localStorage.removeItem('clausio-auth'); localStorage.removeItem('clausio_page_permissions'); window.location.href = '/auth/login'; }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 12, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', width: '100%', fontSize: 14, fontWeight: 500, fontFamily: 'inherit' }}>
+            <i className="ti ti-logout" style={{ fontSize: 20 }} />
+            Logout
+          </button>
+        </div>
       </nav>
 
       {/* ── DESKTOP BOTTOM ACTIONS (Credits display only for non-SuperAdmins) ── */}
@@ -525,7 +537,7 @@ export default function Sidebar() {
       </div>
 
       {/* ── MOBILE DRAWER BOTTOM ACTIONS (Matching Prototype: White "Log Out" Pill + Circular Gear) ── */}
-      <div className="mobile-sidebar-bottom" style={{ display: 'none', padding: '16px', alignItems: 'center', gap: 12, marginTop: 'auto' }}>
+      <div className="mobile-sidebar-bottom" style={{ display: 'none', padding: '16px', alignItems: 'center', gap: 12, borderTop: '1px solid #f1f5f9' }}>
         <button
           onClick={() => {
             document.cookie = 'clausio_token=; path=/; max-age=0'
