@@ -139,7 +139,7 @@ public class AIPipeline : IAIPipeline
         // holdings) into a case timeline / brief / evidence review. No precedent RAG.
         var ragDisabledTasks = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "Chronology", "Timeline", "Summarization", "Evidence", "FinancialProfile", "Readiness", "ClientUpdate"
+            "Chronology", "Timeline", "Summarization", "Evidence", "FinancialProfile", "Readiness", "ClientUpdate", "ClientEvidenceIntelligence"
         };
         var draftDocType = parameters != null && parameters.ContainsKey("DocumentType")
             ? parameters["DocumentType"]?.ToString() ?? ""
@@ -714,7 +714,7 @@ public class AIPipeline : IAIPipeline
         {
             return await _contextEngine.BuildFinancialContextAsync(caseId, cancellationToken);
         }
-        else if (taskType == "Analysis" || taskType == "Summarization" || taskType == "ActionPlan" || taskType == "RiskAssessment" || taskType == "Recommendation" || taskType == "LegalResearch" || taskType == "Contradiction" || taskType == "Chronology" || taskType == "Timeline" || taskType == "Evidence" || taskType == "Readiness" || taskType == "Emergency" || taskType == "SimilarCaseFinder" || taskType == "JudgmentComparison" || taskType == "JudgmentApplicability" || taskType == "HearingPrep" || taskType == "WitnessPrep")
+        else if (taskType == "Analysis" || taskType == "Summarization" || taskType == "ActionPlan" || taskType == "RiskAssessment" || taskType == "Recommendation" || taskType == "LegalResearch" || taskType == "Contradiction" || taskType == "Chronology" || taskType == "Timeline" || taskType == "Evidence" || taskType == "Readiness" || taskType == "Emergency" || taskType == "SimilarCaseFinder" || taskType == "JudgmentComparison" || taskType == "JudgmentApplicability" || taskType == "HearingPrep" || taskType == "WitnessPrep" || taskType == "ClientRiskAssessment" || taskType == "ClientRecommendations" || taskType == "ClientActionPlan" || taskType == "ClientContradiction" || taskType == "ClientEvidenceIntelligence" || taskType == "AskAdvocate")
         {
             return await _contextEngine.BuildAnalysisContextAsync(caseId, taskType, cancellationToken);
         }
@@ -943,6 +943,36 @@ public class AIPipeline : IAIPipeline
         if (taskType == "FinancialProfile")
         {
             return "FinancialProfile"; // Dedicated document-grounded financial-extraction template (was generic Analysis prose)
+        }
+
+        if (taskType == "ClientRiskAssessment")
+        {
+            return "ClientRiskAssessment"; // Plain-language client-portal risk template
+        }
+
+        if (taskType == "ClientRecommendations")
+        {
+            return "ClientRecommendations"; // Plain-language client-portal recommendations template
+        }
+
+        if (taskType == "ClientActionPlan")
+        {
+            return "ClientActionPlan"; // Plain-language client-portal action-plan template
+        }
+
+        if (taskType == "ClientContradiction")
+        {
+            return "ClientContradiction"; // Plain-language client-portal contradiction template
+        }
+
+        if (taskType == "ClientEvidenceIntelligence")
+        {
+            return "ClientEvidenceIntelligence"; // Plain-language client-portal evidence template
+        }
+
+        if (taskType == "AskAdvocate")
+        {
+            return "AskAdvocate"; // Client-portal pre-hearing questions-for-advocate template
         }
 
         return "GeneralChat";

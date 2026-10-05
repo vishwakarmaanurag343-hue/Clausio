@@ -25,6 +25,7 @@ public interface IAiService
     Task<string> AssessReadinessAsync(Guid caseId, Clausio.Legal.Core.Dtos.GenerateReadinessOptionsDto? options = null, CancellationToken cancellationToken = default);
     Task<string> AssessCaseRisksAsync(Guid caseId, CancellationToken cancellationToken = default);
     Task<string> GenerateCaseRecommendationsAsync(Guid caseId, CancellationToken cancellationToken = default);
+    Task<string> AskAdvocateAsync(Guid caseId, CancellationToken cancellationToken = default);
     Task<string> EmergencyTriageAsync(Guid caseId, EmergencyRequestDto request, CancellationToken cancellationToken = default);
     Task<string> PrepHearingAsync(Guid caseId, CancellationToken cancellationToken = default);
     IAsyncEnumerable<string> StreamPrepHearingAsync(Guid caseId, CancellationToken cancellationToken = default);
@@ -48,11 +49,22 @@ public interface IAiService
 public class AiService : IAiService
 {
     private readonly IAIPipeline _pipeline;
+    private readonly CurrentUserContext _currentUser;
 
-    public AiService(IAIPipeline pipeline)
+    public AiService(IAIPipeline pipeline, CurrentUserContext currentUser)
     {
         _pipeline = pipeline;
+        _currentUser = currentUser;
     }
+
+    /// <summary>
+    /// True when the caller is a Client-role user (per the scoped CurrentUserContext,
+    /// the same per-request role holder AIPipeline already uses). Used to route
+    /// client-portal-originated calls to the plain-language Client* templates while
+    /// every other role (including when the role can't be determined) keeps the
+    /// existing lawyer-facing template — the safe fallback.
+    /// </summary>
+    private bool IsClient() => string.Equals(_currentUser.Role, "Client", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Courtroom-grade multi-page working brief for the Analysis page. Dedicated Summary
@@ -87,7 +99,7 @@ public class AiService : IAiService
     public Task<string> DetectContradictionsAsync(Guid caseId, CancellationToken cancellationToken = default)
         => _pipeline.ExecuteAsync(caseId,
             "Find every contradiction in this case strictly per the system instructions. Compare each statement against every other statement and document in the record — dates, amounts, names, events, filing statuses. Report only conflicts directly supported by two citable sources from the context; never invent one.",
-            "Contradiction", null, cancellationToken);
+            IsClient() ? "ClientContradiction" : "Contradiction", null, cancellationToken);
 
     public Task<string> AnalyzeEvidenceAsync(Guid documentId, CancellationToken cancellationToken = default)
         => _pipeline.ExecuteAsync(documentId, "Analyze the specific evidence contained in this document.", "Analysis", null, cancellationToken);
@@ -102,17 +114,27 @@ public class AiService : IAiService
     public Task<string> AnalyzeCaseEvidenceAsync(Guid caseId, CancellationToken cancellationToken = default)
         => _pipeline.ExecuteAsync(caseId,
             "Review every uploaded document strictly per the system instructions and its JSON schema. Give one entry per document with its type, date, admissibility and mode of proof, what it shows and does not prove, any contradiction with another document, and the exact words to use in court. Add the overall evidence picture and flag only specific evidence the record shows was needed but never uploaded.",
-            "Evidence", null, cancellationToken);
+            IsClient() ? "ClientEvidenceIntelligence" : "Evidence", null, cancellationToken);
 
     public Task<string> ResearchAsync(Guid caseId, CancellationToken cancellationToken = default)
         => _pipeline.ExecuteAsync(caseId,
             "Retrieve precedent for this case strictly per the system instructions — only from the verified judgments supplied in the context, ranked best-match first, never fabricated.",
             "LegalResearch", null, cancellationToken);
 
-    public Task<string> GenerateActionPlanAsync(Guid caseId, CancellationToken cancellationToken = default)
-        => _pipeline.ExecuteAsync(caseId,
+    public async Task<string> GenerateActionPlanAsync(Guid caseId, CancellationToken cancellationToken = default)
+    {
+        var result = await _pipeline.ExecuteAsync(caseId,
             "Build the working action plan for this case strictly per the system instructions. Pull the real next hearing date from the case context and express every deadline relative to it. Distribute tasks realistically across Advocate, Client and Clerk, trace each task to something actually pending in the record, and order most urgent first.",
-            "ActionPlan", null, cancellationToken);
+            IsClient() ? "ClientActionPlan" : "ActionPlan", null, cancellationToken);
+
+        var trimmed = result?.Trim() ?? "";
+        if (trimmed.StartsWith("{"))
+        {
+            result = $"[{trimmed}]";
+        }
+
+        return result;
+    }
 
     public Task<string> TranslateAsync(TranslateRequest request, CancellationToken cancellationToken = default)
     {
@@ -260,7 +282,7 @@ public class AiService : IAiService
     public Task<string> AssessCaseRisksAsync(Guid caseId, CancellationToken cancellationToken = default)
         => _pipeline.ExecuteAsync(caseId,
             "Identify every real risk in this case strictly per the system instructions. Examine each document's actual contents AND its filing status, the hearing history and every date for defects, mismatches, omissions and pending matters. Each risk must be traced to specific facts, documents or gaps present in the case context, with a detailed cause explaining the mechanism of harm and a concrete mitigation plan.",
-            "RiskAssessment", null, cancellationToken);
+            IsClient() ? "ClientRiskAssessment" : "RiskAssessment", null, cancellationToken);
 
     /// <summary>
     /// Courtroom-grade strategic recommendations for the Strategy tab. Dedicated
@@ -270,7 +292,29 @@ public class AiService : IAiService
     public Task<string> GenerateCaseRecommendationsAsync(Guid caseId, CancellationToken cancellationToken = default)
         => _pipeline.ExecuteAsync(caseId,
             "Recommend the concrete strategic moves for this case strictly per the system instructions. Examine each document's contents and filing status, the hearing history and every date. Moves that directly counter a risk visible in the record come first with addressesRisk naming it; standalone moves only when clearly supported by the case context.",
-            "Recommendation", null, cancellationToken);
+            IsClient() ? "ClientRecommendations" : "Recommendation", null, cancellationToken);
+
+    /// <summary>
+    /// Client-portal only — generates specific questions the client should ask their
+    /// advocate before the next hearing. No lawyer-facing equivalent exists.
+    /// </summary>
+    public async Task<string> AskAdvocateAsync(Guid caseId, CancellationToken cancellationToken = default)
+    {
+        var result = await _pipeline.ExecuteAsync(caseId,
+            "Generate EXACTLY 6 questions - one for each category: Urgent, Financial, Evidence, Hearing, Opponent, Protection. You MUST return all 6. Return a JSON array with 6 objects.",
+            "AskAdvocate", null, cancellationToken);
+
+        if (IsClient())
+        {
+            var trimmed = result?.Trim() ?? "";
+            if (trimmed.StartsWith("{"))
+            {
+                result = $"[{trimmed}]";
+            }
+        }
+
+        return result;
+    }
 
     /// <summary>
     /// Urgent-situation triage against the live case record. Dedicated EmergencyTriage

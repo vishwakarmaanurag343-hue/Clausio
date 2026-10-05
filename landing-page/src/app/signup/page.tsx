@@ -5,7 +5,7 @@ import { useState, useEffect, type FormEvent } from 'react'
 const BACKEND =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5123'
 const APP =
-  process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'
+  process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
 export default function SignupPage() {
   const [step, setStep] = useState<'form' | 'otp' | 'success'>('form')
@@ -20,6 +20,9 @@ export default function SignupPage() {
   const [credits, setCredits] = useState(15)
   const [token, setToken] = useState('')
   const [role, setRole] = useState('Senior Advocate')
+  // Lawyer vs Client account type — distinct from the advocate-seniority
+  // `role` dropdown above; this is what the backend's User.Role expects.
+  const [accountType, setAccountType] = useState<'Lawyer' | 'Client'>('Lawyer')
 
   // OTP verification state
   const [otp, setOtp] = useState('')
@@ -108,7 +111,7 @@ export default function SignupPage() {
           lastName: lastName.trim(),
           email: email.trim().toLowerCase(),
           password,
-          role: 'Lawyer',
+          role: accountType,
         }),
       })
 
@@ -220,10 +223,12 @@ export default function SignupPage() {
 
   function goToDashboard() {
     if (token) {
+      const destination = accountType === 'Client' ? '/client-portal' : '/dashboard'
       window.location.href =
         `${APP}/auth/callback` +
         `?token=${encodeURIComponent(token)}` +
-        `&email=${encodeURIComponent(email)}`
+        `&email=${encodeURIComponent(email)}` +
+        `&redirect=${encodeURIComponent(destination)}`
     } else {
       window.location.href = `${APP}/auth/login`
     }
@@ -283,7 +288,7 @@ export default function SignupPage() {
               color: '#0f172a',
               marginBottom: 8,
             }}>
-              Welcome to Clausio{firstName ? `, ${firstName}!` : '!'}
+              Welcome to Clausio{firstName ? `, ${firstName}!` : '!'}{accountType === 'Client' ? ' 👋' : ''}
             </h1>
 
             <p style={{
@@ -292,8 +297,9 @@ export default function SignupPage() {
               marginBottom: 28,
               lineHeight: 1.6,
             }}>
-              Your account is ready. You have been given free AI credits
-              to get started.
+              {accountType === 'Client'
+                ? 'Your account is ready.'
+                : 'Your account is ready. You have been given free AI credits to get started.'}
             </p>
 
             <div style={{
@@ -322,7 +328,7 @@ export default function SignupPage() {
                 color: 'rgba(255,255,255,0.7)',
                 marginBottom: 8,
               }}>
-                Your AI Credit Balance
+                {accountType === 'Client' ? 'Your AI Credits' : 'Your AI Credit Balance'}
               </div>
               <div style={{
                 fontSize: 56,
@@ -339,54 +345,56 @@ export default function SignupPage() {
                 Free credits · No card needed
               </div>
 
-              <div style={{
-                marginTop: 12,
-                padding: '12px 14px',
-                background: 'rgba(255,255,255,0.08)',
-                borderRadius: 10,
-                border: '1px solid rgba(255,255,255,0.12)',
-              }}>
+              {accountType === 'Lawyer' && (
                 <div style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color: 'rgba(255,255,255,0.6)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.1em',
-                  marginBottom: 8,
+                  marginTop: 12,
+                  padding: '12px 14px',
+                  background: 'rgba(255,255,255,0.08)',
+                  borderRadius: 10,
+                  border: '1px solid rgba(255,255,255,0.12)',
                 }}>
-                  Your credits breakdown
+                  <div style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: 'rgba(255,255,255,0.6)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em',
+                    marginBottom: 8,
+                  }}>
+                    Your credits breakdown
+                  </div>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: 4,
+                  }}>
+                    {[
+                      ['📄 Drafting', '2 credits'],
+                      ['🔍 Summary', '3 credits'],
+                      ['📅 Chronology', '2 credits'],
+                      ['⚖️ Hearing', '2 credits'],
+                      ['📚 Research', '1 credit'],
+                      ['⚡ Contradiction', '2 credits'],
+                      ['💬 Client', '1 credit'],
+                    ].map(([name, cost], i) => (
+                      <div
+                        key={i}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          padding: '3px 8px',
+                          background: 'rgba(255,255,255,0.06)',
+                          borderRadius: 6,
+                          fontSize: 11,
+                        }}
+                      >
+                        <span style={{ color: 'rgba(255,255,255,0.75)' }}>{name}</span>
+                        <span style={{ color: '#93c5fd', fontWeight: 700 }}>{cost}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: 4,
-                }}>
-                  {[
-                    ['📄 Drafting', '2 credits'],
-                    ['🔍 Summary', '3 credits'],
-                    ['📅 Chronology', '2 credits'],
-                    ['⚖️ Hearing', '2 credits'],
-                    ['📚 Research', '1 credit'],
-                    ['⚡ Contradiction', '2 credits'],
-                    ['💬 Client', '1 credit'],
-                  ].map(([name, cost], i) => (
-                    <div
-                      key={i}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        padding: '3px 8px',
-                        background: 'rgba(255,255,255,0.06)',
-                        borderRadius: 6,
-                        fontSize: 11,
-                      }}
-                    >
-                      <span style={{ color: 'rgba(255,255,255,0.75)' }}>{name}</span>
-                      <span style={{ color: '#93c5fd', fontWeight: 700 }}>{cost}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              )}
             </div>
 
             <div style={{
@@ -404,47 +412,70 @@ export default function SignupPage() {
                 letterSpacing: '0.08em',
                 marginBottom: 12,
               }}>
-                What you can do with credits
+                {accountType === 'Client' ? 'What you can do' : 'What you can do with credits'}
               </div>
-              {[
-                {
-                  icon: '📄',
-                  text: 'Draft bail applications, plaints, maintenance orders',
-                  cost: '2 credits each',
-                },
-
-                {
-                  icon: '🎯',
-                  text: "Prepare hearing briefs with judge's likely questions",
-                  cost: '2 credits each',
-                },
-                {
-                  icon: '🔍',
-                  text: 'Analyse evidence and find contradictions',
-                  cost: '2 credits each',
-                },
-              ].map((item, i) => (
-                <div key={i} style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '6px 0',
-                  borderBottom: i < 3 ? '1px solid #f1f5f9' : 'none',
-                }}>
-                  <span style={{ fontSize: 16, flexShrink: 0 }}>{item.icon}</span>
-                  <span style={{ fontSize: 12, color: '#374151', flex: 1 }}>
-                    {item.text}
-                  </span>
-                  <span style={{
-                    fontSize: 11,
-                    color: '#2563eb',
-                    fontWeight: 700,
-                    flexShrink: 0,
+              {accountType === 'Client' ? (
+                [
+                  { icon: '🔍', text: 'Understand your case risks' },
+                  { icon: '✅', text: 'Get your action plan' },
+                  { icon: '🔎', text: "Find gaps in the other side's story" },
+                  { icon: '📄', text: 'Understand your evidence' },
+                  { icon: '❓', text: 'Know what to ask your advocate' },
+                ].map((item, i) => (
+                  <div key={i} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '6px 0',
+                    borderBottom: i < 4 ? '1px solid #f1f5f9' : 'none',
                   }}>
-                    {item.cost}
-                  </span>
-                </div>
-              ))}
+                    <span style={{ fontSize: 16, flexShrink: 0 }}>{item.icon}</span>
+                    <span style={{ fontSize: 12, color: '#374151', flex: 1 }}>
+                      {item.text}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                [
+                  {
+                    icon: '📄',
+                    text: 'Draft bail applications, plaints, maintenance orders',
+                    cost: '2 credits each',
+                  },
+
+                  {
+                    icon: '🎯',
+                    text: "Prepare hearing briefs with judge's likely questions",
+                    cost: '2 credits each',
+                  },
+                  {
+                    icon: '🔍',
+                    text: 'Analyse evidence and find contradictions',
+                    cost: '2 credits each',
+                  },
+                ].map((item, i) => (
+                  <div key={i} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '6px 0',
+                    borderBottom: i < 3 ? '1px solid #f1f5f9' : 'none',
+                  }}>
+                    <span style={{ fontSize: 16, flexShrink: 0 }}>{item.icon}</span>
+                    <span style={{ fontSize: 12, color: '#374151', flex: 1 }}>
+                      {item.text}
+                    </span>
+                    <span style={{
+                      fontSize: 11,
+                      color: '#2563eb',
+                      fontWeight: 700,
+                      flexShrink: 0,
+                    }}>
+                      {item.cost}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
 
             <button
@@ -463,7 +494,7 @@ export default function SignupPage() {
                 marginBottom: 12,
               }}
             >
-              Go to Dashboard →
+              {accountType === 'Client' ? 'Go to My Case →' : 'Go to Dashboard →'}
             </button>
 
             <p style={{ fontSize: 12, color: '#94a3b8' }}>
@@ -738,6 +769,44 @@ export default function SignupPage() {
               gap: 12,
               marginBottom: 14,
             }}>
+              <div
+                onClick={() => setAccountType('Lawyer')}
+                style={{
+                  cursor: 'pointer',
+                  padding: '14px 12px',
+                  borderRadius: 10,
+                  border: accountType === 'Lawyer' ? '2px solid #2563eb' : '1.5px solid #e2e8f0',
+                  background: accountType === 'Lawyer' ? '#eff6ff' : '#fff',
+                  textAlign: 'center',
+                }}
+              >
+                <i className="ti ti-gavel" style={{ fontSize: 22, color: accountType === 'Lawyer' ? '#2563eb' : '#64748b' }} />
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginTop: 6 }}>I am an Advocate</div>
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Manage cases with AI</div>
+              </div>
+              <div
+                onClick={() => setAccountType('Client')}
+                style={{
+                  cursor: 'pointer',
+                  padding: '14px 12px',
+                  borderRadius: 10,
+                  border: accountType === 'Client' ? '2px solid #2563eb' : '1.5px solid #e2e8f0',
+                  background: accountType === 'Client' ? '#eff6ff' : '#fff',
+                  textAlign: 'center',
+                }}
+              >
+                <i className="ti ti-user" style={{ fontSize: 22, color: accountType === 'Client' ? '#2563eb' : '#64748b' }} />
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginTop: 6 }}>I am a Client</div>
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Understand my case</div>
+              </div>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 12,
+              marginBottom: 14,
+            }}>
               <div>
                 <label style={{
                   display: 'block',
@@ -862,38 +931,40 @@ export default function SignupPage() {
               </div>
             </div>
 
-            <div style={{ marginBottom: 14 }}>
-              <label style={{
-                display: 'block',
-                fontSize: 12,
-                fontWeight: 600,
-                color: '#374151',
-                marginBottom: 6,
-              }}>
-                Your Role *
-              </label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: 8,
-                  border: '1px solid #e2e8f0',
-                  fontSize: 14,
-                  fontFamily: 'inherit',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                  background: '#fff',
-                  color: '#0f172a',
-                  cursor: 'pointer',
-                }}
-              >
-                <option value="Senior Advocate">Senior Advocate</option>
-                <option value="Junior Advocate">Junior Advocate</option>
-                <option value="Law Intern">Law Intern</option>
-              </select>
-            </div>
+            {accountType === 'Lawyer' && (
+              <div style={{ marginBottom: 14 }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: '#374151',
+                  marginBottom: 6,
+                }}>
+                  Your Role *
+                </label>
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: '1px solid #e2e8f0',
+                    fontSize: 14,
+                    fontFamily: 'inherit',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    background: '#fff',
+                    color: '#0f172a',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <option value="Senior Advocate">Senior Advocate</option>
+                  <option value="Junior Advocate">Junior Advocate</option>
+                  <option value="Law Intern">Law Intern</option>
+                </select>
+              </div>
+            )}
 
             {error && (
               <div style={{

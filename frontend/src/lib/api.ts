@@ -509,6 +509,7 @@ export const aiApi = {
   getSummary: (caseId: string, options?: RequestInit, refId?: string) => send('POST', `/ai/summary/${caseId}${refQ(refId)}`, undefined, 'Failed to generate summary', options),
   getRisks: (caseId: string) => send('POST', `/ai/risks/${caseId}`, undefined, 'Failed to assess case risks'),
   getRecommendations: (caseId: string) => send('POST', `/ai/recommendations/${caseId}`, undefined, 'Failed to generate recommendations'),
+  getAskAdvocate: (caseId: string) => send('POST', '/ai/ask-advocate', { caseId }, 'Failed to generate questions for your advocate'),
   getChronology: (caseId: string, refId?: string) => send('POST', `/ai/chronology/${caseId}${refQ(refId)}`, undefined, 'Failed to generate chronology'),
   getContradictions: (caseId: string, refId?: string) => send('POST', `/ai/contradictions/${caseId}${refQ(refId)}`, undefined, 'Failed to find contradictions'),
   getEvidence: (documentId: string) => send('POST', `/ai/evidence/${documentId}`, undefined, 'Failed to analyse evidence'),

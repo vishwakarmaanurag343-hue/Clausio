@@ -20,7 +20,8 @@ public interface ICaseService
 public class CaseService(
     ClausioDbContext db,
     IPiiTokenService piiTokenService,
-    ICalendarSyncService calendarSync) : ICaseService
+    ICalendarSyncService calendarSync,
+    CurrentUserContext currentUser) : ICaseService
 {
     public Task<List<Case>> ListAsync(Guid userId, CancellationToken cancellationToken = default) =>
         db.Cases.AsNoTracking().Include(c => c.Client)
@@ -31,8 +32,42 @@ public class CaseService(
     public Task<Case?> GetAsync(Guid id, Guid userId, CancellationToken cancellationToken = default) =>
         db.Cases.Include(c => c.Client).FirstOrDefaultAsync(c => c.Id == id && c.CreatedByUserId == userId, cancellationToken);
 
+    /// <summary>
+    /// Client-role portal users sign up directly and have no advocate-created Client
+    /// CRM record, but Case.ClientId is a required FK into Clients — so self-service
+    /// case creation would otherwise fail. Resolve (or lazily create) the Client row
+    /// that represents this Client-role user themselves, scoped by their own userId.
+    /// No-op for every other role — dto.ClientId is used exactly as sent today.
+    /// </summary>
+    private async Task<Guid> ResolveClientIdAsync(Guid dtoClientId, Guid createdByUserId, CancellationToken cancellationToken)
+    {
+        if (!string.Equals(currentUser.Role, "Client", StringComparison.OrdinalIgnoreCase))
+            return dtoClientId;
+
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == createdByUserId, cancellationToken);
+        if (user is null) return dtoClientId;
+
+        var existingClient = await db.Clients.FirstOrDefaultAsync(
+            c => c.CreatedByUserId == createdByUserId || c.Email == user.Email, cancellationToken);
+        if (existingClient != null) return existingClient.Id;
+
+        var newClient = new Client
+        {
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Email = user.Email,
+            Phone = user.Phone,
+            CreatedByUserId = createdByUserId,
+        };
+        db.Clients.Add(newClient);
+        await db.SaveChangesAsync(cancellationToken);
+        return newClient.Id;
+    }
+
     public async Task<Case> CreateAsync(CreateCaseDto dto, Guid createdByUserId, CancellationToken cancellationToken = default)
     {
+        dto.ClientId = await ResolveClientIdAsync(dto.ClientId, createdByUserId, cancellationToken);
+
         var entity = new Case
         {
             Name            = dto.Name,

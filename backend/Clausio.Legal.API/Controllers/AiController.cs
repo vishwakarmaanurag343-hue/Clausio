@@ -197,6 +197,14 @@ public class AiController(IAiService aiService, IJudgmentAnalysisService judgmen
         return Ok(new { recommendations = result });
     }
 
+    // ✅ Client-portal only — Returns { result: "..." }
+    [HttpPost("ask-advocate")]
+    public async Task<IActionResult> AskAdvocate([FromBody] AskAdvocateRequestDto request, CancellationToken cancellationToken)
+    {
+        var result = await aiService.AskAdvocateAsync(request.CaseId, cancellationToken);
+        return Ok(new { result = result });
+    }
+
     // ✅ Returns { response: "..." } — matches frontend aiApi.getEmergency()
     [HttpPost("emergency/{caseId:guid}")]
     public async Task<IActionResult> Emergency(Guid caseId, [FromBody] EmergencyRequestDto request, CancellationToken cancellationToken)

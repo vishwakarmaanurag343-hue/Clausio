@@ -46,9 +46,12 @@ export default function AuthCallback() {
         /* ignore — token is valid, dashboard will fetch what it needs */
       })
       .finally(() => {
+        // Role-aware destination (e.g. Client signups -> /client-portal) — falls
+        // back to the original mobile/desktop default when not provided.
+        const redirectParam = params.get('redirect')
         const isMobile =
           typeof window !== 'undefined' && window.innerWidth <= 768
-        window.location.replace(isMobile ? '/chat' : '/dashboard')
+        window.location.replace(redirectParam || (isMobile ? '/chat' : '/dashboard'))
       })
   }, [])
 

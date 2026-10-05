@@ -21,7 +21,7 @@ public class TeamController(
     private static readonly string[] ValidRoles =
     {
         "SuperAdmin", "SeniorAdvocate",
-        "JuniorAdvocate", "Clerk", "Intern"
+        "JuniorAdvocate", "Clerk", "Intern", "Client"
     };
 
     // GET /api/team/members

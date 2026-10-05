@@ -23,6 +23,11 @@ public class EmergencyRequestDto
     public string? Query { get; set; }
 }
 
+public class AskAdvocateRequestDto
+{
+    public Guid CaseId { get; set; }
+}
+
 public class TranslateRequest
 {
     public string? Text { get; set; }

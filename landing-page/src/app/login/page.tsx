@@ -5,7 +5,7 @@ import { useState, type FormEvent } from 'react'
 const BACKEND =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5123'
 const APP =
-  process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'
+  process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -68,10 +68,14 @@ export default function LoginPage() {
         return
       }
 
+      const role = data?.role || data?.Role || ''
+      const destination = role === 'Client' ? '/client-portal' : '/dashboard'
+
       window.location.href =
         `${APP}/auth/callback` +
         `?token=${encodeURIComponent(token)}` +
-        `&email=${encodeURIComponent(email)}`
+        `&email=${encodeURIComponent(email)}` +
+        `&redirect=${encodeURIComponent(destination)}`
     } catch {
       setError('Cannot connect to server. Please try again later.')
     } finally {

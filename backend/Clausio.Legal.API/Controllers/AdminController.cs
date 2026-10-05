@@ -110,7 +110,7 @@ public class AdminController(ClausioDbContext db) : ControllerBase
     }
 
     private static readonly string[] ValidRoles =
-        { "SuperAdmin", "SeniorAdvocate", "JuniorAdvocate", "Clerk", "Intern" };
+        { "SuperAdmin", "SeniorAdvocate", "JuniorAdvocate", "Clerk", "Intern", "Client" };
 
     // ── POST /api/admin/users ───────────────────────────────────
     [HttpPost("users")]
