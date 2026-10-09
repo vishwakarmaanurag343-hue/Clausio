@@ -47,6 +47,7 @@ public class UpdateCaseDto
     public string? Status { get; set; }
     public string? Priority { get; set; }
     public string? OpposingAdv { get; set; }
+    public string? Court { get; set; }
     public DateTime? NextHearing { get; set; }
 
     [Range(0, 100, ErrorMessage = "Readiness score must be between 0 and 100.")]

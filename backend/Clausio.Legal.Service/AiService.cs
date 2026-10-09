@@ -26,6 +26,7 @@ public interface IAiService
     Task<string> AssessCaseRisksAsync(Guid caseId, CancellationToken cancellationToken = default);
     Task<string> GenerateCaseRecommendationsAsync(Guid caseId, CancellationToken cancellationToken = default);
     Task<string> AskAdvocateAsync(Guid caseId, CancellationToken cancellationToken = default);
+    Task<string> GenerateHearingPrepAsync(Guid caseId, CancellationToken cancellationToken = default);
     Task<string> EmergencyTriageAsync(Guid caseId, EmergencyRequestDto request, CancellationToken cancellationToken = default);
     Task<string> PrepHearingAsync(Guid caseId, CancellationToken cancellationToken = default);
     IAsyncEnumerable<string> StreamPrepHearingAsync(Guid caseId, CancellationToken cancellationToken = default);
@@ -310,11 +311,35 @@ public class AiService : IAiService
             if (trimmed.StartsWith("{"))
             {
                 result = $"[{trimmed}]";
+                trimmed = result.Trim();
             }
+
+            try
+            {
+                var arr = System.Text.Json.JsonDocument.Parse(trimmed);
+                if (arr.RootElement.ValueKind ==
+                    System.Text.Json.JsonValueKind.Array
+                    && arr.RootElement.GetArrayLength() < 3)
+                {
+                    var generic = ",{\"topic\":\"Case status\",\"question\":\"What is the current status of my case and what happened at the last hearing?\",\"urgency\":\"High\",\"whyAsk\":\"You need to stay informed about what is happening.\",\"category\":\"Urgent\"},{\"topic\":\"Next steps\",\"question\":\"What do you need from me before the next hearing?\",\"urgency\":\"High\",\"whyAsk\":\"You want to make sure you are helping your advocate.\",\"category\":\"Hearing\"},{\"topic\":\"Timeline\",\"question\":\"How long do you think this case will take to resolve?\",\"urgency\":\"Medium\",\"whyAsk\":\"You need to plan your life around this case.\",\"category\":\"Financial\"},{\"topic\":\"Strength of case\",\"question\":\"How strong is my case right now and what is our biggest challenge?\",\"urgency\":\"Medium\",\"whyAsk\":\"You need to know honestly where you stand.\",\"category\":\"Opponent\"}]";
+                    result = trimmed.TrimEnd(']') + generic;
+                }
+            }
+            catch { }
         }
 
         return result;
     }
+
+    /// <summary>
+    /// Client-portal only — practical hearing preparation (what to bring, what to
+    /// expect, tips, questions to ask) based on the case record. No lawyer-facing
+    /// equivalent; always uses the ClientHearingPrep template.
+    /// </summary>
+    public Task<string> GenerateHearingPrepAsync(Guid caseId, CancellationToken cancellationToken = default)
+        => _pipeline.ExecuteAsync(caseId,
+            "Generate comprehensive hearing preparation for this client based on their case details. Cover what to bring, what will happen, what the other side may argue, practical tips, questions to ask their advocate, urgent actions before hearing, and emotional preparation. Follow all system instructions exactly.",
+            "ClientHearingPrep", null, cancellationToken);
 
     /// <summary>
     /// Urgent-situation triage against the live case record. Dedicated EmergencyTriage

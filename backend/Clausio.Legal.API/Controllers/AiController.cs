@@ -205,6 +205,14 @@ public class AiController(IAiService aiService, IJudgmentAnalysisService judgmen
         return Ok(new { result = result });
     }
 
+    // ✅ Client-portal only — Returns { result: "..." }
+    [HttpPost("hearing-prep/{caseId:guid}")]
+    public async Task<IActionResult> HearingPrep(Guid caseId, CancellationToken cancellationToken)
+    {
+        var result = await aiService.GenerateHearingPrepAsync(caseId, cancellationToken);
+        return Ok(new { result = result });
+    }
+
     // ✅ Returns { response: "..." } — matches frontend aiApi.getEmergency()
     [HttpPost("emergency/{caseId:guid}")]
     public async Task<IActionResult> Emergency(Guid caseId, [FromBody] EmergencyRequestDto request, CancellationToken cancellationToken)

@@ -138,6 +138,7 @@ public class CaseService(
         if (dto.Status         is not null) entity.Status         = dto.Status;
         if (dto.Priority       is not null) entity.Priority       = dto.Priority;
         if (dto.OpposingAdv    is not null) entity.OpposingAdv    = dto.OpposingAdv;
+        if (dto.Court          is not null) entity.Court          = dto.Court;
         if (dto.NextHearing    is not null) entity.NextHearing    = dto.NextHearing;
         if (dto.ReadinessScore is not null) entity.ReadinessScore = dto.ReadinessScore;
         if (dto.Description    is not null) entity.Description    = dto.Description;
