@@ -773,25 +773,24 @@ export default function ClientPortalPage() {
   // ── Desktop sidebar ────────────────────────────────────────────────────────
   function DesktopSidebar() {
     return (
-      <div style={{
-        position: 'fixed', left: 0, top: 0, width: 240, height: '100vh',
-        background: '#0f172a', borderRight: 'none', boxShadow: '4px 0 24px rgba(0,0,0,0.15)',
-        display: 'flex', flexDirection: 'column', zIndex: 100,
+      <aside className="glass-sidebar app-sidebar mobile-closed" style={{
+        width: 240, flexShrink: 0, overflow: 'hidden', transition: 'all .3s cubic-bezier(0.4, 0, 0.2, 1)',
+        display: 'flex', flexDirection: 'column', margin: '16px 0 16px 16px', borderRadius: 24,
       }}>
-        <div style={{ padding: '22px 20px 18px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ padding: '22px 20px 18px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <i className="ti ti-scale" style={{ fontSize: 16, color: '#fff' }} />
-            <span style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.3px', color: '#fff' }}>Clausio</span>
+            <i className="ti ti-scale" style={{ fontSize: 16, color: '#0f172a' }} />
+            <span style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.3px', color: '#0f172a' }}>Clausio</span>
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)', fontSize: 10, padding: '3px 10px', borderRadius: 4, display: 'inline-block', marginTop: 6, letterSpacing: '0.06em' }}>
+          <div style={{ background: 'rgba(0,0,0,0.05)', color: '#475569', fontSize: 10, padding: '3px 10px', borderRadius: 4, display: 'inline-block', marginTop: 6, letterSpacing: '0.06em' }}>
             Client portal
           </div>
         </div>
 
         <div style={{ padding: '12px 8px', flex: 1, overflowY: 'auto' }}>
           {SIDEBAR_GROUPS.map(group => (
-            <div key={group.label} style={{ marginBottom: 4 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.12em', padding: '10px 12px 6px' }}>
+            <div key={group.label} style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '8px 12px 4px' }}>
                 {group.label}
               </div>
               {group.items.map(item => {
@@ -801,15 +800,15 @@ export default function ClientPortalPage() {
                     key={item.key}
                     onClick={item.onClick}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', borderRadius: 0,
-                      fontSize: 14, cursor: 'pointer', marginBottom: 2, transition: 'all 0.15s ease',
-                      borderLeft: active ? '3px solid #3b82f6' : '3px solid transparent',
-                      background: active ? 'rgba(255,255,255,0.1)' : 'transparent',
-                      color: active ? '#fff' : 'rgba(255,255,255,0.55)',
-                      fontWeight: active ? 600 : 400,
+                      display: 'flex', alignItems: 'center', gap: 12, padding: '0 12px', height: 40, borderRadius: 16,
+                      fontSize: 14, cursor: 'pointer', margin: '4px 0', transition: 'all 0.2s ease',
+                      background: active ? 'rgba(255, 255, 255, 0.8)' : 'transparent',
+                      boxShadow: active ? '0 2px 8px rgba(0,0,0,0.04)' : 'none',
+                      color: active ? '#0f172a' : '#475569',
+                      fontWeight: active ? 600 : 500,
                     }}
                   >
-                    <i className={`ti ${item.icon}`} style={{ fontSize: 18, color: active ? '#fff' : 'rgba(255,255,255,0.4)' }} />
+                    <i className={`ti ${item.icon}`} style={{ fontSize: 20, color: active ? '#0f172a' : '#64748b' }} />
                     {item.label}
                   </div>
                 )
@@ -818,18 +817,18 @@ export default function ClientPortalPage() {
           ))}
         </div>
 
-        <div style={{ marginTop: 'auto', padding: '14px 16px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px' }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', fontSize: 10, fontWeight: 500, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ marginTop: 'auto', padding: '12px', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 12px', height: 40 }}>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(0,0,0,0.05)', fontSize: 10, fontWeight: 600, color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {initials}
             </div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 500, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.firstName} {user?.lastName}</div>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Client</div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.firstName} {user?.lastName}</div>
+              <div style={{ fontSize: 11, color: '#64748b' }}>Client</div>
             </div>
           </div>
         </div>
-      </div>
+      </aside>
     )
   }
 
@@ -2969,7 +2968,7 @@ export default function ClientPortalPage() {
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#f8fafc', fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div style={{ display: 'flex', height: '100vh', flexDirection: 'row', overflow: 'hidden', fontFamily: "'Inter', system-ui, sans-serif", background: '#f8fafc' }}>
       <style suppressHydrationWarning>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes shimmer { 0% { opacity: 1 } 50% { opacity: 0.4 } 100% { opacity: 1 } }
@@ -3000,17 +2999,17 @@ export default function ClientPortalPage() {
 
       {screenSize === 'desktop' && <DesktopSidebar />}
 
-      <div style={{
+      <main className="glass-panel mobile-dashboard-container" style={{
         flex: 1,
-        marginLeft: screenSize === 'desktop' ? 240 : 0,
         display: 'flex',
         flexDirection: 'column',
-        minHeight: '100vh',
-        background: '#ffffff',
+        margin: '16px',
+        overflow: 'hidden',
         position: 'relative',
+        background: '#ffffff',
       }}>
         {renderCurrentView()}
-      </div>
+      </main>
 
       {screenSize !== 'desktop' && <BottomNav />}
 
